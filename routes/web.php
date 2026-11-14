@@ -18,6 +18,13 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
             Route::get('/', \App\Http\Controllers\Admin\DashboardController::class)->name('dashboard');
 
+            Route::get('lembaga', [\App\Http\Controllers\Admin\InstitutionController::class, 'index'])->name('lembaga');
+            Route::patch('lembaga/{institution}/approve', [\App\Http\Controllers\Admin\InstitutionController::class, 'approve'])->name('lembaga.approve');
+            Route::patch('lembaga/{institution}/revoke', [\App\Http\Controllers\Admin\InstitutionController::class, 'revoke'])->name('lembaga.revoke');
+
+            Route::post('notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'readAll'])->name('notifications.read-all');
+            Route::post('notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'read'])->name('notifications.read');
+
             // Halaman yang belum dibuat: tampil "Segera hadir"
             $pages = [
                 'events' => 'Manajemen Event',

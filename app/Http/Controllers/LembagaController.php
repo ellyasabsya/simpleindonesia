@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Notifications\InstitutionSubmitted;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,7 +39,9 @@ class LembagaController extends Controller
             'phone.required' => 'Nomor telepon wajib diisi.',
         ]);
 
-        $request->user()->institutions()->create($data + ['status' => 'pending']);
+        $institution = $request->user()->institutions()->create($data + ['status' => 'pending']);
+
+        Notification::send(User::where('role', 'admin')->get(), new InstitutionSubmitted($institution));
 
         return redirect()->route('lembaga.daftar');
     }

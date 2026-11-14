@@ -11,26 +11,22 @@ use Inertia\Response;
 
 class InstitutionController extends Controller
 {
+    private const PER_PAGE = 10;
+
     public function index(Request $request): Response
     {
-        $status = $request->query('status', 'pending');
-        $q = trim((string) $request->query('q', ''));
+        $status = $request->query('status');
+        $status = in_array($status, ['all', 'pending', 'approved'], true) ? $status : 'pending';
+        $search = trim((string) $request->query('search', ''));
 
-        $items = Institution::with('user:id,name,email')
-            ->when(
-                in_array($status, ['pending', 'approved', 'rejected'], true),
-                fn ($query) => $query->where('status', $status)
-            )
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($w) use ($q) {
-                    $w->where('name', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('phone', 'like', "%{$q}%")
-                        ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$q}%"));
-                });
-            })
+        $institutions = Institution::query()
+            ->with('user:id,name,email')
+            ->search($search)
+            ->when($status === 'pending', fn ($q) => $q->where('status', Institution::PENDING))
+            ->when($status === 'approved', fn ($q) => $q->where('status', Institution::APPROVED))
             ->latest()
-            ->paginate(8)
+            ->latest('id')
+            ->paginate(self::PER_PAGE)
             ->withQueryString()
             ->through(fn (Institution $i) => [
                 'id' => $i->id,
@@ -38,35 +34,31 @@ class InstitutionController extends Controller
                 'email' => $i->email,
                 'phone' => $i->phone,
                 'status' => $i->status,
-                'rejection_reason' => $i->rejection_reason,
+                'member_name' => $i->user?->name,
+                'member_email' => $i->user?->email,
                 'created_at' => $i->created_at?->toISOString(),
-                'owner' => $i->user?->only('name', 'email'),
             ]);
 
+        $pending = Institution::where('status', Institution::PENDING)->count();
+        $approved = Institution::where('status', Institution::APPROVED)->count();
+
         return Inertia::render('admin/lembaga', [
-            'items' => $items,
-            'filters' => ['status' => $status, 'q' => $q],
-            'counts' => [
-                'all' => Institution::count(),
-                'pending' => Institution::where('status', 'pending')->count(),
-                'approved' => Institution::where('status', 'approved')->count(),
-                'rejected' => Institution::where('status', 'rejected')->count(),
-            ],
+            'institutions' => $institutions,
+            'filters' => ['search' => $search, 'status' => $status],
+            'counts' => ['pending' => $pending, 'approved' => $approved, 'all' => Institution::count()],
         ]);
     }
 
-    public function update(Request $request, Institution $institution): RedirectResponse
+    public function approve(Institution $institution): RedirectResponse
     {
-        $data = $request->validate([
-            'status' => ['required', 'in:approved,rejected,pending'],
-            'reason' => ['nullable', 'string', 'max:500'],
-        ]);
+        $institution->update(['status' => Institution::APPROVED]);
 
-        $institution->update([
-            'status' => $data['status'],
-            'rejection_reason' => $data['status'] === 'rejected' ? ($data['reason'] ?? null) : null,
-            'reviewed_at' => now(),
-        ]);
+        return back();
+    }
+
+    public function revoke(Institution $institution): RedirectResponse
+    {
+        $institution->update(['status' => Institution::PENDING]);
 
         return back();
     }
