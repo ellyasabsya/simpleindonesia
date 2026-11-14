@@ -34,7 +34,6 @@ Route::middleware('auth')->group(function () {
                 'verifikasi-paket' => 'Verifikasi Paket',
                 'pendapatan' => 'Pendapatan',
                 'transaksi' => 'Transaksi',
-                'paket' => 'Manajemen Paket',
             ];
             foreach ($pages as $slug => $title) {
                 Route::get($slug, fn () => \Inertia\Inertia::render('admin/placeholder', ['title' => $title]))
@@ -47,3 +46,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/lembaga/daftar', [\App\Http\Controllers\LembagaController::class, 'create'])->name('lembaga.daftar');
     Route::post('/lembaga', [\App\Http\Controllers\LembagaController::class, 'store'])->name('lembaga.store');
 });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('paket', [\App\Http\Controllers\Admin\PackageController::class, 'index'])->name('paket.index');
+        Route::post('paket', [\App\Http\Controllers\Admin\PackageController::class, 'store'])->name('paket.store');
+        Route::patch('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'update'])->name('paket.update');
+        Route::delete('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'destroy'])->name('paket.destroy');
+    });
