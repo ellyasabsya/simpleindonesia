@@ -1,3 +1,4 @@
+import { useAuth } from '@/lib/auth';
 import { Link } from '@inertiajs/react';
 import { goTo } from '@/lib/scroll';
 import { Moon, Sun } from 'lucide-react';
@@ -17,6 +18,7 @@ export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [active, setActive] = useState('hero');
     const { dark, toggle } = useTheme();
+    const { user, dashboardUrl } = useAuth();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 16);
@@ -81,10 +83,10 @@ export default function Navbar() {
                         {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                     </button>
                     <Link
-                        href="/login"
+                        href={user ? dashboardUrl : "/login"}
                         className="rounded-full bg-indigo-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/20 transition hover:bg-indigo-800 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                     >
-                        Masuk
+                        {user ? "Dashboard" : "Masuk"}
                     </Link>
                 </div>
             </div>

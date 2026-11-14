@@ -36,3 +36,8 @@ Route::middleware('auth')->group(function () {
             }
         });
 });
+
+Route::middleware('auth')->group(function () {
+    Route::get('/lembaga/daftar', [\App\Http\Controllers\LembagaController::class, 'create'])->name('lembaga.daftar');
+    Route::post('/lembaga', [\App\Http\Controllers\LembagaController::class, 'store'])->name('lembaga.store');
+});

@@ -22,6 +22,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function institutions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Institution::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

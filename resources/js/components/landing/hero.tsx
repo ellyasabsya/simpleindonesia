@@ -1,3 +1,4 @@
+import { useAuth } from '@/lib/auth';
 import { Link } from '@inertiajs/react';
 import { goTo } from '@/lib/scroll';
 import { ArrowRight, CalendarDays, MapPin, Megaphone, Star, UserPlus } from 'lucide-react';
@@ -111,6 +112,7 @@ function PhoneCarousel() {
 }
 
 export default function Hero() {
+    const { user, dashboardUrl } = useAuth();
     return (
         <section
             id="hero"
@@ -138,10 +140,10 @@ export default function Hero() {
 
                     <div className="mt-10 flex flex-wrap gap-4">
                         <Link
-                            href="/register"
+                            href={user ? dashboardUrl : "/register"}
                             className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-900 to-blue-600 px-8 py-4 font-bold text-white shadow-lg shadow-blue-600/30 transition hover:scale-[1.02]"
                         >
-                            Mulai Sekarang <ArrowRight className="h-5 w-5" />
+                            {user ? "Buka Dashboard" : "Mulai Sekarang"} <ArrowRight className="h-5 w-5" />
                         </Link>
                         <a
                             href="#event" onClick={(e) => goTo(e, "event")}

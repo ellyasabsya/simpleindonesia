@@ -1,7 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import type { ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 
-export default function DashboardShell({ heading }: { heading: string }) {
+export default function DashboardShell({ heading, children }: { heading: string; children?: ReactNode }) {
     const { auth } = usePage<{ auth: { user: { name: string; email: string; role: string } } }>().props;
 
     return (
@@ -17,12 +18,15 @@ export default function DashboardShell({ heading }: { heading: string }) {
                     <p className="mt-3 text-slate-600 dark:text-slate-300">
                         Halo, <b>{auth.user.name}</b> ({auth.user.email}). Halaman ini akan kita isi di tahap berikutnya.
                     </p>
-                    <button
-                        onClick={() => router.post('/logout')}
-                        className="mt-8 rounded-2xl bg-indigo-900 px-6 py-3 font-bold text-white transition hover:bg-indigo-800"
-                    >
-                        Keluar
-                    </button>
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        {children}
+                        <button
+                            onClick={() => router.post('/logout')}
+                            className="rounded-2xl bg-indigo-900 px-6 py-3 font-bold text-white transition hover:bg-indigo-800"
+                        >
+                            Keluar
+                        </button>
+                    </div>
                 </div>
             </div>
         </>

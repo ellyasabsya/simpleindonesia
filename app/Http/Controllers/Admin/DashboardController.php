@@ -17,7 +17,7 @@ class DashboardController extends Controller
                 ['label' => 'Event menunggu review', 'value' => 0],
                 ['label' => 'Pesanan tiket menunggu verifikasi', 'value' => 0],
                 ['label' => 'Penarikan dana menunggu', 'value' => 0],
-                ['label' => 'Lembaga menunggu verifikasi', 'value' => 0],
+                ['label' => 'Lembaga menunggu verifikasi', 'value' => \App\Models\Institution::where('status', 'pending')->count()],
                 ['label' => 'Komentar dilaporkan', 'value' => 0],
             ],
             'platform' => [
