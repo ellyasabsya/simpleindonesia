@@ -28,21 +28,26 @@ export default function AuthLayout({ pageTitle, badge, title, subtitle, panelHea
             <Head title={`${pageTitle} - SIMPLE`} />
             <PageBackground />
 
-            <button
-                onClick={toggle}
-                aria-label="Ganti tema"
-                className="fixed right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow backdrop-blur transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
-            >
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+            {/* Bar atas: ukuran dan jarak tepi sama dengan navbar landing page */}
+            <div className="fixed inset-x-0 top-0 z-30">
+                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+                    <Link
+                        href="/"
+                        className="group flex h-11 items-center gap-2 rounded-full bg-white/70 px-5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20 dark:hover:text-white"
+                    >
+                        <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-0.5" />
+                        Halaman Utama
+                    </Link>
 
-            <Link
-                href="/"
-                className="group fixed left-4 top-4 z-30 flex h-10 items-center gap-2 rounded-full bg-white/80 px-4 text-sm font-semibold text-slate-700 shadow backdrop-blur transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20 dark:hover:text-white"
-            >
-                <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-0.5" />
-                Halaman Utama
-            </Link>
+                    <button
+                        onClick={toggle}
+                        aria-label="Ganti tema"
+                        className="flex h-11 w-11 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
+                    >
+                        {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    </button>
+                </div>
+            </div>
 
             <div className="relative z-10 min-h-screen text-slate-900 dark:text-white">
                 <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-6 py-10 lg:grid-cols-[0.95fr_1fr]">
