@@ -15,11 +15,11 @@ export default function Section({ id, title, description, href, linkLabel, child
             <div className="mx-auto max-w-7xl px-6">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <span className="mb-4 block h-1.5 w-16 rounded-full bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500" />
-                        <h2 className="title-gradient text-4xl font-black uppercase tracking-tight md:text-6xl">
+                        <span className="mb-3 block h-1.5 w-14 rounded-full bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500" />
+                        <h2 className="title-gradient text-3xl font-extrabold uppercase tracking-tight md:text-4xl">
                             {title}
                         </h2>
-                        <p className="mt-4 max-w-2xl text-lg text-slate-600 dark:text-slate-300">{description}</p>
+                        <p className="mt-3 max-w-2xl text-base md:text-lg text-slate-600 dark:text-slate-300">{description}</p>
                     </div>
                     {href && (
                         <a

@@ -42,7 +42,7 @@ export default function Navbar() {
         <header
             className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
                 scrolled
-                    ? 'border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-lg dark:border-white/10 dark:bg-slate-900/90'
+                    ? 'border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-lg dark:border-white/10 dark:bg-indigo-950/60'
                     : 'border-b border-transparent bg-transparent'
             }`}
         >
@@ -56,14 +56,14 @@ export default function Navbar() {
                     </span>
                 </a>
 
-                <nav className="hidden rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur md:flex dark:bg-white/5">
+                <nav className="hidden rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur md:flex dark:bg-white/10">
                     {links.map((link) => (
                         <a
                             key={link.id}
                             href={`#${link.id}`} onClick={(e) => goTo(e, link.id)}
                             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
                                 active === link.id
-                                    ? 'bg-white text-indigo-900 shadow dark:bg-slate-700 dark:text-white'
+                                    ? 'bg-white text-indigo-900 shadow dark:bg-indigo-500/30 dark:text-white'
                                     : 'text-slate-600 hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white'
                             }`}
                         >
