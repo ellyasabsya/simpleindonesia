@@ -1,3 +1,5 @@
+import { Link } from '@inertiajs/react';
+import { goTo } from '@/lib/scroll';
 import { ArrowRight, CalendarDays, MapPin, Megaphone, Star, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { events } from '@/data/events';
@@ -135,14 +137,14 @@ export default function Hero() {
                     </p>
 
                     <div className="mt-10 flex flex-wrap gap-4">
-                        <a
+                        <Link
                             href="/register"
                             className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-900 to-blue-600 px-8 py-4 font-bold text-white shadow-lg shadow-blue-600/30 transition hover:scale-[1.02]"
                         >
                             Mulai Sekarang <ArrowRight className="h-5 w-5" />
-                        </a>
+                        </Link>
                         <a
-                            href="#event"
+                            href="#event" onClick={(e) => goTo(e, "event")}
                             className="rounded-2xl bg-white px-8 py-4 font-bold text-slate-900 shadow transition hover:bg-slate-50 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
                         >
                             Pelajari Fitur

@@ -1,3 +1,5 @@
+import { Link } from '@inertiajs/react';
+import { goTo } from '@/lib/scroll';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/use-theme';
@@ -45,7 +47,7 @@ export default function Navbar() {
             }`}
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-                <a href="#hero" className="flex items-center gap-3">
+                <a href="#hero" onClick={(e) => goTo(e, "hero")} className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
                         S
                     </span>
@@ -58,7 +60,7 @@ export default function Navbar() {
                     {links.map((link) => (
                         <a
                             key={link.id}
-                            href={`#${link.id}`}
+                            href={`#${link.id}`} onClick={(e) => goTo(e, link.id)}
                             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
                                 active === link.id
                                     ? 'bg-white text-indigo-900 shadow dark:bg-slate-700 dark:text-white'
@@ -78,12 +80,12 @@ export default function Navbar() {
                     >
                         {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                     </button>
-                    <a
+                    <Link
                         href="/login"
                         className="rounded-full bg-indigo-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/20 transition hover:bg-indigo-800 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                     >
                         Masuk
-                    </a>
+                    </Link>
                 </div>
             </div>
         </header>

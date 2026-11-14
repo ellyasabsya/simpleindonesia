@@ -1,3 +1,4 @@
+import { goTo } from '@/lib/scroll';
 const links = ['Hero', 'Event', 'Tiket', 'Voting', 'Paket', 'Berita'];
 
 export default function Footer() {
@@ -13,7 +14,7 @@ export default function Footer() {
 
                 <nav className="flex flex-wrap gap-6 text-sm font-semibold text-slate-600 dark:text-slate-300">
                     {links.map((label) => (
-                        <a key={label} href={`#${label.toLowerCase()}`} className="hover:text-indigo-700 dark:hover:text-white">
+                        <a key={label} href={`#${label.toLowerCase()}`} onClick={(e) => goTo(e, label.toLowerCase())} className="hover:text-indigo-700 dark:hover:text-white">
                             {label}
                         </a>
                     ))}
