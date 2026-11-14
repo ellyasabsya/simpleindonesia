@@ -27,7 +27,6 @@ Route::middleware('auth')->group(function () {
                 'verifikasi-paket' => 'Verifikasi Paket',
                 'pendapatan' => 'Pendapatan',
                 'transaksi' => 'Transaksi',
-                'lembaga' => 'Lembaga',
                 'paket' => 'Manajemen Paket',
             ];
             foreach ($pages as $slug => $title) {
@@ -41,3 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/lembaga/daftar', [\App\Http\Controllers\LembagaController::class, 'create'])->name('lembaga.daftar');
     Route::post('/lembaga', [\App\Http\Controllers\LembagaController::class, 'store'])->name('lembaga.store');
 });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('lembaga', [\App\Http\Controllers\Admin\InstitutionController::class, 'index'])->name('lembaga');
+        Route::patch('lembaga/{institution}', [\App\Http\Controllers\Admin\InstitutionController::class, 'update'])->name('lembaga.update');
+    });
