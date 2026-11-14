@@ -111,11 +111,9 @@ function PhoneCarousel() {
 export default function Hero() {
     return (
         <section
-            id="beranda"
-            className="relative overflow-hidden bg-gradient-to-br from-blue-100 via-slate-50 to-purple-100 pt-20 dark:from-slate-950 dark:via-indigo-950 dark:to-slate-900"
+            id="hero"
+            className="relative overflow-hidden pt-20"
         >
-            {/* Grid, memudar ke bawah */}
-            <div className="bg-grid pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black_60%,transparent)]" />
 
             <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_1.15fr] lg:py-24">
                 <div>

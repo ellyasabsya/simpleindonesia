@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 
 const links = [
-    { label: 'Beranda', id: 'beranda' },
+    { label: 'Hero', id: 'hero' },
     { label: 'Event', id: 'event' },
     { label: 'Tiket', id: 'tiket' },
     { label: 'Voting', id: 'voting' },
@@ -13,7 +13,7 @@ const links = [
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
-    const [active, setActive] = useState('beranda');
+    const [active, setActive] = useState('hero');
     const { dark, toggle } = useTheme();
 
     useEffect(() => {
@@ -45,7 +45,7 @@ export default function Navbar() {
             }`}
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-                <a href="#beranda" className="flex items-center gap-3">
+                <a href="#hero" className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
                         S
                     </span>
