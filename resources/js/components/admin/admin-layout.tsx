@@ -1,41 +1,55 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import NotificationBell from '@/components/admin/notification-bell';
 import PageBackground from '@/components/page-background';
 import { adminMenu } from '@/data/admin-menu';
 import { useTheme } from '@/hooks/use-theme';
+import type { NotificationsProp } from '@/types';
 
-type PageProps = { auth?: { user?: { name?: string; role?: string } } };
+type PageProps = {
+    auth?: { user?: { name?: string; role?: string } };
+    notifications?: NotificationsProp;
+    pending_lembaga?: number;
+};
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { url } = usePage();
     const path = url.split('?')[0];
+    const pendingLembaga = usePage<PageProps>().props.pending_lembaga ?? 0;
 
     return (
         <div className="flex h-full flex-col">
-            <Link href="/" onClick={onNavigate} className="flex items-center gap-3 px-6 pb-5 pt-6">
+            <Link
+                href="/"
+                onClick={onNavigate}
+                className="flex items-center gap-3 px-6 pt-6 pb-5"
+            >
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
                     S
                 </span>
                 <span>
-                    <span className="block text-lg font-extrabold leading-none tracking-[0.2em] text-indigo-900 dark:text-white">
+                    <span className="block text-lg leading-none font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">
                         SIMPLE
                     </span>
-                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-500 dark:text-indigo-300">
+                    <span className="mt-1 block text-[10px] font-bold tracking-[0.25em] text-indigo-500 uppercase dark:text-indigo-300">
                         Admin Workspace
                     </span>
                 </span>
             </Link>
 
-            <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none]">
+            <nav className="flex-1 [scrollbar-width:none] space-y-5 overflow-y-auto px-4 pb-4">
                 {adminMenu.map((group) => (
                     <div key={group.title}>
-                        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                        <p className="mb-2 px-3 text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase dark:text-slate-500">
                             {group.title}
                         </p>
                         <div className="space-y-1">
                             {group.items.map(({ label, href, icon: Icon }) => {
-                                const active = href === '/admin' ? path === '/admin' : path.startsWith(href);
+                                const active =
+                                    href === '/admin'
+                                        ? path === '/admin'
+                                        : path.startsWith(href);
                                 return (
                                     <Link
                                         key={href}
@@ -49,6 +63,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                     >
                                         <Icon className="h-[18px] w-[18px]" />
                                         {label}
+                                        {href === '/admin/lembaga' &&
+                                            pendingLembaga > 0 && (
+                                                <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                                                    {pendingLembaga}
+                                                </span>
+                                            )}
                                     </Link>
                                 );
                             })}
@@ -71,10 +91,17 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     );
 }
 
-export default function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
+export default function AdminLayout({
+    title,
+    children,
+}: {
+    title: string;
+    children: ReactNode;
+}) {
     const { dark, toggle } = useTheme();
     const [open, setOpen] = useState(false);
-    const user = usePage<PageProps>().props.auth?.user;
+    const { auth, notifications } = usePage<PageProps>().props;
+    const user = auth?.user;
     const initial = (user?.name ?? 'A').charAt(0).toUpperCase();
 
     return (
@@ -90,12 +117,15 @@ export default function AdminLayout({ title, children }: { title: string; childr
             {/* Drawer mobile */}
             {open && (
                 <div className="fixed inset-0 z-40 lg:hidden">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={() => setOpen(false)}
+                    />
                     <aside className="absolute inset-y-0 left-0 w-64 bg-white/95 shadow-2xl dark:bg-indigo-950/95">
                         <button
                             onClick={() => setOpen(false)}
                             aria-label="Tutup menu"
-                            className="absolute right-3 top-4 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                            className="absolute top-4 right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -120,21 +150,30 @@ export default function AdminLayout({ title, children }: { title: string; childr
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <NotificationBell
+                                notifications={notifications ?? null}
+                            />
                             <button
                                 onClick={toggle}
                                 aria-label="Ganti tema"
                                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
                             >
-                                {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+                                {dark ? (
+                                    <Sun className="h-[18px] w-[18px]" />
+                                ) : (
+                                    <Moon className="h-[18px] w-[18px]" />
+                                )}
                             </button>
 
-                            <div className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pl-1 pr-4 shadow-sm dark:bg-white/10">
+                            <div className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pr-4 pl-1 shadow-sm dark:bg-white/10">
                                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-bold text-white">
                                     {initial}
                                 </span>
                                 <span className="hidden leading-tight sm:block">
-                                    <span className="block text-sm font-bold">{user?.name ?? 'Admin'}</span>
-                                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    <span className="block text-sm font-bold">
+                                        {user?.name ?? 'Admin'}
+                                    </span>
+                                    <span className="block text-[10px] font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                                         {user?.role ?? 'admin'}
                                     </span>
                                 </span>

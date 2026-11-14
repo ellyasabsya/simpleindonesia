@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Institution;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -24,6 +25,22 @@ class HandleInertiaRequests extends Middleware
                     ? $request->user()->only('id', 'name', 'email', 'role')
                     : null,
             ],
+            'notifications' => fn () => $request->user()?->isAdmin()
+                ? [
+                    'unread_count' => $request->user()->unreadNotifications()->count(),
+                    'items' => $request->user()->notifications()->latest()->limit(8)->get()->map(fn ($n) => [
+                        'id' => $n->id,
+                        'title' => $n->data['title'] ?? '',
+                        'message' => $n->data['message'] ?? '',
+                        'url' => $n->data['url'] ?? null,
+                        'read' => $n->read_at !== null,
+                        'created_at' => $n->created_at?->toISOString(),
+                    ])->all(),
+                ]
+                : null,
+            'pending_lembaga' => fn () => $request->user()?->isAdmin()
+                ? Institution::where('status', Institution::PENDING)->count()
+                : 0,
         ];
     }
 }
