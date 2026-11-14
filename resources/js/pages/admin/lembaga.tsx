@@ -118,6 +118,20 @@ export default function AdminLembaga({ institutions, filters, counts }: Props) {
 
     return (
         <AdminLayout title="Admin Panel">
+            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-900/20">
+                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
+                <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
+                <div className="relative">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
+                        SIMPLE Platform Management
+                    </span>
+                    <h2 className="mt-4 text-3xl font-extrabold">Manajemen Lembaga</h2>
+                    <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-blue-50/90">
+                        Kelola data lembaga penyelenggara, periksa keanggotaan, dan lakukan verifikasi lembaga yang terdaftar di SIMPLE.
+                    </p>
+                </div>
+            </section>
             <Head title="Lembaga" />
 
             <div className="grid gap-4 md:grid-cols-3">
