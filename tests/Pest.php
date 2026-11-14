@@ -48,3 +48,6 @@ function something()
 {
     // ..
 }
+
+// Test tidak perlu hasil build Vite
+pest()->beforeEach(fn () => $this->withoutVite())->in('Feature');
