@@ -6,11 +6,7 @@ Route::inertia('/', 'welcome')->name('home');
 
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return auth()->user()->isAdmin()
-            ? redirect('/admin')
-            : \Inertia\Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     Route::middleware(\App\Http\Middleware\EnsureUserIsAdmin::class)
         ->prefix('admin')
