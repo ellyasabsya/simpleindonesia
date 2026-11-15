@@ -178,9 +178,6 @@ export default function Dashboard({ hasPanel, institution, institutionCount, sum
             </div>
 
             <section>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-indigo-600 dark:text-indigo-300">Aktivitas akun</p>
-                <h2 className="mt-1 text-2xl font-extrabold">Aktivitas dan Peran Saya</h2>
-                <p className="mt-1 text-slate-600 dark:text-slate-300">Pantau aktivitas Anda sebagai peserta maupun juri dalam event SIMPLE.</p>
 
                 <div className="mt-5 grid gap-5 md:grid-cols-2">
                     <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-sky-500 p-6 text-white shadow-lg shadow-blue-600/20">

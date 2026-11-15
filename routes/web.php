@@ -108,3 +108,11 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
         Route::get('profil', [\App\Http\Controllers\Panel\ProfileController::class, 'show'])->name('profil');
         Route::post('profil', [\App\Http\Controllers\Panel\ProfileController::class, 'update'])->name('profil.update');
     });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+    ->prefix('panel')
+    ->name('panel.')
+    ->group(function () {
+        Route::post('anggota', [\App\Http\Controllers\Panel\MemberController::class, 'store'])->name('anggota.store');
+        Route::delete('anggota/{member}', [\App\Http\Controllers\Panel\MemberController::class, 'destroy'])->name('anggota.destroy');
+    });
