@@ -82,7 +82,6 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
             'voting' => 'Voting',
             'penilaian' => 'Penilaian',
             'pendapatan' => 'Pendapatan',
-            'profil' => 'Profil Lembaga',
         ];
         foreach ($pages as $slug => $title) {
             Route::get($slug, fn (\Illuminate\Http\Request $r) => app(\App\Http\Controllers\Panel\PanelController::class)->placeholder($r, $title))
@@ -100,4 +99,12 @@ Route::middleware([
     ->group(function () {
         Route::get('event/{event}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'show'])->name('event.show');
         Route::get('event/{event}/{menu}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'menu'])->name('event.menu');
+    });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+    ->prefix('panel')
+    ->name('panel.')
+    ->group(function () {
+        Route::get('profil', [\App\Http\Controllers\Panel\ProfileController::class, 'show'])->name('profil');
+        Route::post('profil', [\App\Http\Controllers\Panel\ProfileController::class, 'update'])->name('profil.update');
     });
