@@ -2,7 +2,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
-import { panelMenu } from '@/data/panel-menu';
+import { eventMenuIcons } from '@/data/event-menu-icons';
+import { panelMenu, type PanelMenuGroup } from '@/data/panel-menu';
 import { useTheme } from '@/hooks/use-theme';
 
 type PageProps = {
@@ -13,6 +14,17 @@ type PageProps = {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { url } = usePage();
     const path = url.split('?')[0];
+    const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[] } }>().props;
+    const groups: PanelMenuGroup[] = eventNav
+        ? [
+              { title: 'Utama', items: [{ label: 'Semua Event', href: '/panel/event', icon: ArrowLeft }] },
+              {
+                  title: eventNav.title,
+                  items: eventNav.items.map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
+              },
+          ]
+        : panelMenu;
+
 
     return (
         <div className="flex h-full flex-col">
@@ -27,12 +39,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
 
             <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none]">
-                {panelMenu.map((group) => (
+                {groups.map((group) => (
                     <div key={group.title}>
                         <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{group.title}</p>
                         <div className="space-y-1">
                             {group.items.map(({ label, href, icon: Icon }) => {
-                                const active = href === '/panel' ? path === '/panel' : path.startsWith(href);
+                                const active = href === '/panel' || eventNav ? path === href : path.startsWith(href);
                                 return (
                                     <Link
                                         key={href}

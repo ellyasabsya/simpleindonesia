@@ -93,3 +93,15 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
                 ->name($slug);
         }
     });
+
+Route::middleware([
+    'auth',
+    \App\Http\Middleware\EnsureUserHasApprovedInstitution::class,
+    \App\Http\Middleware\EnsureEventMenuAccess::class,
+])
+    ->prefix('panel')
+    ->name('panel.')
+    ->group(function () {
+        Route::get('event/{event}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'show'])->name('event.show');
+        Route::get('event/{event}/{menu}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'menu'])->name('event.menu');
+    });
