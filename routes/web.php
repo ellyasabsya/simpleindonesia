@@ -27,8 +27,6 @@ Route::middleware('auth')->group(function () {
 
             // Halaman yang belum dibuat: tampil "Segera hadir"
             $pages = [
-                'events' => 'Manajemen Event',
-                'review' => 'Review Event',
                 'penilaian' => 'Sistem Penilaian',
                 'tiket' => 'Verifikasi Tiket',
                 'verifikasi-paket' => 'Verifikasi Paket',
@@ -55,4 +53,43 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::post('paket', [\App\Http\Controllers\Admin\PackageController::class, 'store'])->name('paket.store');
         Route::patch('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'update'])->name('paket.update');
         Route::delete('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'destroy'])->name('paket.destroy');
+    });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+    ->prefix('panel')
+    ->name('panel.')
+    ->group(function () {
+        Route::get('event', [\App\Http\Controllers\Panel\EventController::class, 'index'])->name('event');
+        Route::get('ajukan', [\App\Http\Controllers\Panel\EventController::class, 'create'])->name('ajukan');
+        Route::post('ajukan', [\App\Http\Controllers\Panel\EventController::class, 'store'])->name('ajukan.store');
+    });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('events', [\App\Http\Controllers\Admin\EventController::class, 'index'])->name('events');
+        Route::get('review', [\App\Http\Controllers\Admin\EventController::class, 'review'])->name('review');
+        Route::patch('events/{event}/approve', [\App\Http\Controllers\Admin\EventController::class, 'approve'])->name('events.approve');
+        Route::patch('events/{event}/reject', [\App\Http\Controllers\Admin\EventController::class, 'reject'])->name('events.reject');
+    });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+    ->prefix('panel')
+    ->name('panel.')
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\Panel\PanelController::class, 'dashboard'])->name('dashboard');
+
+        $pages = [
+            'peserta' => 'Peserta',
+            'tiket' => 'Tiket & Penjualan',
+            'voting' => 'Voting',
+            'penilaian' => 'Penilaian',
+            'pendapatan' => 'Pendapatan',
+            'profil' => 'Profil Lembaga',
+        ];
+        foreach ($pages as $slug => $title) {
+            Route::get($slug, fn (\Illuminate\Http\Request $r) => app(\App\Http\Controllers\Panel\PanelController::class)->placeholder($r, $title))
+                ->name($slug);
+        }
     });
