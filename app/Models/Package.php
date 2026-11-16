@@ -8,6 +8,8 @@ class Package extends Model
 {
     protected $fillable = [
         'name', 'slug', 'payment_type', 'share_percent', 'price',
+        'event_type', 'included_sub_events', 'extra_sub_event_price',
+        'assessment_addon_price', 'max_participant_categories',
         'modules', 'features', 'description', 'is_active', 'sort_order',
     ];
 
@@ -19,6 +21,10 @@ class Package extends Model
             'is_active' => 'boolean',
             'share_percent' => 'float',
             'price' => 'integer',
+            'included_sub_events' => 'integer',
+            'extra_sub_event_price' => 'integer',
+            'assessment_addon_price' => 'integer',
+            'max_participant_categories' => 'integer',
         ];
     }
 
@@ -48,9 +54,26 @@ class Package extends Model
             'payment_type' => $this->payment_type,
             'share_percent' => $this->share_percent,
             'price' => $this->price,
+            'event_type' => $this->event_type,
+            'included_sub_events' => $this->included_sub_events,
+            'extra_sub_event_price' => $this->extra_sub_event_price,
+            'assessment_addon_price' => $this->assessment_addon_price,
+            'max_participant_categories' => $this->max_participant_categories,
             'modules' => $this->modules,
             'features' => $this->features,
         ];
+    }
+
+    /** Biaya sub-event tambahan untuk sejumlah sub-event; null kalau paket tidak menyediakannya. */
+    public function subEventCost(int $total): ?int
+    {
+        $extra = max(0, $total - (int) $this->included_sub_events);
+
+        if ($extra === 0) {
+            return 0;
+        }
+
+        return $this->extra_sub_event_price === null ? null : $extra * $this->extra_sub_event_price;
     }
 
     public function priceLabel(): string
