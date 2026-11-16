@@ -10,7 +10,7 @@ const steps = ['Informasi', 'Jadwal & Poster', 'Paket', 'Tinjau'];
 const input =
     'h-12 w-full rounded-xl border border-slate-200 bg-white/90 px-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-indigo-500/20';
 const label = 'mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200';
-const card = 'rounded-3xl border border-white/70 bg-white/80 p-7 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
+const card = 'rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const fieldStep: Record<string, number> = { title: 0, category: 0, location: 0, starts_at: 1, ends_at: 1, description: 1, poster: 1, package_id: 2 };
 
@@ -58,20 +58,14 @@ export default function CreateEvent({ packages, categories }: Props) {
 
     return (
         <UserLayout title="Ajukan Event" hasPanel>
-            <section className="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-1.5 text-sm font-semibold shadow-sm dark:bg-white/10">
-                        <span className="h-2 w-2 rounded-full bg-sky-400" /> Pengajuan event
-                    </span>
-                    <h1 className="mt-4 text-4xl font-extrabold">Ajukan <span className="title-gradient">Event Baru</span></h1>
-                    <p className="mt-2 text-slate-600 dark:text-slate-300">Lengkapi langkah demi langkah. Admin akan memeriksa sebelum event tayang.</p>
-                </div>
-                <Link href="/panel" className="flex items-center gap-2 rounded-2xl bg-white/80 px-5 py-3 text-sm font-bold shadow-sm hover:bg-white dark:bg-white/10">
+            <section className="flex items-center justify-between gap-4">
+                <h1 className="text-3xl font-extrabold">Ajukan <span className="title-gradient">Event Baru</span></h1>
+                <Link href="/panel" className="flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-2.5 text-sm font-bold shadow-sm hover:bg-white dark:bg-white/10">
                     <ArrowLeft className="h-4 w-4" /> Panel Lembaga
                 </Link>
             </section>
 
-            <ol className="flex items-center">
+            <ol className="flex items-center py-1">
                 {steps.map((s, i) => (
                     <li key={s} className="flex flex-1 items-center last:flex-none">
                         <span className="flex items-center gap-3">
@@ -85,7 +79,7 @@ export default function CreateEvent({ packages, categories }: Props) {
                 ))}
             </ol>
 
-            <div className={`${card} mx-auto w-full max-w-3xl`}>
+            <div className={`${card} w-full`}>
                 {step === 0 && (
                     <div className="space-y-5">
                         <h2 className="text-2xl font-extrabold">Informasi event</h2>
@@ -113,36 +107,38 @@ export default function CreateEvent({ packages, categories }: Props) {
                 )}
 
                 {step === 1 && (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                         <h2 className="text-2xl font-extrabold">Jadwal & poster</h2>
-                        <div className="grid gap-5 sm:grid-cols-2">
-                            <div>
-                                <label className={label}>Tanggal mulai *</label>
-                                <input type="date" className={input} value={data.starts_at} onChange={(e) => setData('starts_at', e.target.value)} />
-                                <Err k="starts_at" />
+                        <div className="grid gap-6 md:grid-cols-[1fr_200px]">
+                            <div className="space-y-4">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className={label}>Tanggal mulai *</label>
+                                        <input type="date" className={input} value={data.starts_at} onChange={(e) => setData('starts_at', e.target.value)} />
+                                        <Err k="starts_at" />
+                                    </div>
+                                    <div>
+                                        <label className={label}>Tanggal selesai *</label>
+                                        <input type="date" className={input} min={data.starts_at} value={data.ends_at} onChange={(e) => setData('ends_at', e.target.value)} />
+                                        <Err k="ends_at" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={label}>Deskripsi</label>
+                                    <textarea rows={5} maxLength={2000} value={data.description} onChange={(e) => setData('description', e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
+                                    <Err k="description" />
+                                </div>
                             </div>
                             <div>
-                                <label className={label}>Tanggal selesai *</label>
-                                <input type="date" className={input} min={data.starts_at} value={data.ends_at} onChange={(e) => setData('ends_at', e.target.value)} />
-                                <Err k="ends_at" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className={label}>Deskripsi</label>
-                            <textarea rows={4} maxLength={2000} value={data.description} onChange={(e) => setData('description', e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
-                            <Err k="description" />
-                        </div>
-                        <div>
-                            <label className={label}>Poster (rasio 4:5, maks. 4 MB)</label>
-                            <div className="flex items-center gap-5">
-                                <div className="flex h-32 w-[102px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
+                                <label className={label}>Poster (4:5, maks. 4 MB)</label>
+                                <div className="flex h-[180px] w-36 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
                                     {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : '4:5'}
                                 </div>
                                 <input type="file" accept="image/jpeg,image/png,image/webp"
                                     onChange={(e) => { const f = e.target.files?.[0] ?? null; setData('poster', f); setPreview(f ? URL.createObjectURL(f) : null); }}
-                                    className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-800 dark:file:bg-indigo-500/20 dark:file:text-white" />
+                                    className="mt-3 block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-indigo-800 dark:file:bg-indigo-500/20 dark:file:text-white" />
+                                <Err k="poster" />
                             </div>
-                            <Err k="poster" />
                         </div>
                     </div>
                 )}
@@ -151,26 +147,26 @@ export default function CreateEvent({ packages, categories }: Props) {
                     <div className="space-y-4">
                         <h2 className="text-2xl font-extrabold">Pilih paket</h2>
                         {packages.length === 0 && <p className="text-sm text-slate-500">Belum ada paket tersedia. Hubungi admin.</p>}
-                        {packages.map((p) => {
-                            const on = data.package_id === p.id;
-                            return (
-                                <label key={p.id} className={`block cursor-pointer rounded-2xl border p-5 transition ${on ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-400/50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 hover:border-indigo-200 dark:border-white/10 dark:bg-white/5'}`}>
-                                    <span className="flex items-start gap-3">
-                                        <input type="radio" name="package" checked={on} onChange={() => setData('package_id', p.id)} className="mt-1.5 h-4 w-4 accent-indigo-700" />
-                                        <span>
-                                            <span className="block text-lg font-extrabold">{p.name}</span>
-                                            <span className="title-gradient block text-lg font-extrabold">{p.price_label}</span>
-                                            {p.description && <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">{p.description}</span>}
-                                            <span className="mt-3 flex flex-wrap gap-2">
-                                                {p.features.map((f) => <span key={f} className="rounded-lg bg-white/80 px-2.5 py-1 text-xs font-semibold dark:bg-white/10">✓ {f}</span>)}
-                                            </span>
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {packages.map((p) => {
+                                const on = data.package_id === p.id;
+                                return (
+                                    <label key={p.id} className={`flex cursor-pointer flex-col rounded-2xl border p-4 transition ${on ? 'border-indigo-400 bg-indigo-50 ring-4 ring-indigo-100 dark:border-indigo-400/50 dark:bg-indigo-500/20 dark:ring-indigo-500/10' : 'border-slate-200 bg-white/70 hover:border-indigo-200 dark:border-white/10 dark:bg-white/5'}`}>
+                                        <span className="flex items-center gap-2">
+                                            <input type="radio" name="package" checked={on} onChange={() => setData('package_id', p.id)} className="h-4 w-4 accent-indigo-700" />
+                                            <span className="text-lg font-extrabold">{p.name}</span>
                                         </span>
-                                    </span>
-                                </label>
-                            );
-                        })}
+                                        <span className="title-gradient mt-1 block text-base font-extrabold">{p.price_label}</span>
+                                        {p.description && <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{p.description}</span>}
+                                        <span className="mt-3 flex flex-col gap-1">
+                                            {p.features.map((f) => <span key={f} className="text-xs font-semibold">✓ {f}</span>)}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
                         <Err k="package_id" />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Fitur dan persentase bagi hasil dikunci saat event diajukan. Perubahan paket nanti tidak memengaruhi event ini.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Fitur dan persentase bagi hasil dikunci saat event diajukan.</p>
                     </div>
                 )}
 
@@ -196,7 +192,7 @@ export default function CreateEvent({ packages, categories }: Props) {
                     </div>
                 )}
 
-                <div className="mt-8 flex items-center justify-between">
+                <div className="mt-5 flex items-center justify-between">
                     <button onClick={back} disabled={step === 0} className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:invisible dark:text-slate-300 dark:hover:bg-white/10">
                         <ArrowLeft className="h-4 w-4" /> Kembali
                     </button>

@@ -11,15 +11,39 @@ use Illuminate\Validation\ValidationException;
 
 class MemberController extends Controller
 {
+    public const ROLES = ['admin', 'manajer', 'keuangan', 'staf'];
+    public const PERMS = ['events', 'checkin', 'finance', 'withdraw', 'members'];
+    public const ROLE_PERMS = [
+        'admin' => ['events', 'checkin', 'finance', 'withdraw', 'members'],
+        'manajer' => ['events', 'checkin'],
+        'keuangan' => ['finance', 'withdraw'],
+        'staf' => ['checkin'],
+    ];
+
+    /** Hak akses tersimpan; kalau belum ada, pakai bawaan dari peran. */
+    public static function permissionsFor(InstitutionMember $m): array
+    {
+        $raw = $m->getAttributes()['permissions'] ?? null;
+        $list = $raw ? json_decode($raw, true) : null;
+
+        return is_array($list) ? array_values($list) : (self::ROLE_PERMS[$m->role] ?? []);
+    }
+
+    private function rules(): array
+    {
+        return [
+            'role' => ['required', 'in:' . implode(',', self::ROLES)],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['in:' . implode(',', self::PERMS)],
+        ];
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $institution = $request->attributes->get('institution');
         abort_unless($request->user()->id === $institution->user_id, 403, 'Hanya pemilik lembaga yang dapat menambah anggota.');
 
-        $data = $request->validate([
-            'email' => ['required', 'email'],
-            'role' => ['required', 'in:staf,admin'],
-        ], [
+        $data = $request->validate(['email' => ['required', 'email']] + $this->rules(), [
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
         ]);
@@ -36,9 +60,25 @@ class MemberController extends Controller
             throw ValidationException::withMessages(['email' => 'Akun ini sudah menjadi anggota.']);
         }
 
-        InstitutionMember::create(['institution_id' => $institution->id, 'user_id' => $user->id, 'role' => $data['role']]);
+        $member = InstitutionMember::create(['institution_id' => $institution->id, 'user_id' => $user->id, 'role' => $data['role']]);
+        $member->forceFill(['permissions' => json_encode(array_values($data['permissions'] ?? self::ROLE_PERMS[$data['role']]))])->save();
 
-        return back();
+        return back()->with('success', "{$user->name} ditambahkan ke lembaga.");
+    }
+
+    public function update(Request $request, InstitutionMember $member): RedirectResponse
+    {
+        $institution = $request->attributes->get('institution');
+        abort_unless($request->user()->id === $institution->user_id, 403);
+        abort_unless($member->institution_id === $institution->id, 404);
+
+        $data = $request->validate($this->rules());
+        $member->forceFill([
+            'role' => $data['role'],
+            'permissions' => json_encode(array_values($data['permissions'] ?? [])),
+        ])->save();
+
+        return back()->with('success', 'Hak akses diperbarui.');
     }
 
     public function destroy(Request $request, InstitutionMember $member): RedirectResponse
@@ -49,6 +89,6 @@ class MemberController extends Controller
 
         $member->delete();
 
-        return back();
+        return back()->with('success', 'Anggota dikeluarkan.');
     }
 }

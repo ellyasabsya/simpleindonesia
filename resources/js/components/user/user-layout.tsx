@@ -1,4 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import Avatar from '@/components/user/avatar';
+import NotificationBell from '@/components/user/notification-bell';
+import { Toast } from '@/lib/toast';
 import { Building2, ChevronDown, LayoutDashboard, LogOut, Moon, Sun } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
@@ -7,7 +10,9 @@ import { useTheme } from '@/hooks/use-theme';
 export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel: boolean; children: ReactNode }) {
     const { dark, toggle } = useTheme();
     const [open, setOpen] = useState(false);
-    const user = usePage<{ auth?: { user?: { name?: string; email?: string } } }>().props.auth?.user;
+    const page = usePage<{ auth?: { user?: { name?: string; email?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null }>().props;
+    const user = page.auth?.user;
+    const avatar = page.profile?.avatar ?? user?.avatar ?? null;
     const name = user?.name ?? 'Pengguna';
 
     return (
@@ -23,13 +28,14 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
                     </Link>
 
                     <div className="flex items-center gap-3">
-                        <button onClick={toggle} aria-label="Ganti tema" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20">
+                        <NotificationBell />
+<button onClick={toggle} aria-label="Ganti tema" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20">
                             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                         </button>
 
                         <div className="relative">
                             <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pl-1 pr-3 shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/20">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-bold text-white">{name.charAt(0).toUpperCase()}</span>
+                                <Avatar name={name} src={avatar} className="h-9 w-9 rounded-full text-sm" />
                                 <span className="hidden text-sm font-bold sm:block">{name}</span>
                                 <ChevronDown className="h-4 w-4" />
                             </button>
@@ -38,9 +44,12 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                                     <div className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-white/70 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
-                                        <div className="px-3 py-2">
-                                            <p className="truncate text-sm font-bold">{name}</p>
-                                            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+                                        <div className="flex items-center gap-3 px-3 py-2">
+                                            <Avatar name={name} src={avatar} className="h-10 w-10 rounded-full text-base" />
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold">{name}</p>
+                                                <p className="truncate text-xs text-slate-500">{user?.email}</p>
+                                            </div>
                                         </div>
                                         <Link href="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
                                             <LayoutDashboard className="h-4 w-4" /> Dashboard
@@ -60,7 +69,8 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
             </header>
 
             <div className="relative z-10 min-h-screen text-slate-900 dark:text-white">
-                <main className="mx-auto max-w-7xl space-y-6 px-6 pb-16 pt-28">{children}</main>
+                <main className="mx-auto max-w-7xl space-y-6 px-6 pb-16 pt-28"><Toast />
+{children}</main>
             </div>
         </>
     );

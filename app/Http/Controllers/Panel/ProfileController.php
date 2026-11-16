@@ -26,7 +26,7 @@ class ProfileController extends Controller
                 'address' => $i->address,
                 'website' => $i->website,
                 'status' => $i->status,
-                'logo_url' => $i->logo_path ? Storage::disk('public')->url($i->logo_path) : null,
+                'logo_url' => $i->logo_path ? '/storage/' . ltrim($i->logo_path, '/') : null,
                 'created_at' => $i->created_at?->toDateString(),
             ],
             'stats' => [
@@ -68,6 +68,6 @@ class ProfileController extends Controller
 
         $i->forceFill($data)->save();
 
-        return back();
+        return back()->with('success', 'Profil lembaga berhasil disimpan.');
     }
 }

@@ -23,6 +23,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Inertia\Inertia::share('flash', fn () => ['success' => session('success'), 'error' => session('error')]);
+        \Inertia\Inertia::share('unread', fn () => auth()->check() ? auth()->user()->unreadNotifications()->count() : 0);
+        \Inertia\Inertia::share('notifications', fn () => auth()->check()
+            ? auth()->user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                'id' => $n->id, 'text' => $n->data['text'] ?? '', 'url' => $n->data['url'] ?? null,
+                'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String(),
+            ])->all()
+            : []);
+        \Inertia\Inertia::share('friends', fn () => request()->is('dashboard') && auth()->check()
+            ? \Illuminate\Support\Facades\DB::table('friendships')
+                ->join('users', 'users.id', '=', 'friendships.friend_id')
+                ->where('friendships.user_id', auth()->id())->where('friendships.status', 'accepted')
+                ->orderByDesc('friendships.created_at')
+                ->get(['users.id', 'users.name', 'users.avatar', 'users.city', 'users.username', 'friendships.created_at as since'])
+            : []);
+        \Inertia\Inertia::share('profile', fn () => ($u = auth()->user())
+            ? array_merge($u->only(['username', 'avatar', 'bio', 'city', 'phone', 'birth_date', 'created_at']), ['socials' => json_decode($u->socials ?? '[]', true) ?: (object) []])
+            : null);
         $this->configureDefaults();
     }
 

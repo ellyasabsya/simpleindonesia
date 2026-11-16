@@ -17,7 +17,7 @@ class Institution extends Model
 
     public const APPROVED = 'approved';
 
-    protected $fillable = ['user_id', 'name', 'email', 'phone', 'status'];
+    protected $fillable = ['user_id', 'name', 'email', 'phone', 'status', 'logo_path'];
 
     public function user(): BelongsTo
     {

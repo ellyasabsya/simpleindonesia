@@ -115,4 +115,18 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
     ->group(function () {
         Route::post('anggota', [\App\Http\Controllers\Panel\MemberController::class, 'store'])->name('anggota.store');
         Route::delete('anggota/{member}', [\App\Http\Controllers\Panel\MemberController::class, 'destroy'])->name('anggota.destroy');
+        Route::put('anggota/{member}', [\App\Http\Controllers\Panel\MemberController::class, 'update'])->name('anggota.update');
     });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/profil/edit', [\App\Http\Controllers\ProfileController::class, 'edit']);
+    Route::post('/profil', [\App\Http\Controllers\ProfileController::class, 'update']);
+    Route::post('/teman', [\App\Http\Controllers\ProfileController::class, 'addFriend']);
+});
+
+Route::middleware(['auth'])->post('/notifikasi/baca', function () { auth()->user()->unreadNotifications->markAsRead(); return back(); });
+
+Route::middleware('auth')->group(function () {
+    Route::get('/lomba-saya', [\App\Http\Controllers\MyActivityController::class, 'lomba'])->name('lomba.saya');
+    Route::get('/tiket', [\App\Http\Controllers\MyActivityController::class, 'tiket'])->name('tiket.saya');
+});
