@@ -17,7 +17,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[] } }>().props;
     const groups: PanelMenuGroup[] = eventNav
         ? [
-              { title: 'Utama', items: [{ label: 'Panel Lembaga', href: '/panel', icon: ArrowLeft }] },
               {
                   title: eventNav.title,
                   items: eventNav.items.map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
@@ -68,12 +67,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
             <div className="border-t border-slate-200/70 p-4 dark:border-white/10">
                 <Link
-                    href="/dashboard"
+                    href="/panel"
                     onClick={onNavigate}
                     className="flex items-center justify-center gap-2 rounded-xl bg-white/80 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Dashboard Akun
+                    Panel Lembaga
                 </Link>
             </div>
         </div>
