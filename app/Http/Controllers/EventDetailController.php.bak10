@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Event;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EventDetailController extends Controller
+{
+    public function __invoke(Request $request, string $key, HomeController $home): Response
+    {
+        $event = Event::query()
+            ->where('status', Event::PUBLISHED)
+            ->where(fn ($q) => $q->where('slug', $key)
+                ->when(ctype_digit($key), fn ($w) => $w->orWhere('id', (int) $key)))
+            ->with(['institution', 'children'])
+            ->firstOrFail();
+
+        $labelsConst = '\App\Http\Controllers\Panel\EventController::CATEGORIES';
+        $labels = defined($labelsConst) ? constant($labelsConst) : [];
+
+        $contact = array_filter([
+            'name' => $event->contact_name,
+            'position' => $event->contact_position,
+            'phone' => $event->contact_phone,
+            'email' => $event->contact_email,
+        ]);
+
+        $userId = $request->user()?->id;
+
+        $eventIds = $event->children->pluck('id')->push($event->id)->all();
+        $titles = $event->children->pluck('title', 'id')->put($event->id, $event->title);
+        $cats = \Illuminate\Support\Facades\DB::table('event_participant_categories')->whereIn('event_id', $eventIds)->get();
+        $regs = \App\Models\EventRegistration::query()->with('user:id,name')->whereIn('event_id', $eventIds)->get();
+
+        $participants = [
+            'registered' => $regs->count(),
+            'approved' => $regs->where('status', 'disetujui')->count(),
+            'branches' => $cats->map(function ($cat) use ($regs, $titles, $event) {
+                $mine = $regs->where('participant_category_id', $cat->id);
+                $ok = $mine->where('status', 'disetujui');
+
+                return [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                    'event' => $cat->event_id === $event->id ? null : ($titles[$cat->event_id] ?? null),
+                    'quota' => (int) ($cat->quota ?? 0),
+                    'registered' => $mine->count(),
+                    'approved' => $ok->count(),
+                    'names' => $ok->map(fn ($r) => [
+                        'name' => $r->user?->name ?? 'Peserta',
+                        'school' => $r->school,
+                    ])->values(),
+                ];
+            })->values(),
+        ];
+
+        return Inertia::render('event-detail', [
+            'event' => array_merge($home->card($event), [
+                'description' => $event->description,
+                'contact' => $contact ?: null,
+                'juknis' => $event->juknisUrl(),
+                'participants' => $participants,
+                'registration_method' => $event->registration_method
+                    ?: (($m = $event->children->pluck('registration_method')->filter()->unique())->count() === 1 ? $m->first() : null),
+                'children' => $event->children->map(fn (Event $c) => [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'category' => $c->category ? ($labels[$c->category] ?? ucfirst($c->category)) : null,
+                    'location' => $c->location,
+                    'starts_at' => $c->starts_at?->toDateString(),
+                    'ends_at' => $c->ends_at?->toDateString(),
+                    'juknis' => $c->juknisUrl(),
+                ])->values(),
+                'comments' => $event->comments()
+                    ->with('user:id,name')
+                    ->latest()
+                    ->limit(50)
+                    ->get()
+                    ->map(fn ($c) => [
+                        'id' => $c->id,
+                        'body' => $c->body,
+                        'author' => $c->user?->name ?? 'Pengguna',
+                        'created_at' => $c->created_at->toIso8601String(),
+                        'mine' => $userId !== null && $userId === $c->user_id,
+                        'reported' => $c->reported_at !== null,
+                    ])->values(),
+            ]),
+        ]);
+    }
+}

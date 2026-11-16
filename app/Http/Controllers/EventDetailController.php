@@ -30,11 +30,52 @@ class EventDetailController extends Controller
 
         $userId = $request->user()?->id;
 
+        $all = collect([$event])->concat($event->children);
+        $eventIds = $all->pluck('id')->all();
+        $cats = \Illuminate\Support\Facades\DB::table('event_participant_categories')->whereIn('event_id', $eventIds)->get()->groupBy('event_id');
+        $regs = \App\Models\EventRegistration::query()->with('user:id,name')->whereIn('event_id', $eventIds)->get();
+
+        $branches = collect();
+        foreach ($all as $ev) {
+            $isChild = $ev->id !== $event->id;
+            $evCats = $cats->get($ev->id, collect());
+            $evRegs = $regs->where('event_id', $ev->id);
+
+            $push = function ($key, $title, $subtitle, $quota, $mine) use (&$branches) {
+                $ok = $mine->where('status', 'disetujui');
+                $branches->push([
+                    'id' => $key,
+                    'title' => $title,
+                    'subtitle' => $subtitle,
+                    'quota' => $quota,
+                    'registered' => $mine->count(),
+                    'approved' => $ok->count(),
+                    'names' => $ok->map(fn ($r) => ['name' => $r->user?->name ?? 'Peserta', 'school' => $r->school])->values(),
+                ]);
+            };
+
+            if ($evCats->isNotEmpty()) {
+                foreach ($evCats as $cat) {
+                    $push('c'.$cat->id, $isChild ? $ev->title : $cat->name, $isChild ? $cat->name : null,
+                        (int) ($cat->quota ?? 0), $evRegs->where('participant_category_id', $cat->id));
+                }
+            } elseif ((int) $ev->participant_quota > 0) {
+                $push('e'.$ev->id, $isChild ? $ev->title : 'Kuota peserta', null, (int) $ev->participant_quota, $evRegs);
+            }
+        }
+
+        $participants = [
+            'registered' => $regs->count(),
+            'approved' => $regs->where('status', 'disetujui')->count(),
+            'branches' => $branches->values(),
+        ];
+
         return Inertia::render('event-detail', [
             'event' => array_merge($home->card($event), [
                 'description' => $event->description,
                 'contact' => $contact ?: null,
                 'juknis' => $event->juknisUrl(),
+                'participants' => $participants,
                 'registration_method' => $event->registration_method
                     ?: (($m = $event->children->pluck('registration_method')->filter()->unique())->count() === 1 ? $m->first() : null),
                 'children' => $event->children->map(fn (Event $c) => [

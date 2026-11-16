@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
@@ -236,9 +237,83 @@ function Comments({ event }: { event: Detail }) {
     );
 }
 
+type Participants = {
+    registered: number;
+    approved: number;
+    branches: {
+        id: string;
+        title: string;
+        subtitle: string | null;
+        quota: number;
+        registered: number;
+        approved: number;
+        names: { name: string; school: string | null }[];
+    }[];
+};
+
+function PesertaTab({ data }: { data?: Participants }) {
+    const branches = data?.branches ?? [];
+    return (
+        <section className={card}>
+            <SectionTitle icon={Users}>Peserta</SectionTitle>
+
+            {branches.length === 0 ? (
+                <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Kuota peserta belum diatur untuk event ini.</p>
+            ) : (
+                <div className="mt-8 space-y-4">
+                    <p className={eyebrow}>Progres per cabang</p>
+                    {branches.map((b) => {
+                        const pct = b.quota > 0 ? Math.min(100, Math.round((b.registered / b.quota) * 100)) : 0;
+                        return (
+                            <div key={b.id} className={infoBox}>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-lg font-bold">{b.title}</p>
+                                        {b.subtitle && <p className="text-sm text-slate-500 dark:text-slate-400">{b.subtitle}</p>}
+                                    </div>
+                                    <p className="shrink-0 text-sm font-bold">
+                                        {b.registered}{b.quota > 0 ? ` / ${b.quota}` : ''}{' '}
+                                        <span className="font-semibold text-slate-500 dark:text-slate-400">peserta</span>
+                                    </p>
+                                </div>
+                                {b.quota > 0 && (
+                                    <>
+                                        <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                                            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500" style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                            {pct}% terisi · {b.approved} disetujui · sisa {Math.max(0, b.quota - b.registered)} slot
+                                        </p>
+                                    </>
+                                )}
+                                {b.names.length > 0 && (
+                                    <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                                        {b.names.map((p, i) => (
+                                            <li key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-900 text-[11px] font-bold text-white">
+                                                    {initials(p.name)}
+                                                </span>
+                                                <span className="min-w-0">
+                                                    <span className="block truncate text-sm font-bold">{p.name}</span>
+                                                    {p.school && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{p.school}</span>}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        );
+                    })}
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Hanya nama dan asal sekolah peserta yang disetujui yang ditampilkan.</p>
+                </div>
+            )}
+        </section>
+    );
+}
+
 export default function EventDetail() {
     const { event } = usePage<{ event: Detail }>().props;
-    const [tab, setTab] = useState<'info' | 'kontak'>('info');
+    const [tab, setTab] = useState<'info' | 'peserta' | 'kontak'>('info');
     const [copied, setCopied] = useState(false);
     const st = STATUS[event.status.key];
     const single = !event.ends_at || event.ends_at === event.starts_at;
@@ -365,17 +440,6 @@ export default function EventDetail() {
                                                 {cta.label}
                                             </a>
                                         )}
-                                        {event.juknis && (
-                                            <a
-                                                href={event.juknis}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white"
-                                            >
-                                                <FileText className="h-5 w-5" />
-                                                Juknis
-                                            </a>
-                                        )}
                                         <button
                                             onClick={share}
                                             className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white"
@@ -391,11 +455,14 @@ export default function EventDetail() {
                         {/* Tab */}
                         <div className="mt-6 flex gap-1 rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
                             <button onClick={() => setTab('info')} className={tabBtn(tab === 'info')}>Informasi</button>
+                            <button onClick={() => setTab('peserta')} className={tabBtn(tab === 'peserta')}>Peserta</button>
                             <button onClick={() => setTab('kontak')} className={tabBtn(tab === 'kontak')}>Kontak Panitia</button>
                         </div>
 
                         <div className="mt-6 space-y-6">
-                            {tab === 'info' ? (
+                            {tab === 'peserta' ? (
+                                <PesertaTab data={(event as unknown as { participants?: Participants }).participants} />
+                            ) : tab === 'info' ? (
                                 <>
                                     <section className={card}>
                                         <SectionTitle icon={Info}>Tentang Event</SectionTitle>
