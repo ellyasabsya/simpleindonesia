@@ -43,11 +43,11 @@ class ProfileController extends Controller
             'birth_date' => ['nullable', 'date', 'before:today'],
             'socials' => ['nullable', 'array'],
             'socials.*' => ['nullable', 'string', 'max:100'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720'],
         ]);
 
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = Storage::url($request->file('avatar')->store('avatars', 'public'));
+            $data['avatar'] = Storage::url(\App\Support\ImageUploader::store($request->file('avatar'), 'avatars', 'avatar', 800));
         } else {
             unset($data['avatar']);
         }

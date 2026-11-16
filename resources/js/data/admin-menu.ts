@@ -5,7 +5,9 @@ import {
     ClipboardCheck,
     CreditCard,
     LayoutDashboard,
+    MessageSquare,
     Package,
+    Settings,
     Star,
     Ticket,
     Wallet,
@@ -26,6 +28,7 @@ export const adminMenu: AdminMenuGroup[] = [
             { label: 'Manajemen Event', href: '/admin/events', icon: CalendarDays },
             { label: 'Review Event', href: '/admin/review', icon: ClipboardCheck },
             { label: 'Sistem Penilaian', href: '/admin/penilaian', icon: Star },
+            { label: 'Komentar', href: '/admin/komentar', icon: MessageSquare },
         ],
     },
     {
@@ -43,5 +46,9 @@ export const adminMenu: AdminMenuGroup[] = [
             { label: 'Lembaga', href: '/admin/lembaga', icon: Building2 },
             { label: 'Manajemen Paket', href: '/admin/paket', icon: Package },
         ],
+    },
+    {
+        title: 'Sistem',
+        items: [{ label: 'Pengaturan', href: '/admin/pengaturan', icon: Settings }],
     },
 ];

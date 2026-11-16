@@ -11,12 +11,14 @@ type PageProps = {
     auth?: { user?: { name?: string; role?: string } };
     notifications?: NotificationsProp;
     pending_lembaga?: number;
+    pending_comments?: number;
 };
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { url } = usePage();
     const path = url.split('?')[0];
     const pendingLembaga = usePage<PageProps>().props.pending_lembaga ?? 0;
+    const pendingComments = usePage<PageProps>().props.pending_comments ?? 0;
 
     return (
         <div className="flex h-full flex-col">
@@ -67,6 +69,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                             pendingLembaga > 0 && (
                                                 <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
                                                     {pendingLembaga}
+                                                </span>
+                                            )}
+                                        {href === '/admin/komentar' &&
+                                            pendingComments > 0 && (
+                                                <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+                                                    {pendingComments}
                                                 </span>
                                             )}
                                     </Link>

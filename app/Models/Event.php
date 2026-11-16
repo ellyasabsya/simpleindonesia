@@ -12,9 +12,9 @@ class Event extends Model
     public const PUBLISHED = 'published';
     public const REJECTED = 'rejected';
 
-    protected $fillable = [
+    protected $fillable = [ 'team_per_row', 'team_leaders',  'team_slots', 'competition_type', 'team_size',  'bank_name', 'bank_account_number', 'bank_account_name', 'parent_id', 'sub_order', 'participant_quota', 'registration_method', 'contact_name', 'contact_phone', 'contact_email', 'contact_position', 
         'institution_id', 'package_id', 'title', 'slug', 'category', 'description', 'location',
-        'starts_at', 'ends_at', 'poster_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot',
+        'starts_at', 'ends_at', 'poster_path', 'juknis_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot',
     ];
 
     protected function casts(): array
@@ -42,6 +42,11 @@ class Event extends Model
         return $this->poster_path ? Storage::disk('public')->url($this->poster_path) : null;
     }
 
+    public function juknisUrl(): ?string
+    {
+        return $this->juknis_path ? Storage::disk('public')->url($this->juknis_path) : null;
+    }
+
     public function hasFeature(string $key): bool
     {
         return in_array($key, $this->package_snapshot['features'] ?? [], true);
@@ -51,5 +56,25 @@ class Event extends Model
     public function menus(): array
     {
         return Package::menusFor($this->package_snapshot['features'] ?? []);
+    }
+
+    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sub_order');
+    }
+
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EventComment::class);
+    }
+
+    public function scopeMain($query)
+    {
+        return $query->whereNull('parent_id');
     }
 }

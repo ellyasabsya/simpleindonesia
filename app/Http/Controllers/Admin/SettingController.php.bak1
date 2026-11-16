@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Setting;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class SettingController extends Controller
+{
+    public function index(): Response
+    {
+        return Inertia::render('admin/pengaturan', [
+            'settings' => [
+                'pay_midtrans' => Setting::midtransOn(),
+                'pay_manual' => Setting::manualOn(),
+            ],
+            'voting_open' => Setting::votingOpen(),
+        ]);
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'pay_midtrans' => ['required', 'boolean'],
+            'pay_manual' => ['required', 'boolean'],
+        ]);
+
+        if (! $data['pay_midtrans'] && ! $data['pay_manual']) {
+            throw ValidationException::withMessages([
+                'pay_midtrans' => 'Minimal satu metode pembayaran harus aktif.',
+            ]);
+        }
+
+        Setting::put('pay_midtrans', (bool) $data['pay_midtrans']);
+        Setting::put('pay_manual', (bool) $data['pay_manual']);
+
+        return back();
+    }
+}

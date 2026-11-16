@@ -2,7 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', \App\Http\Controllers\HomeController::class)->name('home');
+Route::get('/paket', \App\Http\Controllers\PaketController::class)->name('paket.semua');
+Route::get('/events', \App\Http\Controllers\EventController::class)->name('events.semua');
+Route::get('/events/{key}', \App\Http\Controllers\EventDetailController::class)->name('events.show');
+Route::middleware(['auth', 'throttle:10,1'])->post('/events/{event}/komentar', [\App\Http\Controllers\EventCommentController::class, 'store'])->name('events.komentar.store');
+Route::middleware('auth')->delete('/komentar/{comment}', [\App\Http\Controllers\EventCommentController::class, 'destroy'])->name('events.komentar.destroy');
+Route::middleware(['auth', 'throttle:10,1'])->post('/komentar/{comment}/lapor', [\App\Http\Controllers\EventCommentController::class, 'report'])->name('events.komentar.report');
 
 
 Route::middleware('auth')->group(function () {
@@ -130,3 +136,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/lomba-saya', [\App\Http\Controllers\MyActivityController::class, 'lomba'])->name('lomba.saya');
     Route::get('/tiket', [\App\Http\Controllers\MyActivityController::class, 'tiket'])->name('tiket.saya');
 });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('pengaturan', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('pengaturan');
+        Route::patch('pengaturan', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('pengaturan.update');
+    });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('komentar', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('komentar');
+        Route::patch('komentar/{comment}/abaikan', [\App\Http\Controllers\Admin\CommentController::class, 'dismiss'])->name('komentar.dismiss');
+        Route::delete('komentar/{comment}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('komentar.destroy');
+    });

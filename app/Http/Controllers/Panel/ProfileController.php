@@ -47,7 +47,7 @@ class ProfileController extends Controller
             'description' => ['nullable', 'string', 'max:1000'],
             'address' => ['nullable', 'string', 'max:255'],
             'website' => ['nullable', 'url', 'max:255'],
-            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720'],
         ], [
             'name.required' => 'Nama lembaga wajib diisi.',
             'email.required' => 'Email kontak wajib diisi.',
@@ -62,7 +62,7 @@ class ProfileController extends Controller
             if ($i->logo_path) {
                 Storage::disk('public')->delete($i->logo_path);
             }
-            $data['logo_path'] = $request->file('logo')->store('logos', 'public');
+            $data['logo_path'] = \App\Support\ImageUploader::store($request->file('logo'), 'logos', 'logo', 800);
         }
         unset($data['logo']);
 

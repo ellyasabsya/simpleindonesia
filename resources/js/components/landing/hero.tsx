@@ -1,9 +1,9 @@
 import { useAuth } from '@/lib/auth';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { goTo } from '@/lib/scroll';
 import { ArrowRight, CalendarDays, MapPin, Megaphone, Star, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { events } from '@/data/events';
+import { events as sampleEvents } from '@/data/events';
 
 function FloatingCard({
     icon: Icon,
@@ -33,15 +33,46 @@ function FloatingCard({
     );
 }
 
+type SlideEvent = { title: string; poster: string; category: string; location: string; date: string };
+
+type HomeEvent = {
+    id: number;
+    title: string;
+    poster: string | null;
+    category: string | null;
+    location: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+};
+
+const fmtDay = (d: string) =>
+    new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${d}T00:00:00`));
+
+function slideDate(start: string | null, end: string | null): string {
+    if (!start && !end) return '';
+    if (!start || !end || start === end) return fmtDay((start ?? end)!);
+    return `${fmtDay(start)} – ${fmtDay(end)}`;
+}
+
 function PhoneCarousel() {
     const [index, setIndex] = useState(0);
+    const real = usePage<{ heroEvents?: HomeEvent[] }>().props.heroEvents ?? [];
+    const events: SlideEvent[] = real.length
+        ? real.map((e) => ({
+              title: e.title,
+              poster: e.poster ?? '',
+              category: e.category ?? '',
+              location: e.location ?? '',
+              date: slideDate(e.starts_at, e.ends_at),
+          }))
+        : sampleEvents;
     const [paused, setPaused] = useState(false);
 
     useEffect(() => {
         if (paused) return;
         const timer = setInterval(() => setIndex((i) => (i + 1) % events.length), 4000);
         return () => clearInterval(timer);
-    }, [paused]);
+    }, [paused, events.length]);
 
     return (
         <div
@@ -64,7 +95,7 @@ function PhoneCarousel() {
                                 <img
                                     src={event.poster}
                                     alt={event.title}
-                                    className="absolute inset-0 h-full w-full object-cover"
+                                    className={`absolute inset-0 h-full w-full object-cover ${event.poster ? '' : 'hidden'}`}
                                     onError={(e) => (e.currentTarget.style.display = 'none')}
                                 />
                                 <span className="absolute left-3 top-9 rounded-full bg-black/50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">

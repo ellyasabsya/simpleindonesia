@@ -39,6 +39,9 @@ class HandleInertiaRequests extends Middleware
                     ])->all(),
                 ]
                 : null,
+            'pending_comments' => fn () => $request->user()?->isAdmin()
+                ? \App\Models\EventComment::whereNotNull('reported_at')->count()
+                : 0,
             'pending_lembaga' => fn () => $request->user()?->isAdmin()
                 ? Institution::where('status', Institution::PENDING)->count()
                 : 0,

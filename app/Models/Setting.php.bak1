@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Setting extends Model
+{
+    protected $fillable = ['key', 'value'];
+
+    public static function flag(string $key, bool $default = false): bool
+    {
+        $v = static::where('key', $key)->value('value');
+
+        return $v === null ? $default : $v === '1';
+    }
+
+    public static function put(string $key, bool $on): void
+    {
+        static::updateOrCreate(['key' => $key], ['value' => $on ? '1' : '0']);
+    }
+
+    public static function midtransOn(): bool
+    {
+        return static::flag('pay_midtrans', true);
+    }
+
+    public static function manualOn(): bool
+    {
+        return static::flag('pay_manual', false);
+    }
+
+    /** Voting berbayar butuh konfirmasi otomatis: tutup kalau hanya transfer manual yang aktif. */
+    public static function votingOpen(): bool
+    {
+        return static::midtransOn() || ! static::manualOn();
+    }
+}

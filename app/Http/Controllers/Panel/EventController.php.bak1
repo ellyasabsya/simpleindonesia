@@ -1,0 +1,371 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Models\Package;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EventController extends Controller
+{
+    public const CATEGORIES = [
+        'seminar' => 'Seminar & Konferensi',
+        'festival' => 'Festival & Hiburan',
+        'perlombaan' => 'Perlombaan & Kompetisi',
+        'pameran' => 'Pameran & Bisnis',
+        'olahraga' => 'Olahraga',
+    ];
+
+    public function index(Request $request): Response
+    {
+        $institution = $request->attributes->get('institution');
+
+        $events = Event::where('institution_id', $institution->id)
+            ->latest()
+            ->get()
+            ->map(fn (Event $e) => [
+                'id' => $e->id,
+                'title' => $e->title,
+                'category' => self::CATEGORIES[$e->category] ?? $e->category,
+                'location' => $e->location,
+                'starts_at' => $e->starts_at->toDateString(),
+                'ends_at' => $e->ends_at->toDateString(),
+                'status' => $e->status,
+                'rejection_reason' => $e->rejection_reason,
+                'poster_url' => $e->posterUrl(),
+                'package' => $e->package_snapshot['name'] ?? '-',
+            ]);
+
+        return Inertia::render('panel/events/index', [
+            'institution' => $institution->only('id', 'name'),
+            'events' => $events,
+        ]);
+    }
+
+    public function create(Request $request): Response
+    {
+        $labels = config('features.features');
+        $selected = Package::where('is_active', true)->where('slug', (string) $request->query('paket'))->value('id');
+
+        $packages = Package::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (Package $p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price_label' => $p->priceLabel(),
+                'slug' => $p->slug,
+                'is_series' => strtolower(trim((string) $p->event_type)) === 'series',
+                'description' => $p->description,
+                'payment_type' => $p->payment_type,
+                'price' => $p->price,
+                'included_sub_events' => (int) $p->included_sub_events,
+                'extra_sub_event_price' => $p->extra_sub_event_price,
+                'assessment_addon_price' => $p->assessment_addon_price,
+                'judge_addon_price' => $p->judge_addon_price,
+                'has_judging' => in_array('penilaian_juri', $p->features ?? [], true),
+                'max_participant_categories' => $p->max_participant_categories,
+                'can_ticket' => in_array('tiket_multi', $p->features ?? [], true),
+                'can_team' => in_array('manajemen_tim', $p->features ?? [], true),
+                'features' => collect($p->features)->map(fn ($k) => $labels[$k]['label'] ?? $k)->values(),
+            ]);
+
+        return Inertia::render('panel/events/create', [
+            'institution' => $request->attributes->get('institution')->only('id', 'name'),
+            'packages' => $packages,
+            'selected_package_id' => $selected,
+            'categories' => self::CATEGORIES,
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $institution = $request->attributes->get('institution');
+
+        $package = Package::where('is_active', true)->find($request->input('package_id'));
+        if (! $package) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['package_id' => 'Paket tidak tersedia.']);
+        }
+
+        $isSeriesPkg = strtolower(trim((string) $package->event_type)) === 'series';
+        $series = $isSeriesPkg || count((array) $request->input('subs', [])) > 0;
+        $maxCats = $package->max_participant_categories ?: 100;
+
+        $rules = [
+            'package_id' => ['required', 'integer'],
+            'title' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'starts_at' => ['required', 'date', 'after_or_equal:today'],
+            'ends_at' => ['required', 'date', 'after_or_equal:starts_at'],
+            'poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'assessment_addon' => ['nullable', 'boolean'],
+            'judge_addon' => ['nullable', 'boolean'],
+            'subs' => ['nullable', 'array', 'max:50'],
+        ];
+        if ($series) {
+            $rules += [
+                'subs.*.title' => ['required', 'string', 'max:150'],
+                'subs.*.description' => ['nullable', 'string', 'max:2000'],
+                'subs.*.starts_at' => ['required', 'date'],
+                'subs.*.ends_at' => ['required', 'date', 'after_or_equal:subs.*.starts_at'],
+                'subs.*.poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            ] + $this->detailRules('subs.*.', $maxCats);
+        } else {
+            $rules += $this->detailRules('', $maxCats);
+        }
+
+        $names = [
+            'title' => 'Nama event', 'category' => 'Kategori event', 'location' => 'Lokasi',
+            'starts_at' => 'Tanggal mulai', 'ends_at' => 'Tanggal selesai', 'description' => 'Deskripsi',
+            'poster' => 'Poster',
+            'participant_categories' => 'Kategori peserta',
+            'participant_categories.*.name' => 'Nama kategori peserta',
+            'participant_categories.*.quota' => 'Kuota kategori',
+            'registration_method' => 'Metode pendaftaran', 'competition_type' => 'Jenis perlombaan', 'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua', 'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening', 'contact_name' => 'Nama penanggung jawab',
+            'contact_phone' => 'Nomor kontak', 'contact_email' => 'Email', 'contact_position' => 'Jabatan',
+        ];
+        $attributes = [];
+        foreach ($names as $k => $v) {
+            $attributes[$k] = $v;
+            $attributes["subs.*.$k"] = $v;
+        }
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'integer' => ':attribute harus berupa angka.',
+            'email' => 'Format :attribute tidak valid.',
+            'image' => ':attribute harus berupa gambar.',
+            'date' => ':attribute tidak valid.',
+            'in' => ':attribute tidak valid.',
+            'min.numeric' => ':attribute minimal :min.',
+            'min.array' => 'Tambahkan minimal :min :attribute.',
+            'max.array' => ':attribute maksimal :max.',
+            'max.string' => ':attribute terlalu panjang (maksimal :max karakter).',
+            'max.file' => 'Ukuran :attribute maksimal 4 MB.',
+            'starts_at.after_or_equal' => 'Tanggal mulai tidak boleh di masa lalu.',
+            'ends_at.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+            'subs.*.ends_at.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+        ];
+
+        if ($package->payment_type === 'revenue_share') {
+            $in = $request->all();
+            $in['registration_method'] = 'ticket';
+            foreach (array_keys((array) ($in['subs'] ?? [])) as $k) {
+                $in['subs'][$k]['registration_method'] = 'ticket';
+            }
+            $request->merge($in);
+        }
+
+        $data = $request->validate($rules, $messages, $attributes);
+
+        $subs = array_values($data['subs'] ?? []);
+        $n = count($subs);
+        $fail = fn (string $key, string $msg) => throw \Illuminate\Validation\ValidationException::withMessages([$key => $msg]);
+
+        if ($n > 0 && $package->extra_sub_event_price === null) {
+            $fail('subs', 'Paket ini tidak menyediakan event tambahan.');
+        }
+        if ($isSeriesPkg && $n < 1) {
+            $fail('subs', 'Paket series membutuhkan minimal 1 event.');
+        }
+        if (! $isSeriesPkg && $n === 1) {
+            $fail('subs', 'Rangkaian event minimal terdiri dari 2 event.');
+        }
+
+        $canTicket = in_array('tiket_multi', $package->features ?? [], true);
+        $canTeam = in_array('manajemen_tim', $package->features ?? [], true);
+        $checkPkg = function (array $d, string $pre) use ($canTicket, $canTeam, $fail) {
+            if (($d['registration_method'] ?? null) === 'ticket' && ! $canTicket) {
+                $fail($pre.'registration_method', 'Paket ini tidak menyediakan pendaftaran lewat tiket.');
+            }
+            if (in_array($d['category'] ?? '', ['perlombaan', 'olahraga'], true)
+                && ($d['competition_type'] ?? null) === 'team' && ! $canTeam) {
+                $fail($pre.'competition_type', 'Paket ini tidak menyediakan perlombaan tim.');
+            }
+        };
+        if (! $series) {
+            $checkPkg($data, '');
+        }
+        foreach ($subs as $i => $sub) {
+            $checkPkg($sub, "subs.$i.");
+        }
+
+        $comp = ['perlombaan', 'olahraga'];
+        $checkComp = function (array $d, string $pre) use ($comp, $fail) {
+            if (in_array($d['category'] ?? '', $comp, true) && ($d['competition_type'] ?? null) === 'team'
+                && (int) ($d['team_leaders'] ?? 0) >= (int) ($d['team_size'] ?? 0)) {
+                $fail($pre.'team_leaders', 'Jumlah kotak ketua harus lebih kecil dari jumlah peserta per tim.');
+            }
+            if (! in_array($d['category'] ?? '', $comp, true)) {
+                return;
+            }
+            if (empty($d['competition_type'])) {
+                $fail($pre.'competition_type', 'Pilih perlombaan perorangan atau tim.');
+            }
+            if (($d['competition_type'] ?? null) === 'team' && (int) ($d['team_size'] ?? 0) < 2) {
+                $fail($pre.'team_size', 'Jumlah anggota per tim minimal 2.');
+            }
+        };
+        if (! $series) {
+            $checkComp($data, '');
+        }
+        foreach ($subs as $i => $sub) {
+            $checkComp($sub, "subs.$i.");
+        }
+
+        $hasDupes = function (array $cats) {
+            $lower = array_map(fn ($c) => mb_strtolower(trim($c['name'])), $cats);
+            return count($lower) !== count(array_unique($lower));
+        };
+        if (! $series && $hasDupes($data['participant_categories'])) {
+            $fail('participant_categories', 'Ada kategori peserta yang sama.');
+        }
+        foreach ($subs as $i => $sub) {
+            if ($hasDupes($sub['participant_categories'])) {
+                $fail("subs.$i.participant_categories", 'Ada kategori peserta yang sama.');
+            }
+            if ($sub['starts_at'] < $data['starts_at']) {
+                $fail("subs.$i.starts_at", 'Tanggal tidak boleh sebelum event utama dimulai.');
+            }
+            if ($sub['ends_at'] > $data['ends_at']) {
+                $fail("subs.$i.ends_at", 'Tanggal tidak boleh melewati event utama selesai.');
+            }
+        }
+
+        // Event utama hanya pembungkus. Starter: 1 event sudah termasuk. Series: sebanyak included_sub_events.
+        $free = (int) $package->included_sub_events + ($isSeriesPkg ? 0 : 1);
+        $subCost = $n > 0 ? max(0, $n - $free) * (int) $package->extra_sub_event_price : 0;
+
+        $addon = ! empty($data['assessment_addon'])
+            && $package->assessment_addon_price !== null
+            && ! in_array('penilaian_juri', $package->features ?? [], true);
+        $judge = ! empty($data['judge_addon'])
+            && $package->judge_addon_price !== null
+            && ! in_array('penilaian_juri', $package->features ?? [], true);
+        $upfront = ($package->payment_type === 'upfront' ? (int) $package->price : 0)
+            + $subCost
+            + ($addon ? (int) $package->assessment_addon_price : 0)
+            + ($judge ? (int) $package->judge_addon_price : 0);
+
+        $posterPath = $request->file('poster')?->store('posters', 'public');
+        $subPosters = [];
+        foreach ($subs as $i => $sub) {
+            $subPosters[$i] = $request->file("subs.$i.poster")?->store('posters', 'public');
+        }
+
+        $detail = fn (array $d) => [
+            'category' => $d['category'],
+            'location' => $d['location'],
+            'participant_quota' => (int) collect($d['participant_categories'])->sum(fn ($c) => (int) $c['quota']),
+            'competition_type' => in_array($d['category'], ['perlombaan', 'olahraga'], true) ? ($d['competition_type'] ?? null) : null,
+            'team_size' => (in_array($d['category'], ['perlombaan', 'olahraga'], true) && ($d['competition_type'] ?? null) === 'team') ? (int) $d['team_size'] : null,
+            'team_per_row' => (in_array($d['category'], ['perlombaan', 'olahraga'], true) && ($d['competition_type'] ?? null) === 'team') ? max(1, (int) ($d['team_per_row'] ?? 1)) : null,
+            'team_leaders' => (in_array($d['category'], ['perlombaan', 'olahraga'], true) && ($d['competition_type'] ?? null) === 'team') ? (int) ($d['team_leaders'] ?? 0) : null,
+            'team_slots' => (in_array($d['category'], ['perlombaan', 'olahraga'], true) && ($d['competition_type'] ?? null) === 'team')
+                ? json_encode(collect(range(1, (int) $d['team_size']))->map(fn ($n) => trim((string) ($d['team_slots'][$n - 1] ?? '')) ?: 'Peserta '.$n)->all(), JSON_UNESCAPED_UNICODE)
+                : null,
+            'registration_method' => $d['registration_method'],
+            'bank_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_name'] ?? null) : null,
+            'bank_account_number' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_number'] ?? null) : null,
+            'bank_account_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_name'] ?? null) : null,
+            'contact_name' => $d['contact_name'],
+            'contact_phone' => $d['contact_phone'],
+            'contact_email' => $d['contact_email'] ?? null,
+            'contact_position' => $d['contact_position'] ?? null,
+        ];
+        $saveCategories = function (int $eventId, array $cats) {
+            $now = now();
+            \Illuminate\Support\Facades\DB::table('event_participant_categories')->insert(
+                array_map(fn ($c) => [
+                    'event_id' => $eventId, 'name' => trim($c['name']), 'quota' => (int) $c['quota'],
+                    'created_at' => $now, 'updated_at' => $now,
+                ], array_values($cats))
+            );
+        };
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $n, $series, $addon, $judge, $upfront, $posterPath, $detail, $saveCategories) {
+            $main = Event::create([
+                'institution_id' => $institution->id,
+                'package_id' => $package->id,
+                'title' => $data['title'],
+                'slug' => $this->uniqueSlug($data['title']),
+                'description' => $data['description'] ?? null,
+                'starts_at' => $data['starts_at'],
+                'ends_at' => $data['ends_at'],
+                'poster_path' => $posterPath,
+                'status' => Event::PENDING,
+                'package_snapshot' => $package->snapshot() + [
+                    'options' => ['sub_events' => $n, 'total_events' => max(1, $n), 'assessment_addon' => $addon, 'judge_addon' => $judge],
+                    'estimated_upfront' => $upfront,
+                ],
+            ] + ($series ? [] : $detail($data)));
+
+            if (! $series) {
+                $saveCategories($main->id, $data['participant_categories']);
+            }
+
+            foreach ($subs as $i => $sub) {
+                $child = Event::create([
+                    'institution_id' => $institution->id,
+                    'package_id' => $package->id,
+                    'parent_id' => $main->id,
+                    'sub_order' => $i + 1,
+                    'title' => $sub['title'],
+                    'slug' => $this->uniqueSlug($sub['title']),
+                    'description' => $sub['description'] ?? null,
+                    'starts_at' => $sub['starts_at'],
+                    'ends_at' => $sub['ends_at'],
+                    'poster_path' => $subPosters[$i],
+                    'status' => Event::PENDING,
+                    'package_snapshot' => $package->snapshot(),
+                ] + $detail($sub));
+                $saveCategories($child->id, $sub['participant_categories']);
+            }
+        });
+
+        return redirect()->route('panel.event');
+    }
+
+    private function detailRules(string $p, int $maxCats): array
+    {
+        return [
+            "{$p}category" => ['required', Rule::in(array_keys(self::CATEGORIES))],
+            "{$p}location" => ['required', 'string', 'max:150'],
+            "{$p}participant_categories" => ['required', 'array', 'min:1', 'max:'.$maxCats],
+            "{$p}participant_categories.*.name" => ['required', 'string', 'max:60'],
+            "{$p}participant_categories.*.quota" => ['required', 'integer', 'min:1', 'max:1000000'],
+            "{$p}registration_method" => ['required', Rule::in(['transfer_manual', 'ticket'])],
+            "{$p}competition_type" => ['nullable', Rule::in(['individual', 'team'])],
+            "{$p}team_size" => ['nullable', 'integer', 'min:2', 'max:100'],
+            "{$p}team_slots" => ['nullable', 'array', 'max:100'],
+            "{$p}team_slots.*" => ['nullable', 'string', 'max:40'],
+            "{$p}team_per_row" => ['nullable', 'integer', 'min:1', 'max:100'],
+            "{$p}team_leaders" => ['nullable', 'integer', 'min:0', 'max:100'],
+            "{$p}bank_name" => ["required_if:{$p}registration_method,transfer_manual", 'nullable', 'string', 'max:60'],
+            "{$p}bank_account_number" => ["required_if:{$p}registration_method,transfer_manual", 'nullable', 'string', 'max:40', 'regex:/^[0-9 \-]+$/'],
+            "{$p}bank_account_name" => ["required_if:{$p}registration_method,transfer_manual", 'nullable', 'string', 'max:100'],
+            "{$p}contact_name" => ['required', 'string', 'max:100'],
+            "{$p}contact_phone" => ['required', 'string', 'max:30'],
+            "{$p}contact_email" => ['nullable', 'email', 'max:120'],
+            "{$p}contact_position" => ['nullable', 'string', 'max:80'],
+        ];
+    }
+
+    private function uniqueSlug(string $title): string
+    {
+        $base = Str::slug($title) ?: 'event';
+        $slug = $base;
+        $i = 2;
+
+        while (Event::where('slug', $slug)->exists()) {
+            $slug = $base.'-'.$i++;
+        }
+
+        return $slug;
+    }
+}

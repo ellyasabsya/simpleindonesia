@@ -11,8 +11,8 @@ type Props = {
 
 export default function Section({ id, title, description, href, linkLabel, children }: Props) {
     return (
-        <section id={id} className="relative scroll-mt-20 py-20">
-            <div className="mx-auto max-w-7xl px-6">
+        <section id={id} className="relative flex min-h-[calc(100svh-5rem)] scroll-mt-20 flex-col justify-center py-12">
+            <div className="mx-auto w-full max-w-7xl px-6">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <span className="mb-3 block h-1.5 w-14 rounded-full bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500" />
@@ -31,7 +31,7 @@ export default function Section({ id, title, description, href, linkLabel, child
                     )}
                 </div>
 
-                <div className="mt-12">{children}</div>
+                <div className="mt-8">{children}</div>
             </div>
         </section>
     );

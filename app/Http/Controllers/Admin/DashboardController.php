@@ -18,7 +18,7 @@ class DashboardController extends Controller
                 ['label' => 'Pesanan tiket menunggu verifikasi', 'value' => 0],
                 ['label' => 'Penarikan dana menunggu', 'value' => 0],
                 ['label' => 'Lembaga menunggu verifikasi', 'value' => \App\Models\Institution::where('status', 'pending')->count()],
-                ['label' => 'Komentar dilaporkan', 'value' => 0],
+                ['label' => 'Komentar dilaporkan', 'value' => \App\Models\EventComment::whereNotNull('reported_at')->count()],
             ],
             'platform' => [
                 ['label' => 'Total event', 'value' => (string) \App\Models\Event::count(), 'note' => 'Semua lembaga'],

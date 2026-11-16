@@ -74,19 +74,13 @@ return [
         'laporan_gabungan' => ['label' => 'Laporan gabungan', 'group' => 'starter', 'menu' => 'laporan'],
 
         // Professional (Multi-jenis tiket dan Pembayaran online membuka satu menu yang sama)
-        'tiket_multi' => ['label' => 'Multi-jenis tiket', 'group' => 'professional', 'menu' => 'tiket'],
-        'pembayaran_online' => ['label' => 'Pembayaran online', 'group' => 'professional', 'menu' => 'tiket'],
+        'tiket_multi' => ['label' => 'Multi-jenis tiket', 'group' => 'ticketing', 'menu' => 'tiket'],
+        'pembayaran_online' => ['label' => 'Pembayaran online', 'group' => 'ticketing', 'menu' => 'tiket'],
         'laporan_transaksi' => ['label' => 'Laporan transaksi', 'group' => 'professional', 'menu' => 'transaksi'],
         'penilaian_juri' => ['label' => 'Penilaian juri', 'group' => 'professional', 'menu' => 'penilaian'],
-        'voting_event' => ['label' => 'Voting', 'group' => 'professional', 'menu' => 'voting'],
+        'voting_event' => ['label' => 'Voting', 'group' => 'voting', 'menu' => 'voting'],
         'manajemen_tim' => ['label' => 'Manajemen tim', 'group' => 'professional', 'menu' => null],
-
-        // Lama (tidak dipakai paket baru, dipertahankan untuk snapshot event yang sudah ada)
-        'ticket_sales' => ['label' => 'Penjualan tiket (lama)', 'group' => 'ticketing', 'menu' => 'pengaturan-tiket'],
-        'ticket_checkin' => ['label' => 'Check-in (lama)', 'group' => 'ticketing', 'menu' => 'checkin-laporan'],
-        'ticket_report' => ['label' => 'Laporan tiket (lama)', 'group' => 'ticketing', 'menu' => 'checkin-laporan'],
-        'voting_setup' => ['label' => 'Pengaturan voting (lama)', 'group' => 'voting', 'menu' => 'pengaturan-voting'],
-        'voting_report' => ['label' => 'Laporan voting (lama)', 'group' => 'voting', 'menu' => 'laporan-voting'],
+        // Lomba
         'lomba_participants' => ['label' => 'Peserta lomba', 'group' => 'lomba', 'menu' => 'peserta'],
         'lomba_judging' => ['label' => 'Juri dan penilaian', 'group' => 'lomba', 'menu' => 'juri-penilaian'],
         'lomba_results' => ['label' => 'Hasil lomba', 'group' => 'lomba', 'menu' => 'hasil-lomba'],

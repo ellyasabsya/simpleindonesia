@@ -1,0 +1,123 @@
+import { Link, usePage } from '@inertiajs/react';
+import Section, { Placeholder } from './section';
+
+type EventCard = {
+    id: number;
+    slug: string | null;
+    title: string;
+    poster: string | null;
+    category: string | null;
+    location: string | null;
+    organizer: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    status: { key: 'selesai' | 'segera' | 'berlangsung'; label: string };
+};
+
+// Ganti kalau rute detail event berbeda.
+const eventUrl = (e: EventCard) => `/events/${e.slug ?? e.id}`;
+
+const STATUS_STYLE: Record<EventCard['status']['key'], string> = {
+    berlangsung: 'bg-emerald-600 text-white',
+    segera: 'bg-amber-500 text-white',
+    selesai: 'bg-neutral-700 text-white',
+};
+
+const fmt = (s: string, withYear: boolean) =>
+    new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        ...(withYear ? { year: 'numeric' } : {}),
+    }).format(new Date(`${s}T00:00:00`));
+
+function dateRange(start: string | null, end: string | null): string | null {
+    if (!start && !end) return null;
+    if (!start || !end || start === end) return fmt((start ?? end)!, true);
+    const sameYear = start.slice(0, 4) === end.slice(0, 4);
+    return `${fmt(start, !sameYear)} – ${fmt(end, true)}`;
+}
+
+function initials(title: string): string {
+    return title
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase())
+        .join('');
+}
+
+function Card({ event }: { event: EventCard }) {
+    const range = dateRange(event.starts_at, event.ends_at);
+
+    return (
+        <Link
+            href={eventUrl(event)}
+            className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        >
+            <div className="relative aspect-[4/5] w-full overflow-hidden bg-neutral-100">
+                {event.poster ? (
+                    <img
+                        src={event.poster}
+                        alt={event.title}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500">
+                        <span className="text-5xl font-bold tracking-wide text-white/90">
+                            {initials(event.title)}
+                        </span>
+                    </div>
+                )}
+
+                {event.category && (
+                    <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-neutral-800 shadow">
+                        {event.category}
+                    </span>
+                )}
+
+                <span
+                    className={`absolute top-3 right-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow ${STATUS_STYLE[event.status.key]}`}
+                >
+                    {event.status.label}
+                </span>
+
+                {range && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pt-8 pb-3">
+                        <span className="text-xs font-medium text-white">{range}</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-1 flex-col gap-1 p-4">
+                <h3 className="line-clamp-2 text-base font-semibold text-neutral-900">{event.title}</h3>
+                {event.location && <p className="line-clamp-1 text-sm text-neutral-600">{event.location}</p>}
+                {event.organizer && <p className="line-clamp-1 text-xs text-neutral-500">{event.organizer}</p>}
+            </div>
+        </Link>
+    );
+}
+
+export default function EventSection() {
+    const { events = [] } = usePage<{ events?: EventCard[] }>().props;
+
+    return (
+        <Section
+            id="event"
+            title="Event Terbaru"
+            description="Temukan event menarik dan daftarkan diri Anda sekarang."
+            href="/events"
+            linkLabel="Lihat Semua Event"
+        >
+            {events.length === 0 ? (
+                <Placeholder label="Belum ada event" />
+            ) : (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {events.map((e) => (
+                        <Card key={e.id} event={e} />
+                    ))}
+                </div>
+            )}
+        </Section>
+    );
+}

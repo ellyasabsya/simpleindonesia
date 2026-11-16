@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { Package as PackageIcon, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, Package as PackageIcon, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import AdminLayout from '@/components/admin/admin-layout';
 
@@ -41,17 +41,36 @@ const empty = {
     is_active: true,
 };
 
-function priceLabel(p: Pkg) {
-    if (p.payment_type === 'revenue_share') return `Bagi hasil ${p.share_percent}%`;
-    if (p.payment_type === 'upfront') return `Bayar di muka ${rp(p.price ?? 0)}`;
-    return 'Gratis';
+function priceParts(p: Pkg): { main: string; note: string } {
+    if (p.payment_type === 'revenue_share') return { main: `${p.share_percent}%`, note: 'bagi hasil' };
+    if (p.payment_type === 'upfront') return { main: rp(p.price ?? 0), note: 'bayar di muka' };
+    return { main: 'Gratis', note: '' };
 }
+
+const LIMIT = 4;
 
 export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; catalog: Catalog }) {
     const [editing, setEditing] = useState<Pkg | null>(null);
     const [open, setOpen] = useState(false);
+    const [expanded, setExpanded] = useState<number[]>([]);
     const form = useForm(empty);
     const { data, setData, errors, processing } = form;
+
+    // Paket bagi hasil berdiri sendiri: tidak punya induk dan tidak jadi induk paket lain.
+    const rank = (q: Pkg) => q.features.length * 10 + (q.slug === 'starter' ? 1 : 0);
+    const parentOf = (p: Pkg) =>
+        p.payment_type === 'revenue_share'
+            ? undefined
+            : packages
+                  .filter(
+                      (q) =>
+                          q.id !== p.id &&
+                          q.is_active &&
+                          q.payment_type !== 'revenue_share' &&
+                          q.features.length < p.features.length &&
+                          q.features.every((f) => p.features.includes(f)),
+                  )
+                  .sort((a, b) => rank(b) - rank(a))[0];
 
     const openCreate = () => {
         setEditing(null);
@@ -68,7 +87,7 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
             share_percent: p.share_percent ?? '',
             price: p.price ?? '',
             modules: p.modules,
-            features: p.features,
+            features: p.features.filter((f) => catalog.features[f]),
             description: p.description ?? '',
             is_active: p.is_active,
         });
@@ -82,7 +101,8 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
         const modules = toggle(data.modules, key);
         // Buang fitur milik modul yang baru dimatikan
         const features = data.features.filter((f) => {
-            const g = catalog.features[f].group;
+            const g = catalog.features[f]?.group;
+            if (!g) return false;
             return g === 'umum' || modules.includes(g);
         });
         setData({ ...data, modules, features });
@@ -117,7 +137,7 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
 
     return (
         <AdminLayout title="Manajemen Paket">
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-900/20">
+            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-900/20">
                 <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
                 <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
                 <div className="relative flex flex-wrap items-end justify-between gap-5">
@@ -125,7 +145,7 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                         <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
                             Package Configuration
                         </span>
-                        <h2 className="mt-4 text-3xl font-extrabold">Manajemen Paket</h2>
+                        <h2 className="mt-3 text-2xl font-extrabold">Manajemen Paket</h2>
                         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-blue-50/90">
                             Atur paket penyelenggara: harga, modul layanan, dan fitur yang muncul di dashboard event.
                         </p>
@@ -147,60 +167,84 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                     </div>
                 )}
 
-                {packages.map((p) => (
-                    <article key={p.id} className={`${card} flex flex-col p-6 ${p.is_active ? '' : 'opacity-60'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-xl font-extrabold">{p.name}</h3>
-                                <p className="title-gradient mt-1 text-2xl font-extrabold">{priceLabel(p)}</p>
-                            </div>
-                            <span
-                                className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                                    p.is_active
-                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
-                                        : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'
-                                }`}
-                            >
-                                {p.is_active ? 'Aktif' : 'Nonaktif'}
-                            </span>
-                        </div>
+                {packages.map((p) => {
+                    const prev = parentOf(p);
+                    const own = prev ? p.features.filter((f) => !prev.features.includes(f)) : p.features;
+                    const isOpen = expanded.includes(p.id);
+                    const showAll = isOpen || p.payment_type === 'revenue_share';
+                    const shown = showAll ? own : own.slice(0, LIMIT);
+                    const hidden = p.payment_type === 'revenue_share' ? 0 : own.length - LIMIT;
+                    const price = priceParts(p);
+                    const topModule = p.modules[p.modules.length - 1];
 
-                        {p.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{p.description}</p>}
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            {p.modules.map((m) => (
-                                <span key={m} className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-100">
-                                    {catalog.modules[m]?.icon} {catalog.modules[m]?.label ?? m}
+                    return (
+                        <article key={p.id} className={`${card} flex flex-col p-5 ${p.is_active ? '' : 'opacity-60'}`}>
+                            <div className="flex items-center justify-between gap-3">
+                                <h3 className="text-lg font-extrabold">{p.name}</h3>
+                                <span
+                                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                        p.is_active
+                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
+                                            : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                                    }`}
+                                >
+                                    {p.is_active ? 'Aktif' : 'Nonaktif'}
                                 </span>
-                            ))}
-                        </div>
+                            </div>
 
-                        <ul className="mt-4 space-y-1.5 text-sm text-slate-700 dark:text-slate-200">
-                            {p.features.map((f) => (
-                                <li key={f} className="flex items-center gap-2">
-                                    <span className="text-emerald-500">✓</span>
-                                    {catalog.features[f]?.label ?? f}
-                                </li>
-                            ))}
-                        </ul>
+                            <p className="mt-1 flex items-baseline gap-2">
+                                <span className="title-gradient text-xl font-extrabold">{price.main}</span>
+                                {price.note && <span className="text-xs text-slate-500 dark:text-slate-400">{price.note}</span>}
+                            </p>
 
-                        <div className="mt-auto flex gap-2 pt-5">
-                            <button
-                                onClick={() => openEdit(p)}
-                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 py-2.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-white"
-                            >
-                                <Pencil className="h-4 w-4" /> Edit
-                            </button>
-                            <button
-                                onClick={() => remove(p)}
-                                aria-label="Hapus paket"
-                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </article>
-                ))}
+                            {p.description && <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{p.description}</p>}
+
+                            {topModule && (
+                                <div className="mt-3">
+                                    <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-100">
+                                        {catalog.modules[topModule]?.icon} {catalog.modules[topModule]?.label ?? topModule}
+                                    </span>
+                                </div>
+                            )}
+
+                            <ul className="mt-3 space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                {prev && <li className="pb-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Semua fitur {prev.name}, ditambah:</li>}
+                                {shown.map((f) => (
+                                    <li key={f} className="flex items-center gap-2">
+                                        <span className="text-emerald-500">✓</span>
+                                        {catalog.features[f]?.label ?? f}
+                                    </li>
+                                ))}
+                            </ul>
+                            {hidden > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setExpanded((cur) => (isOpen ? cur.filter((id) => id !== p.id) : [...cur, p.id]))}
+                                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-indigo-200 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-400/30 dark:text-indigo-200 dark:hover:bg-indigo-500/10"
+                                >
+                                    {isOpen ? 'Sembunyikan' : `Lihat ${hidden} fitur lainnya`}
+                                    <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                            )}
+
+                            <div className="mt-auto flex gap-2 pt-4">
+                                <button
+                                    onClick={() => openEdit(p)}
+                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 py-2 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-white"
+                                >
+                                    <Pencil className="h-4 w-4" /> Edit
+                                </button>
+                                <button
+                                    onClick={() => remove(p)}
+                                    aria-label="Hapus paket"
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </article>
+                    );
+                })}
             </div>
 
             {open && (
@@ -208,9 +252,9 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                     <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
                     <form
                         onSubmit={submit}
-                        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-white/70 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900"
+                        className="relative flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl border border-white/70 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900"
                     >
-                        <div className="flex items-start justify-between border-b border-slate-200/70 p-6 dark:border-white/10">
+                        <div className="flex items-start justify-between rounded-t-3xl border-b border-slate-200/70 bg-gradient-to-r from-indigo-50 via-blue-50 to-violet-50 p-6 dark:border-white/10 dark:from-indigo-500/10 dark:via-transparent dark:to-violet-500/10">
                             <div>
                                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">Package Configuration</p>
                                 <h3 className="mt-1 text-2xl font-extrabold">{editing ? 'Edit Paket' : 'Paket Baru'}</h3>
@@ -262,8 +306,11 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                             )}
 
                             <div>
-                                <label className={label}>Modul layanan</label>
-                                <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="mb-2 flex items-end justify-between">
+                                    <label className={label + ' mb-0'}>Modul layanan</label>
+                                    <span className="text-xs text-slate-400">{data.modules.length} dipilih</span>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     {Object.entries(catalog.modules).map(([k, m]) => {
                                         const on = data.modules.includes(k);
                                         return (
@@ -280,7 +327,10 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                             </div>
 
                             <div className="space-y-4">
-                                <label className={label}>Fitur paket</label>
+                                <div className="flex items-end justify-between">
+                                    <label className={label + ' mb-0'}>Fitur paket</label>
+                                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{data.features.length} fitur dipilih</span>
+                                </div>
                                 {visibleGroups.map((g) => {
                                     const keys = groupKeys(g);
                                     if (keys.length === 0) return null;
@@ -301,7 +351,10 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                                                     return (
                                                         <label key={k} className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm font-semibold transition ${on ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-400/40 dark:bg-indigo-500/20' : 'border-slate-200 bg-white dark:border-white/10 dark:bg-slate-800'}`}>
                                                             <input type="checkbox" checked={on} onChange={() => setData('features', toggle(data.features, k))} className="h-4 w-4 accent-indigo-700" />
-                                                            {catalog.features[k].label}
+                                                            <span className="flex-1">{catalog.features[k].label}</span>
+                                                            {catalog.features[k].menu && (
+                                                                <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-white/10 dark:text-slate-300">{catalog.features[k].menu}</span>
+                                                            )}
                                                         </label>
                                                     );
                                                 })}
