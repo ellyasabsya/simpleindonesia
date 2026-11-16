@@ -7,8 +7,12 @@ use Inertia\Response;
 
 class EventDashboardController extends EventScopedController
 {
-    public function show(Event $event): Response
+    public function show(Event $event): Response|\Illuminate\Http\RedirectResponse
     {
+        if ($event->status !== Event::PUBLISHED) {
+            return redirect('/panel');
+        }
+
         return $this->render('panel/events/show', $event);
     }
 

@@ -53,7 +53,7 @@ export default function PanelEvents({ events }: { institution: { name: string };
                             </div>
                             <div className="space-y-2 p-5">
                                 <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">{e.category} · {e.package}</p>
-                                <h3 className="text-lg font-extrabold leading-tight"><Link href={`/panel/event/${e.id}`} className="hover:text-indigo-700 dark:hover:text-indigo-300">{e.title}</Link></h3>
+                                <h3 className="text-lg font-extrabold leading-tight">{e.title}</h3>
                                 <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"><MapPin className="h-4 w-4 text-orange-500" />{e.location}</p>
                                 <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"><CalendarDays className="h-4 w-4 text-indigo-500" />{fmt(e.starts_at)} – {fmt(e.ends_at)}</p>
                                 {e.status === 'rejected' && e.rejection_reason && (

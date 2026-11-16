@@ -17,7 +17,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[] } }>().props;
     const groups: PanelMenuGroup[] = eventNav
         ? [
-              { title: 'Utama', items: [{ label: 'Semua Event', href: '/panel/event', icon: ArrowLeft }] },
+              { title: 'Utama', items: [{ label: 'Panel Lembaga', href: '/panel', icon: ArrowLeft }] },
               {
                   title: eventNav.title,
                   items: eventNav.items.map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),

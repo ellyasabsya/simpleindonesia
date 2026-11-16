@@ -55,9 +55,8 @@ it('keeps feature menus closed until the event is published', function () {
     $user = User::factory()->create();
     $event = makeEventFor($user, 'pending', ['ticket_sales']);
 
-    actingAs($user)->get("/panel/event/{$event->id}/pengaturan-tiket")->assertRedirect("/panel/event/{$event->id}");
-    actingAs($user)->get("/panel/event/{$event->id}")
-        ->assertInertia(fn ($p) => $p->where('eventNav.items', fn ($items) => collect($items)->pluck('key')->all() === ['dashboard']));
+    actingAs($user)->get("/panel/event/{$event->id}/pengaturan-tiket")->assertRedirect('/panel');
+    actingAs($user)->get("/panel/event/{$event->id}")->assertRedirect('/panel');
 });
 
 it('hides events of other institutions', function () {

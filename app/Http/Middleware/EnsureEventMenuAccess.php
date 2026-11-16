@@ -29,7 +29,7 @@ class EnsureEventMenuAccess
             abort_unless(in_array($menu, $event->menus(), true), 403, 'Fitur ini tidak termasuk dalam paket event Anda.');
 
             if ($event->status !== Event::PUBLISHED) {
-                return redirect()->route('panel.event.show', $event);
+                return redirect('/panel');
             }
         }
 

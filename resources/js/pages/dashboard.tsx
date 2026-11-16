@@ -249,7 +249,7 @@ export default function Dashboard({ hasPanel, institution, institutionCount, sum
                                 );
                                 return (
                                     <li key={e.id}>
-                                        {hasPanel ? <Link href={`/panel/event/${e.id}`} className="flex items-center gap-4 py-3 hover:opacity-80">{row}</Link> : <div className="flex items-center gap-4 py-3">{row}</div>}
+                                        <div className="flex items-center gap-4 py-3">{row}</div>
                                     </li>
                                 );
                             })}

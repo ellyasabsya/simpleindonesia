@@ -206,7 +206,9 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${badge[e.status].style}`}>{badge[e.status].label}</span>
                                 </div>
                                 <p className="mt-4 flex items-center gap-2 text-slate-700 dark:text-slate-200"><CalendarDays className="h-4 w-4" />{fmt(e.starts_at)} – {fmt(e.ends_at)}</p>
-                                <Link href={`/panel/event/${e.id}`} className="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2.5 text-sm font-bold text-white shadow-md">Buka dashboard</Link>
+                                {e.status === 'published' && (
+                                    <Link href={`/panel/event/${e.id}`} className="mt-4 inline-block rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2.5 text-sm font-bold text-white shadow-md">Buka dashboard</Link>
+                                )}
                             </article>
                         ))}
                     </div>
