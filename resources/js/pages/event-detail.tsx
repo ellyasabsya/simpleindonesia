@@ -55,6 +55,7 @@ type Detail = {
     ends_at: string | null;
     status: { key: StatusKey; label: string };
     description: string | null;
+    registration_fee: number;
     registration_method: 'ticket' | 'transfer_manual' | null;
     juknis: string | null;
     contact: { name?: string; position?: string; phone?: string; email?: string } | null;
@@ -424,6 +425,12 @@ export default function EventDetail() {
                                                 <p className="mt-3 text-lg font-bold">{event.organizer}</p>
                                             </div>
                                         )}
+                                        <div className={infoBox}>
+                                            <p className={eyebrow}><Ticket className="h-4 w-4 text-indigo-700" />Biaya Pendaftaran</p>
+                                            <p className="mt-3 text-lg font-bold">
+                                                {event.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(event.registration_fee)}` : 'Gratis'}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-white/70 p-4 sm:flex-row dark:bg-white/5">

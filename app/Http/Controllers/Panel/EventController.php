@@ -138,7 +138,7 @@ class EventController extends Controller
             'participant_categories' => 'Kategori peserta',
             'participant_categories.*.name' => 'Nama kategori peserta',
             'participant_categories.*.quota' => 'Kuota kategori',
-            'registration_method' => 'Metode pendaftaran', 'competition_type' => 'Jenis perlombaan', 'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua', 'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening', 'contact_name' => 'Nama penanggung jawab',
+            'registration_method' => 'Metode pendaftaran', 'registration_fee' => 'Biaya pendaftaran', 'competition_type' => 'Jenis perlombaan', 'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua', 'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening', 'contact_name' => 'Nama penanggung jawab',
             'contact_phone' => 'Nomor kontak', 'contact_email' => 'Email', 'contact_position' => 'Jabatan',
         ];
         $attributes = [];
@@ -309,6 +309,7 @@ class EventController extends Controller
                 ? json_encode(collect(range(1, (int) $d['team_size']))->map(fn ($n) => trim((string) ($d['team_slots'][$n - 1] ?? '')) ?: 'Peserta '.$n)->all(), JSON_UNESCAPED_UNICODE)
                 : null,
             'registration_method' => $d['registration_method'],
+            'registration_fee' => (int) ($d['registration_fee'] ?? 0),
             'bank_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_name'] ?? null) : null,
             'bank_account_number' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_number'] ?? null) : null,
             'bank_account_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_name'] ?? null) : null,
@@ -383,6 +384,7 @@ class EventController extends Controller
             "{$p}participant_categories.*.name" => ['required', 'string', 'max:60'],
             "{$p}participant_categories.*.quota" => ['required', 'integer', 'min:1', 'max:1000000'],
             "{$p}registration_method" => ['required', Rule::in(['transfer_manual', 'ticket'])],
+            "{$p}registration_fee" => ['nullable', 'integer', 'min:0', 'max:100000000'],
             "{$p}competition_type" => ['nullable', Rule::in(['individual', 'team'])],
             "{$p}team_size" => ['nullable', 'integer', 'min:2', 'max:100'],
             "{$p}team_slots" => ['nullable', 'array', 'max:100'],

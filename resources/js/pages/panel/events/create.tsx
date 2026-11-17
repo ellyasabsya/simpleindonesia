@@ -26,7 +26,7 @@ type Pkg = {
 type Detail = {
     title: string; category: string; location: string; starts_at: string; ends_at: string;
     description: string; poster: File | null; juknis: File | null;
-    participant_quota: string; participant_categories: { name: string; quota: string }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; bank_name: string; bank_account_number: string; bank_account_name: string;
+    participant_quota: string; participant_categories: { name: string; quota: string }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string;
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
 };
 type Props = { institution: { name: string }; packages: Pkg[]; categories: Record<string, string>; selected_package_id: number | null };
@@ -44,7 +44,7 @@ const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
 const blank = (): Detail => ({
     title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
-    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', bank_name: '', bank_account_number: '', bank_account_name: '',
+    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '',
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
 const blanks = (n: number) => Array.from({ length: n }, blank);
@@ -103,6 +103,7 @@ const vPeserta = (d: Detail, pre: string): Errs => {
         if (d.team_leaders === '' || Number(d.team_leaders) >= Number(d.team_size)) e[pre + 'team_leaders'] = 'Jumlah kotak ketua harus lebih kecil dari jumlah peserta per tim.';
     }
     if (!d.registration_method) e[pre + 'registration_method'] = 'Pilih metode pendaftaran.';
+    if (d.registration_fee && !/^\d+$/.test(d.registration_fee)) e[pre + 'registration_fee'] = 'Biaya pendaftaran harus berupa angka.';
     if (d.registration_method === 'transfer_manual') {
         if (!d.bank_name.trim()) e[pre + 'bank_name'] = 'Nama bank wajib diisi.';
         if (!/^[0-9 -]{5,}$/.test(d.bank_account_number.trim())) e[pre + 'bank_account_number'] = 'Isi nomor rekening yang valid.';
@@ -413,7 +414,23 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
             ) : (
             <div>
-                <label className={label}>Pendaftaran peserta *</label>
+                <>
+                <div className={`${box} mb-6 p-5`}>
+                    <b className="block text-[15px]">Biaya pendaftaran</b>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Biaya per peserta. Kosongkan atau isi 0 kalau pendaftaran gratis.</span>
+                    <div className="mt-3 flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-950/60">
+                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
+                        <input
+                            inputMode="numeric"
+                            value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
+                            onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                            placeholder="0"
+                            className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
+                        />
+                    </div>
+                    <Err m={err(pre + 'registration_fee')} />
+                </div>
+                <label className={label}>Pendaftaran peserta *</label></>
                 <div className="grid gap-3 sm:grid-cols-2">
                     {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
@@ -527,6 +544,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         {!main && <Fact icon={Tag} title="Kategori event">{categories[d.category] ?? '-'}</Fact>}
                         {!main && <Fact icon={Users} title="Kuota peserta">{totalQuota(d) || '-'} orang</Fact>}
                         {!main && <Fact icon={Ticket} title="Pendaftaran">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
+                        {!main && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
                         {!main && (
                             <Fact icon={Phone} title="Penanggung jawab">
                                 {contact || '-'}
@@ -648,7 +666,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         if (m) return `sub:${m[1]}`;
         if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster', 'juknis'].includes(k) ? 'utama' : 'tinjau';
         if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster', 'juknis'].includes(k)) return 'info';
-        if (k.startsWith('participant_') || k === 'registration_method') return 'peserta';
+        if (k.startsWith('participant_') || k === 'registration_method' || k === 'registration_fee') return 'peserta';
         if (k.startsWith('contact_')) return 'pj';
         return 'tinjau';
     };

@@ -76,6 +76,7 @@ class EventDetailController extends Controller
                 'contact' => $contact ?: null,
                 'juknis' => $event->juknisUrl(),
                 'participants' => $participants,
+                'registration_fee' => (int) ($event->registration_fee ?: ($event->children->pluck('registration_fee')->filter()->min() ?? 0)),
                 'registration_method' => $event->registration_method
                     ?: (($m = $event->children->pluck('registration_method')->filter()->unique())->count() === 1 ? $m->first() : null),
                 'children' => $event->children->map(fn (Event $c) => [

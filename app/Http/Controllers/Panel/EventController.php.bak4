@@ -112,7 +112,8 @@ class EventController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'starts_at' => ['required', 'date', 'after_or_equal:today'],
             'ends_at' => ['required', 'date', 'after_or_equal:starts_at'],
-            'poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720'],
+            'juknis' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'assessment_addon' => ['nullable', 'boolean'],
             'judge_addon' => ['nullable', 'boolean'],
             'subs' => ['nullable', 'array', 'max:50'],
@@ -123,7 +124,8 @@ class EventController extends Controller
                 'subs.*.description' => ['nullable', 'string', 'max:2000'],
                 'subs.*.starts_at' => ['required', 'date'],
                 'subs.*.ends_at' => ['required', 'date', 'after_or_equal:subs.*.starts_at'],
-                'subs.*.poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                'subs.*.poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720'],
+                'subs.*.juknis' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             ] + $this->detailRules('subs.*.', $maxCats);
         } else {
             $rules += $this->detailRules('', $maxCats);
@@ -132,7 +134,7 @@ class EventController extends Controller
         $names = [
             'title' => 'Nama event', 'category' => 'Kategori event', 'location' => 'Lokasi',
             'starts_at' => 'Tanggal mulai', 'ends_at' => 'Tanggal selesai', 'description' => 'Deskripsi',
-            'poster' => 'Poster',
+            'poster' => 'Poster', 'juknis' => 'Juknis',
             'participant_categories' => 'Kategori peserta',
             'participant_categories.*.name' => 'Nama kategori peserta',
             'participant_categories.*.quota' => 'Kuota kategori',
@@ -278,18 +280,21 @@ class EventController extends Controller
         $payProof = null;
         if ($payMethod === 'transfer_manual') {
             $request->validate([
-                'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:4096'],
+                'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:30720'],
             ], [
                 'payment_proof.required' => 'Unggah bukti pembayaran.',
-                'payment_proof.mimes' => 'Bukti pembayaran harus JPG, PNG, atau PDF.',
-                'payment_proof.max' => 'Ukuran bukti pembayaran maksimal 4 MB.',
+                'payment_proof.mimes' => 'Bukti pembayaran harus JPG, PNG, WebP, atau PDF.',
+                'payment_proof.max' => 'Ukuran file terlalu besar (maksimal 30 MB).',
             ]);
-            $payProof = $request->file('payment_proof')->store('payment-proofs', 'public');
+            $payProof = \App\Support\ImageUploader::store($request->file('payment_proof'), 'payment-proofs', 'payment_proof');
         }
-        $posterPath = $request->file('poster')?->store('posters', 'public');
+        $posterPath = $request->hasFile('poster') ? \App\Support\ImageUploader::store($request->file('poster'), 'posters', 'poster') : null;
+        $juknisPath = $request->hasFile('juknis') ? $request->file('juknis')->store('juknis', 'public') : null;
+        $subJuknis = [];
         $subPosters = [];
         foreach ($subs as $i => $sub) {
-            $subPosters[$i] = $request->file("subs.$i.poster")?->store('posters', 'public');
+            $subPosters[$i] = $request->hasFile("subs.$i.poster") ? \App\Support\ImageUploader::store($request->file("subs.$i.poster"), 'posters', "subs.$i.poster") : null;
+            $subJuknis[$i] = $request->hasFile("subs.$i.juknis") ? $request->file("subs.$i.juknis")->store('juknis', 'public') : null;
         }
 
         $detail = fn (array $d) => [
@@ -322,7 +327,7 @@ class EventController extends Controller
             );
         };
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $n, $series, $addon, $judge, $upfront, $payMethod, $payProof, $posterPath, $detail, $saveCategories) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $subJuknis, $n, $series, $addon, $judge, $upfront, $payMethod, $payProof, $posterPath, $juknisPath, $detail, $saveCategories) {
             $main = Event::create([
                 'institution_id' => $institution->id,
                 'package_id' => $package->id,
@@ -332,6 +337,7 @@ class EventController extends Controller
                 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'],
                 'poster_path' => $posterPath,
+                'juknis_path' => $juknisPath,
                 'status' => Event::PENDING,
                 'package_snapshot' => $package->snapshot() + [
                     'options' => ['sub_events' => $n, 'total_events' => max(1, $n), 'assessment_addon' => $addon, 'judge_addon' => $judge],
@@ -357,6 +363,7 @@ class EventController extends Controller
                     'starts_at' => $sub['starts_at'],
                     'ends_at' => $sub['ends_at'],
                     'poster_path' => $subPosters[$i],
+                    'juknis_path' => $subJuknis[$i],
                     'status' => Event::PENDING,
                     'package_snapshot' => $package->snapshot(),
                 ] + $detail($sub));
