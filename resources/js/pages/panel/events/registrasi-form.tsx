@@ -153,46 +153,46 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                             <a href={`/panel/event/${eventId}/registrasi/export`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800"><Download className="h-4 w-4" /> Ekspor CSV</a>
                         </div>
                         <div className="mt-4 overflow-x-auto">
-                            <table className="w-full text-left text-sm">
+                            <table className="w-full min-w-[960px] text-left text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                        <th className="py-2 pr-4">{isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
-                                        <th className="py-2 pr-4">ID Peserta</th>
-                                        <th className="py-2 pr-4">Sekolah / instansi</th>
-                                        <th className="py-2 pr-4">{isTeam ? 'Tim' : 'Kategori'}</th>
-                                        {fee > 0 && <th className="py-2 pr-4">Tagihan</th>}
-                                        {fee > 0 && <th className="py-2 pr-4">Bukti</th>}
-                                        <th className="py-2 pr-4">Status</th>
-                                        <th className="py-2 pr-4">Waktu</th>
+                                    <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-white/10">
+                                        <th className="whitespace-nowrap px-4 py-3">{isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
+                                        <th className="whitespace-nowrap px-4 py-3">ID Peserta</th>
+                                        <th className="whitespace-nowrap px-4 py-3">Sekolah / instansi</th>
+                                        <th className="whitespace-nowrap px-4 py-3">{isTeam ? 'Tim' : 'Kategori'}</th>
+                                        {fee > 0 && <th className="whitespace-nowrap px-4 py-3">Tagihan</th>}
+                                        {fee > 0 && <th className="whitespace-nowrap px-4 py-3">Bukti</th>}
+                                        <th className="whitespace-nowrap px-4 py-3">Status</th>
+                                        <th className="whitespace-nowrap px-4 py-3">Waktu</th>
                                         {shown.map((f) => <th key={f.key} className="py-2 pr-4">{f.label}{f.archived ? ' (arsip)' : ''}</th>)}
-                                        <th />
+                                        <th className="px-4 py-3" />
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {list.map((r) => {
                                         const s = STATUS[r.status] ?? { label: r.status, style: 'bg-slate-200 text-slate-700' };
                                         return (
-                                            <tr key={r.id} className="border-b border-slate-100 align-top dark:border-white/5">
-                                                <td className="py-2 pr-4"><div className="font-semibold">{r.name}</div><div className="text-xs text-slate-500">{r.email}</div><div className="text-xs text-slate-500">{r.phone}</div></td>
+                                            <tr key={r.id} className="border-b border-slate-200/70 align-middle transition-colors hover:bg-slate-50/70 dark:border-white/10 dark:hover:bg-white/5">
+                                                <td className="px-4 py-5"><div className="font-semibold">{r.name}</div><div className="mt-1 text-xs text-slate-500">{r.email}</div><div className="mt-0.5 text-xs text-slate-500">{r.phone}</div></td>
                                                 <td className="whitespace-nowrap py-2 pr-4 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.participant_code ?? '-'}</td>
-                                                <td className="py-2 pr-4">{r.school ?? ''}</td>
-                                                <td className="py-2 pr-4">
+                                                <td className="px-4 py-5">{r.school ?? ''}</td>
+                                                <td className="px-4 py-5">
                                                     {isTeam ? r.teams.map((t, i) => <div key={i}>{t.name}{t.category ? <span className="text-xs text-slate-500"> ({t.category})</span> : null}</div>) : r.category ?? ''}
                                                 </td>
-                                                {fee > 0 && <td className="whitespace-nowrap py-2 pr-4">{rupiah(r.amount)}</td>}
+                                                {fee > 0 && <td className="whitespace-nowrap px-4 py-5">{rupiah(r.amount)}</td>}
                                                 {fee > 0 && (
-                                                    <td className="py-2 pr-4">
+                                                    <td className="px-4 py-5">
                                                         {r.proof ? <a href={`/panel/event/${eventId}/registrasi/bukti/${r.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-indigo-700 underline"><Paperclip className="h-3.5 w-3.5" />Lihat</a> : '-'}
                                                     </td>
                                                 )}
-                                                <td className="py-2 pr-4">
-                                                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.style}`}>{s.label}</span>
+                                                <td className="px-4 py-5">
+                                                    <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${s.style}`}>{s.label}</span>
                                                     {r.status === 'ditolak' && r.note && <div className="mt-1 max-w-[200px] text-xs text-slate-500">{r.note}</div>}
                                                     {r.status === 'terdaftar' && !isTeam && fields.some((f) => !f.archived && f.stage === 'after') && <div className="mt-1 text-xs text-slate-500">{r.followup_done ? 'Data lengkap' : 'Menunggu data lanjutan'}</div>}
                                                 </td>
-                                                <td className="whitespace-nowrap py-2 pr-4">{r.at}</td>
+                                                <td className="whitespace-nowrap px-4 py-5">{r.at}</td>
                                                 {shown.map((f) => <td key={f.key} className="py-2 pr-4">{show(r, f.key)}</td>)}
-                                                <td className="whitespace-nowrap py-2">
+                                                <td className="whitespace-nowrap px-4 py-5">
                                                     {r.status !== 'terdaftar' && <button type="button" className={`${iconBtn} text-emerald-700`} aria-label="Setujui" title="Setujui" onClick={() => review(r, 'terdaftar')}><Check className="h-4 w-4" /></button>}
                                                     {r.status !== 'ditolak' && <button type="button" className={`${iconBtn} text-amber-700`} aria-label="Tolak" title="Tolak" onClick={() => review(r, 'ditolak')}><X className="h-4 w-4" /></button>}
                                                     <button type="button" className={`${iconBtn} text-rose-600`} aria-label="Hapus pendaftar" title="Hapus" onClick={() => { if (confirm(`Hapus pendaftar ${r.name}? Data dan berkasnya ikut terhapus.`)) router.delete(`/panel/event/${eventId}/registrasi/pendaftar/${r.id}`, { preserveScroll: true }); }}><Trash2 className="h-4 w-4" /></button>
