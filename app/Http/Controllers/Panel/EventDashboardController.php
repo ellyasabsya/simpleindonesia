@@ -62,7 +62,7 @@ class EventDashboardController extends EventScopedController
         $titles = $events->pluck('title', 'id');
         $tz = config('app.agenda_timezone', 'Asia/Jakarta');
         $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
-        $grp = fn ($s) => $s === 'lunas' ? 'lunas' : (in_array($s, $closed, true) ? 'batal' : 'menunggu');
+        $grp = fn ($s) => in_array($s, ['lunas', 'terdaftar'], true) ? 'lunas' : (in_array($s, $closed, true) ? 'batal' : 'menunggu');
         $day = fn ($d) => \Illuminate\Support\Carbon::parse($d)->setTimezone($tz)->format('Y-m-d');
 
         $quotas = $db::table('ticket_types')->whereIn('event_id', $ids)
@@ -455,7 +455,7 @@ class EventDashboardController extends EventScopedController
         $titles = $events->pluck('title', 'id');
         $tz = config('app.agenda_timezone', 'Asia/Jakarta');
         $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
-        $grp = fn ($s) => $s === 'lunas' ? 'lunas' : (in_array($s, $closed, true) ? 'batal' : 'menunggu');
+        $grp = fn ($s) => in_array($s, ['lunas', 'terdaftar'], true) ? 'lunas' : (in_array($s, $closed, true) ? 'batal' : 'menunggu');
         $day = fn ($d) => \Illuminate\Support\Carbon::parse($d)->setTimezone($tz)->format('Y-m-d');
 
         $perSub = [];
