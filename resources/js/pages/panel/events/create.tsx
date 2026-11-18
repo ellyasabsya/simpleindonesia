@@ -982,27 +982,19 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 const small = m ? m[1] : '';
                                 const kind = isSeriesPkg(p) ? 'Rangkaian event' : p.extra_sub_event_price !== null ? 'Tunggal / rangkaian' : 'Event tunggal';
                                 return (
-                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col rounded-3xl border-2 p-5 transition ${on ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/10 dark:bg-indigo-500/15' : 'border-slate-200 bg-white/80 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-white/5'}`}>
+                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col rounded-2xl border-2 p-4 transition ${on ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/10 dark:bg-indigo-500/15' : 'border-slate-200 bg-white/80 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-white/5'}`}>
                                         <input type="radio" name="package" checked={on} onChange={() => choosePackage(p)} className="sr-only" />
-                                        <span className={`absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
+                                        <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
                                             <Check className="h-4 w-4" />
                                         </span>
                                         <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{kind}</span>
-                                        <span className="mt-3 text-xl font-extrabold">{p.name}</span>
-                                        <span className="mt-3 block min-h-[3.25rem]">
+                                        <span className="mt-2 text-base font-bold">{p.name}</span>
+                                        <span className="mt-2 block min-h-[3rem]">
                                             {small && <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{small}</span>}
-                                            <span className="block text-3xl font-extrabold leading-tight text-indigo-700 dark:text-indigo-300">{big}</span>
+                                            <span className="block text-2xl font-extrabold leading-tight text-indigo-700 dark:text-indigo-300">{big}</span>
                                         </span>
-                                        {p.description && <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">{p.description}</span>}
-                                        <span className="my-4 h-px bg-slate-200 dark:bg-white/10" />
-                                        <span className="flex flex-1 flex-col gap-2">
-                                            {p.features.slice(0, 3).map((f) => (
-                                                <span key={f} className="flex items-start gap-2 text-sm">
-                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {f}
-                                                </span>
-                                            ))}
-                                            {p.features.length > 3 && <span className="pl-6 text-xs font-semibold text-indigo-600 dark:text-indigo-300">+{p.features.length - 3} fitur lainnya</span>}
-                                        </span>
+                                        {p.description && <span className="mt-1 line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{p.description}</span>}
+                                        <span className="mt-auto pt-3 text-xs font-semibold text-indigo-600 dark:text-indigo-300">{p.features.length} fitur</span>
                                     </label>
                                 );
                             })}
