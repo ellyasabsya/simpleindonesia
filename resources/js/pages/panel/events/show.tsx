@@ -28,7 +28,7 @@ type Stats = { isParent: boolean; sum: Sum; subs: SubStat[]; trend: { date: stri
 const fmt = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 const pct = (done: number, total: number) => (total ? Math.round((done / total) * 100) : 0);
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
-const card = 'rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
+const card = 'rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
 
 // Warna aksen tiap menu; menu lain memakai warna bawaan.
 const ACCENT: Record<string, string> = {
@@ -93,7 +93,7 @@ function Ring({ value, size = 56, stroke = 6 }: { value: number; size?: number; 
                     strokeDasharray={c} strokeDashoffset={c - (c * value) / 100} className="transition-all duration-700"
                 />
             </svg>
-            <span className={`absolute inset-0 flex items-center justify-center font-extrabold ${size > 80 ? 'text-3xl' : 'text-[13px]'}`}>{value}%</span>
+            <span className={`absolute inset-0 flex items-center justify-center font-extrabold ${size > 80 ? 'text-2xl' : 'text-[13px]'}`}>{value}%</span>
         </div>
     );
 }
@@ -148,7 +148,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
 
     return (
         <PanelLayout title="Dashboard Event">
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-900/20">
+            <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-900/20">
                 <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
                 <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
                 <div className="relative flex flex-wrap items-center justify-between gap-6">
@@ -157,22 +157,22 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                             {event.category} · Paket {event.package}
                             {event.share_percent ? ` (${event.share_percent}%)` : ''}
                         </span>
-                        <h2 className="mt-4 text-3xl font-extrabold">{event.title}</h2>
-                        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-blue-50/90">
+                        <h2 className="mt-4 text-2xl font-extrabold">{event.title}</h2>
+                        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-blue-50/90">
                             {event.location && <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{event.location}</span>}
                             <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{fmt(event.starts_at)} – {fmt(event.ends_at)}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-5">
-                        <div className="rounded-2xl border border-white/25 bg-white/10 px-6 py-4 text-center backdrop-blur">
-                            <div className="flex items-center justify-center gap-2 text-3xl font-extrabold leading-none">
+                        <div className="rounded-2xl border border-white/25 bg-white/10 px-5 py-3 text-center backdrop-blur">
+                            <div className="flex items-center justify-center gap-2 text-2xl font-extrabold leading-none">
                                 {cd.live && <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" /></span>}
                                 {cd.big}
                             </div>
                             <div className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-100">{cd.small}</div>
                         </div>
                         {event.poster_url && (
-                            <img src={event.poster_url} alt={event.title} className="hidden h-32 w-[102px] rounded-xl object-cover shadow-lg ring-2 ring-white/30 sm:block" />
+                            <img src={event.poster_url} alt={event.title} className="hidden h-28 w-[90px] rounded-xl object-cover shadow-lg ring-2 ring-white/30 sm:block" />
                         )}
                     </div>
                 </div>
@@ -180,7 +180,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
 
             {event.status === 'pending' && (
                 <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 font-semibold text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
-                    <Clock className="h-6 w-6 shrink-0" />
+                    <Clock className="h-5 w-5 shrink-0" />
                     Event sedang diperiksa admin. Fitur paket terbuka setelah event tayang.
                 </div>
             )}
@@ -193,10 +193,10 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
             {tracked.length > 0 && (
                 <section className="grid items-stretch gap-5 lg:grid-cols-2">
                     <div className={`${card} flex flex-wrap items-center gap-6`}>
-                        <Ring value={overall} size={112} stroke={10} />
+                        <Ring value={overall} size={88} stroke={8} />
                         <div className="min-w-0 flex-1">
                             <div className="text-[11px] font-extrabold tracking-[0.22em] text-slate-500 uppercase">Kesiapan event</div>
-                            <div className="mt-1 text-2xl font-extrabold">{sumDone} dari {sumTotal} langkah selesai</div>
+                            <div className="mt-1 text-base font-bold">{sumDone} dari {sumTotal} langkah selesai</div>
                             <div className="mt-3 flex flex-wrap gap-2">
                                 {tracked.map((t) => {
                                     const p = progress[t.key];
