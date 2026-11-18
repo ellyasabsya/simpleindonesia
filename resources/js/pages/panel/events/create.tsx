@@ -163,21 +163,50 @@ type Sec = { d: Detail; set: (p: Partial<Detail>) => void; pre: string; err: (k:
 
 function PosterInput({ file, onChange, error }: { file: File | null; onChange: (f: File | null) => void; error?: string }) {
     const [url, setUrl] = useState<string | null>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
     useEffect(() => {
         if (!file) { setUrl(null); return; }
         const u = URL.createObjectURL(file);
         setUrl(u);
         return () => URL.revokeObjectURL(u);
     }, [file]);
+    const pick = (f: File | null) => {
+        if (f && f.size > 4 * 1024 * 1024) {
+            setLocalError('Ukuran poster maksimal 4 MB.');
+            onChange(null);
+            return;
+        }
+        setLocalError(null);
+        onChange(f);
+    };
     return (
-        <div>
+        <div className="mx-auto w-full max-w-[240px] md:mx-0">
             <label className={label}>Poster (4:5, maks. 4 MB)</label>
-            <div className="flex h-[180px] w-36 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
+            <div className="flex aspect-[4/5] w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
                 {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : '4:5'}
             </div>
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-                className="mt-3 block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-indigo-800 dark:file:bg-indigo-500/20 dark:file:text-white" />
-            <Err m={error} />
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-3 transition hover:border-indigo-400 hover:bg-indigo-50/60 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                    onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-white">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <path d="m21 15-5-5L5 21" />
+                    </svg>
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">{file ? file.name : 'Pilih poster'}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">{file ? 'Klik untuk mengganti' : 'JPG, PNG, WEBP'}</span>
+                </span>
+                {file && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); onChange(null); setLocalError(null); }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-200">
+                        Hapus
+                    </button>
+                )}
+            </label>
+            <Err m={localError ?? error} />
         </div>
     );
 }
@@ -227,29 +256,31 @@ function JuknisInput({ file, onChange, error }: { file: File | null; onChange: (
 
 function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bounds; withJuknis?: boolean }) {
     return (
-        <div className="grid gap-6 md:grid-cols-[1fr_200px]">
-            <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label className={label}>Tanggal mulai *</label>
-                        <input type="date" className={input} min={bounds?.min} max={bounds?.max} value={d.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
-                        <Err m={err(pre + 'starts_at')} />
+        <div className="space-y-6">
+            <div className="grid items-start gap-6 md:grid-cols-[1fr_240px]">
+                <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className={label}>Tanggal mulai *</label>
+                            <input type="date" className={input} min={bounds?.min} max={bounds?.max} value={d.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
+                            <Err m={err(pre + 'starts_at')} />
+                        </div>
+                        <div>
+                            <label className={label}>Tanggal selesai *</label>
+                            <input type="date" className={input} min={d.starts_at || bounds?.min} max={bounds?.max} value={d.ends_at} onChange={(e) => set({ ends_at: e.target.value })} />
+                            <Err m={err(pre + 'ends_at')} />
+                        </div>
                     </div>
                     <div>
-                        <label className={label}>Tanggal selesai *</label>
-                        <input type="date" className={input} min={d.starts_at || bounds?.min} max={bounds?.max} value={d.ends_at} onChange={(e) => set({ ends_at: e.target.value })} />
-                        <Err m={err(pre + 'ends_at')} />
+                        <label className={label}>Deskripsi</label>
+                        <textarea rows={8} maxLength={2000} value={d.description} onChange={(e) => set({ description: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
+                        <Err m={err(pre + 'description')} />
                     </div>
                 </div>
-                <div>
-                    <label className={label}>Deskripsi</label>
-                    <textarea rows={5} maxLength={2000} value={d.description} onChange={(e) => set({ description: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
-                    <Err m={err(pre + 'description')} />
-                </div>
-                {withJuknis && <JuknisInput file={d.juknis} onChange={(f) => set({ juknis: f })} error={err(pre + 'juknis')} />}
+                <PosterInput file={d.poster} onChange={(f) => set({ poster: f })} error={err(pre + 'poster')} />
             </div>
-            <PosterInput file={d.poster} onChange={(f) => set({ poster: f })} error={err(pre + 'poster')} />
+            {withJuknis && <JuknisInput file={d.juknis} onChange={(f) => set({ juknis: f })} error={err(pre + 'juknis')} />}
         </div>
     );
 }
@@ -1266,7 +1297,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                 )}
 
                 <div className="mt-6 flex items-center justify-between">
-                    <button onClick={back} disabled={step === 0} className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:invisible dark:text-slate-300 dark:hover:bg-white/10">
+                    <button onClick={back} disabled={step === 0} className="flex items-center gap-2 rounded-xl px-1 py-3 text-sm font-bold text-slate-600 hover:text-indigo-700 disabled:invisible dark:text-slate-300 dark:hover:text-white">
                         <ArrowLeft className="h-4 w-4" /> Kembali
                     </button>
                     {!last ? (
