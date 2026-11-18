@@ -8,21 +8,21 @@ const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', {
 
 export default function Lomba({ rows = [] }: { rows?: Row[] }) {
     return (
-        <UserLayout title="Lomba saya" hasPanel={false}>
+        <UserLayout title="Event saya" hasPanel={false}>
             <div className="space-y-6">
                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:text-slate-300">
                     <ArrowLeft className="h-4 w-4" /> Kembali
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-extrabold">Lomba saya</h1>
-                    <p className="mt-1 text-slate-500 dark:text-slate-300">Semua lomba yang Anda ikuti.</p>
+                    <h1 className="text-3xl font-extrabold">Event saya</h1>
+                    <p className="mt-1 text-slate-500 dark:text-slate-300">Semua event yang Anda ikuti.</p>
                 </div>
 
                 {rows.length === 0 ? (
                     <div className="rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-white/10">
                         <Trophy className="mx-auto h-10 w-10 text-slate-300" />
-                        <p className="mt-3 font-bold">Belum ada lomba yang diikuti</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-300">Lomba yang Anda daftar akan muncul di sini.</p>
+                        <p className="mt-3 font-bold">Belum ada event yang diikuti</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">Event yang Anda daftar akan muncul di sini.</p>
                     </div>
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2">

@@ -20,7 +20,7 @@ const roles: Record<Role, { label: string; verb: string; icon: LucideIcon; grad:
 type Notif = { id: string; text: string; url?: string | null; read: boolean; at: string };
 const quick = [
     { label: 'Event', desc: 'Jelajahi semua event', href: '/events', icon: CalendarDays, grad: 'from-blue-600 to-violet-600' },
-    { label: 'Event saya', desc: 'Event yang Anda ikuti', href: '/lomba-saya', icon: CalendarCheck, grad: 'from-pink-500 to-rose-500' },
+    { label: 'Event saya', desc: 'Event yang Anda ikuti', href: '/event-saya', icon: CalendarCheck, grad: 'from-pink-500 to-rose-500' },
     { label: 'Tiket saya', desc: 'Tiket yang Anda beli', href: '/tiket', icon: Ticket, grad: 'from-amber-400 to-orange-500' },
     { label: 'Voting', desc: 'Berikan suara favorit', href: '/voting', icon: Vote, grad: 'from-emerald-400 to-teal-600' },
 ];
