@@ -112,7 +112,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
     ->prefix('panel')
     ->name('panel.')
     ->group(function () {
-        Route::get('event', [\App\Http\Controllers\Panel\EventController::class, 'index'])->name('event');
+        Route::redirect('event', '/panel')->name('event');
         Route::get('ajukan', [\App\Http\Controllers\Panel\EventController::class, 'create'])->name('ajukan');
         Route::post('ajukan', [\App\Http\Controllers\Panel\EventController::class, 'store'])->name('ajukan.store');
     });

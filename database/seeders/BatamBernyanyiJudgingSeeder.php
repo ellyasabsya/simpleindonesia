@@ -49,10 +49,7 @@ class BatamBernyanyiJudgingSeeder extends Seeder
         }
         self::cleanup();
 
-        $users = [];
-        for ($i = 1; $i <= 8; $i++) {
-            $users[] = User::factory()->create(['name' => "Peserta Tes BB $i", 'email' => "tes-bb-$i@example.test"])->id;
-        }
+        $seq = 0;
 
         foreach (self::SUBS as $eid) {
             $pool = 0; // user tidak boleh dobel dalam satu event
@@ -65,7 +62,7 @@ class BatamBernyanyiJudgingSeeder extends Seeder
                 $have = count(Judging::participants($eid, $cid));
                 for ($n = $have + 1; $n <= self::TEAMS; $n++) {
                     DB::table('event_registrations')->insert([
-                        'user_id' => $users[$pool++ % count($users)], 'event_id' => $eid, 'participant_category_id' => $cid ?: null,
+                        'user_id' => User::factory()->create(['name' => 'Peserta Tes BB '.(++$seq), 'email' => "tes-bb-$seq@example.test"])->id, 'event_id' => $eid, 'participant_category_id' => $cid ?: null,
                         'school' => self::SCHOOLS[$n % 4], 'contact_name' => "TES Tim $n ({$k['name']})", 'status' => 'terdaftar',
                         'reg_code' => "TES-BB-$eid-$cid-$n", 'total_fee' => 0, 'created_at' => now(), 'updated_at' => now(),
                     ]);
