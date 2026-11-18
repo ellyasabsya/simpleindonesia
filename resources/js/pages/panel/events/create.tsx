@@ -996,12 +996,11 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                         {p.description && <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">{p.description}</span>}
                                         <span className="my-4 h-px bg-slate-200 dark:bg-white/10" />
                                         <span className="flex flex-1 flex-col gap-2">
-                                            {p.features.slice(0, 3).map((f) => (
+                                            {p.features.map((f) => (
                                                 <span key={f} className="flex items-start gap-2 text-sm">
                                                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {f}
                                                 </span>
                                             ))}
-                                            {p.features.length > 3 && <span className="pl-6 text-xs font-semibold text-indigo-600 dark:text-indigo-300">+{p.features.length - 3} fitur lainnya</span>}
                                         </span>
                                     </label>
                                 );
