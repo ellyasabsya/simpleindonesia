@@ -1,0 +1,134 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Event;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class TicketPurchaseController extends Controller
+{
+    private const FEE_PERCENT = 10;
+
+    private function guard(Event $event): void
+    {
+        abort_unless(
+            $event->status === Event::PUBLISHED
+            && $event->registration_method === 'ticket'
+            && $event->ticket_sales_open,
+            404
+        );
+    }
+
+    private function sold(int $typeId): int
+    {
+        return (int) DB::table('ticket_orders')->where('ticket_type_id', $typeId)->where('status', '!=', 'batal')->sum('quantity');
+    }
+
+    private function id($date, string $fmt = 'l, j F Y'): string
+    {
+        return $date->copy()->locale('id')->translatedFormat($fmt);
+    }
+
+    /** URL lama: arahkan ke halaman Semua Tiket dengan modal terbuka. */
+    public function show(Event $event): RedirectResponse
+    {
+        $this->guard($event);
+
+        return redirect('/tickets?beli='.$event->id);
+    }
+
+    public function data(Event $event): JsonResponse
+    {
+        $this->guard($event);
+
+        $types = $event->ticketTypes()->whereDate('valid_until', '>=', now()->toDateString())->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'price' => (int) $t->price,
+                'remaining' => max(0, $t->quota - $this->sold($t->id)),
+                'valid_from' => $this->id($t->valid_from),
+                'valid_until' => $this->id($t->valid_until),
+                'max_per_order' => (int) $t->max_per_order,
+            ])->values();
+
+        return response()->json([
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'location' => $event->location,
+                'date' => $this->id($event->starts_at),
+            ],
+            'ticket_types' => $types,
+            'fee_percent' => self::FEE_PERCENT,
+        ]);
+    }
+
+    public function store(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($event);
+
+        $data = $request->validate([
+            'ticket_type_id' => ['required', 'integer'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:10'],
+            'buyer_name' => ['required', 'string', 'max:100'],
+            'buyer_email' => ['required', 'email', 'max:120'],
+            'buyer_phone' => ['required', 'string', 'max:30'],
+            'holders' => ['required', 'array', 'min:1', 'max:10'],
+            'holders.*' => ['required', 'string', 'max:100'],
+        ], [
+            'required' => ':attribute wajib diisi.',
+            'email' => 'Format email tidak valid.',
+        ], [
+            'buyer_name' => 'Nama', 'buyer_email' => 'Email', 'buyer_phone' => 'No. telepon',
+            'holders.*' => 'Nama pemegang tiket', 'ticket_type_id' => 'Jenis tiket',
+        ]);
+
+        $fail = fn (string $k, string $m) => throw ValidationException::withMessages([$k => $m]);
+
+        $code = DB::transaction(function () use ($event, $data, $fail) {
+            $type = $event->ticketTypes()->lockForUpdate()->find($data['ticket_type_id']);
+            if (! $type || $type->valid_until->endOfDay()->isPast()) {
+                $fail('ticket_type_id', 'Jenis tiket tidak tersedia.');
+            }
+            if ($data['quantity'] > $type->max_per_order) {
+                $fail('quantity', "Maksimal {$type->max_per_order} tiket per pesanan.");
+            }
+            if (count($data['holders']) !== (int) $data['quantity']) {
+                $fail('holders', 'Jumlah pemegang tiket harus sama dengan jumlah tiket.');
+            }
+            if ($data['quantity'] > $type->quota - $this->sold($type->id)) {
+                $fail('quantity', 'Sisa tiket tidak cukup.');
+            }
+
+            $subtotal = (int) $type->price * (int) $data['quantity'];
+            $fee = (int) round($subtotal * self::FEE_PERCENT / 100);
+            $code = 'TKT-'.strtoupper(Str::random(8));
+
+            DB::table('ticket_orders')->insert([
+                'event_id' => $event->id,
+                'ticket_type_id' => $type->id,
+                'code' => $code,
+                'buyer_name' => trim($data['buyer_name']),
+                'buyer_email' => $data['buyer_email'],
+                'buyer_phone' => trim($data['buyer_phone']),
+                'quantity' => (int) $data['quantity'],
+                'subtotal' => $subtotal,
+                'fee' => $fee,
+                'total' => $subtotal + $fee,
+                'holders' => json_encode(array_values($data['holders']), JSON_UNESCAPED_UNICODE),
+                'status' => 'menunggu',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return $code;
+        });
+
+        return redirect('/tickets')->with('order_code', $code);
+    }
+}

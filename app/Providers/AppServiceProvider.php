@@ -24,10 +24,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \Inertia\Inertia::share('flash', fn () => ['success' => session('success'), 'error' => session('error')]);
+        \Inertia\Inertia::share('panelPerms', fn () => request()->attributes->get('panel_perms'));
+        \Inertia\Inertia::share('panelOwner', fn () => (bool) request()->attributes->get('is_owner'));
         \Inertia\Inertia::share('unread', fn () => auth()->check() ? auth()->user()->unreadNotifications()->count() : 0);
         \Inertia\Inertia::share('notifications', fn () => auth()->check()
             ? auth()->user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
-                'id' => $n->id, 'text' => $n->data['text'] ?? '', 'url' => $n->data['url'] ?? null,
+                'id' => $n->id, 'text' => $n->data['text'] ?? trim(($n->data['title'] ?? '').' — '.($n->data['message'] ?? ''), ' —'), 'url' => $n->data['url'] ?? null,
                 'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String(),
             ])->all()
             : []);
@@ -41,6 +43,10 @@ class AppServiceProvider extends ServiceProvider
         \Inertia\Inertia::share('profile', fn () => ($u = auth()->user())
             ? array_merge($u->only(['username', 'avatar', 'bio', 'city', 'phone', 'birth_date', 'created_at']), ['socials' => json_decode($u->socials ?? '[]', true) ?: (object) []])
             : null);
+        \Illuminate\Support\Facades\RateLimiter::for('juri', fn (\Illuminate\Http\Request $request) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('juri-token:'.$request->route('token')),
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(300)->by('juri-ip:'.$request->ip()),
+        ]);
         $this->configureDefaults();
     }
 

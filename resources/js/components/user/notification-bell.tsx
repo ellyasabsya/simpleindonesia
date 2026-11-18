@@ -38,7 +38,7 @@ export default function NotificationBell() {
                                 <p className="text-xs text-slate-500 dark:text-slate-400">Kabar pertemanan dan undangan muncul di sini.</p>
                             </div>
                         ) : items.map((n) => (
-                            <Link key={n.id} href={n.url ?? '/dashboard'} onClick={() => setOpen(false)} className={`flex items-start gap-3 px-5 py-3.5 transition hover:bg-slate-50 dark:hover:bg-white/5 ${n.read ? '' : 'bg-indigo-50/70 dark:bg-indigo-500/10'}`}>
+                            <Link key={n.id} href={n.url ?? '/dashboard'} onClick={() => { setOpen(false); if (!n.read) { const tk = decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) ?? [])[1] ?? ''); fetch(`/notifikasi/${n.id}/baca`, { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'X-XSRF-TOKEN': tk, 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } }).catch(() => {}); } }} className={`flex items-start gap-3 px-5 py-3.5 transition hover:bg-slate-50 dark:hover:bg-white/5 ${n.read ? '' : 'bg-indigo-50/70 dark:bg-indigo-500/10'}`}>
                                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white"><UserPlus className="h-5 w-5" /></span>
                                 <span className="min-w-0 flex-1">
                                     <span className="block text-sm font-semibold leading-snug">{n.text}</span>

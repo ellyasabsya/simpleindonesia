@@ -52,6 +52,14 @@ class Setting extends Model
         ];
     }
 
+    /** Biaya layanan (persen) untuk tiket dan voting. Default 10. */
+    public static function serviceFeePercent(): float
+    {
+        $v = static::text('service_fee_percent', '10');
+
+        return is_numeric($v) ? max(0.0, min(50.0, (float) $v)) : 10.0;
+    }
+
     /** Voting berbayar butuh konfirmasi otomatis: tutup kalau hanya transfer manual yang aktif. */
     public static function votingOpen(): bool
     {

@@ -13,6 +13,7 @@ class HomeController extends Controller
         return Inertia::render('welcome', [
             'packages' => $this->cards(),
             'events' => $this->latestEvents(4),
+            'votings' => $this->latestVotings(4),
             'heroEvents' => $this->carouselEvents(6),
         ]);
     }
@@ -44,20 +45,14 @@ class HomeController extends Controller
                 default => ['main' => 'Gratis', 'note' => ''],
             };
 
-            $assessment = in_array('penilaian_juri', $p->features, true)
-                ? 'Termasuk'
-                : ($p->assessment_addon_price !== null ? 'Add-on '.$rp($p->assessment_addon_price) : 'Tidak tersedia');
-
-            $judge = in_array('penilaian_juri', $p->features, true)
-                ? 'Termasuk'
-                : ($p->judge_addon_price !== null ? 'Add-on '.$rp($p->judge_addon_price) : 'Tidak tersedia');
+            $hasJudging = in_array('penilaian_juri', $p->features, true);
+            $judging = $p->assessment_addon_price !== null ? 'Add-on '.$rp($p->assessment_addon_price) : 'Tidak tersedia';
 
             $specs = [
                 ['Jenis', $p->event_type === 'series' ? 'Series' : 'Single-event'],
                 ['Sub-event termasuk', (string) $p->included_sub_events],
                 ['Sub-event tambahan', $p->extra_sub_event_price !== null ? $rp($p->extra_sub_event_price).' / kegiatan' : 'Tidak tersedia'],
-                ['Sistem penilaian', $assessment],
-                ['Juri', $judge],
+                ...($hasJudging ? [] : [['Penilaian juri', $judging]]),
                 ['Kategori peserta', $p->max_participant_categories ? (string) $p->max_participant_categories : 'Bebas'],
             ];
 
@@ -94,6 +89,50 @@ class HomeController extends Controller
             ->limit($limit)
             ->get()
             ->map(fn (\App\Models\Event $e) => $this->card($e))
+            ->values();
+    }
+
+    /** Voting yang dibuka, memakai bentuk kartu yang sama dengan event. */
+    public function latestVotings(int $limit = 4): \Illuminate\Support\Collection
+    {
+        $settings = \Illuminate\Support\Facades\DB::table('voting_settings')->where('enabled', 1)->get()->keyBy('event_id');
+        if ($settings->isEmpty()) {
+            return collect();
+        }
+
+        $today = now()->startOfDay();
+
+        return \App\Models\Event::where('status', \App\Models\Event::PUBLISHED)
+            ->whereIn('id', $settings->keys())
+            ->with(['institution', 'children'])
+            ->latest('id')
+            ->limit($limit)
+            ->get()
+            ->map(function (\App\Models\Event $e) use ($settings, $today) {
+                $s = $settings[$e->id];
+                $c = $this->card($e);
+                $start = $s->vote_start ? \Illuminate\Support\Carbon::parse($s->vote_start)->startOfDay() : null;
+                $end = $s->vote_end ? \Illuminate\Support\Carbon::parse($s->vote_end)->endOfDay() : ($e->ends_at ? \Illuminate\Support\Carbon::parse($e->ends_at)->endOfDay() : null);
+
+                if ($end && $end->lt($today)) {
+                    $status = ['key' => 'selesai', 'label' => 'Ditutup'];
+                } elseif ($start && $start->gt($today)) {
+                    $status = ['key' => 'segera', 'label' => $today->diffInDays($start).' hari lagi'];
+                } else {
+                    $status = ['key' => 'berlangsung', 'label' => 'Voting dibuka'];
+                }
+
+                return array_merge($c, [
+                    'category_key' => 'voting',
+                    'category' => 'VOTING',
+                    'is_series' => false,
+                    'sub_count' => 0,
+                    'starts_at' => $start?->toDateString() ?? $c['starts_at'],
+                    'ends_at' => $end?->toDateString() ?? $c['ends_at'],
+                    'status' => $status,
+                    'href' => '/voting/'.$e->id,
+                ]);
+            })
             ->values();
     }
 
@@ -151,6 +190,8 @@ class HomeController extends Controller
             'starts_at' => $start?->toDateString(),
             'ends_at' => $end?->toDateString(),
             'status' => $status,
+            'is_series' => $e->children->count() > 0,
+            'sub_count' => $e->children->count(),
         ];
     }
 }

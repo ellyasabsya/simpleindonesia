@@ -33,7 +33,7 @@ class PackageController extends Controller
 
         Package::create($data);
 
-        return back();
+        return back()->with('success', 'Paket berhasil ditambahkan.');
     }
 
     public function update(Request $request, Package $package): RedirectResponse
@@ -46,7 +46,7 @@ class PackageController extends Controller
 
         $package->update($data);
 
-        return back();
+        return back()->with('success', 'Paket berhasil diperbarui.');
     }
 
     public function destroy(Package $package): RedirectResponse
@@ -54,7 +54,7 @@ class PackageController extends Controller
         // Setelah tabel event ada, paket yang sudah dipakai hanya boleh dinonaktifkan.
         $package->delete();
 
-        return back();
+        return back()->with('success', 'Paket berhasil dihapus.');
     }
 
     private function validated(Request $request): array

@@ -50,13 +50,13 @@ class CommentController extends Controller
     {
         $comment->update(['reported_at' => null]);
 
-        return back();
+        return back()->with('success', 'Laporan diabaikan. Komentar tetap tampil.');
     }
 
     public function destroy(EventComment $comment): RedirectResponse
     {
         $comment->delete();
 
-        return back();
+        return back()->with('success', 'Komentar dihapus.');
     }
 }

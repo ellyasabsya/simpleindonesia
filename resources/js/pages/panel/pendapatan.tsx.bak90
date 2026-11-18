@@ -1,0 +1,253 @@
+import UserLayout from '@/components/user/user-layout';
+import { useForm } from '@inertiajs/react';
+import { FileText, Inbox, X } from 'lucide-react';
+import { useState } from 'react';
+
+type Bal = {
+    id: number; title: string; subtotal: number; share: number; entitlement: number; transferred: number;
+    processing: number; available: number; has_pending: boolean;
+};
+type H = {
+    id: number; event: string; amount: number; bank_name: string; account_number: string; account_name: string; status: string;
+    reject_reason: string | null; proof: { url: string; is_pdf: boolean } | null; requested_at: string; transferred_at: string | null;
+};
+type Acc = { bank_name: string; account_number: string; account_name: string };
+type Props = {
+    summary: { available: number; processing: number; withdrawn: number };
+    balances: Bal[]; history: H[]; last_account: Acc | null; can_withdraw: boolean; min: number;
+};
+
+const rp = (n: number) => `Rp ${new Intl.NumberFormat('id-ID').format(n)}`;
+
+const STATUS: Record<string, { label: string; style: string }> = {
+    menunggu: { label: 'Menunggu', style: 'bg-amber-100 text-amber-800' },
+    disetujui: { label: 'Disetujui', style: 'bg-sky-100 text-sky-800' },
+    ditransfer: { label: 'Ditransfer', style: 'bg-emerald-100 text-emerald-800' },
+    ditolak: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800' },
+};
+
+export default function PanelPendapatan({ summary, balances, history, last_account, can_withdraw, min }: Props) {
+    const [open, setOpen] = useState<Bal | null>(null);
+    const [zoom, setZoom] = useState<string | null>(null);
+    const form = useForm({ event_id: '', amount: '', bank_name: '', account_number: '', account_name: '' });
+
+    const start = (b: Bal) => {
+        form.clearErrors();
+        form.setData({
+            event_id: String(b.id),
+            amount: '',
+            bank_name: last_account?.bank_name ?? '',
+            account_number: last_account?.account_number ?? '',
+            account_name: last_account?.account_name ?? '',
+        });
+        setOpen(b);
+    };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.post('/panel/penarikan', {
+            preserveScroll: true,
+            onSuccess: () => { setOpen(null); form.reset(); },
+        });
+    };
+
+    const card = 'rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm dark:border-white/10 dark:bg-white/5';
+    const th = 'px-4 py-3 text-left text-xs font-semibold text-slate-500';
+    const td = 'px-4 py-3.5 align-middle';
+    const input = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+
+    return (
+        <UserLayout title="Pendapatan" hasPanel>
+            <div className="w-full space-y-5">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
+                    <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
+                    <div className="relative">
+                        <h2 className="text-2xl font-extrabold">Pendapatan &amp; Penarikan</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-white/80">
+                            Lihat saldo penjualan tiket per event dan ajukan penarikan dana. Admin akan memprosesnya, lalu bukti transfer muncul di riwayat.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <div className={card}>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Saldo tersedia</div>
+                        <div className="mt-2 text-3xl font-extrabold text-cyan-700">{rp(summary.available)}</div>
+                        <div className="mt-1 text-xs text-slate-500">Belum ditarik, sudah dikurangi permintaan</div>
+                    </div>
+                    <div className={card}>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Dalam proses</div>
+                        <div className="mt-2 text-3xl font-extrabold text-amber-700">{rp(summary.processing)}</div>
+                        <div className="mt-1 text-xs text-slate-500">Menunggu persetujuan atau transfer</div>
+                    </div>
+                    <div className={card}>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">Sudah ditarik</div>
+                        <div className="mt-2 text-3xl font-extrabold text-emerald-700">{rp(summary.withdrawn)}</div>
+                        <div className="mt-1 text-xs text-slate-500">Sudah ditransfer ke rekening Anda</div>
+                    </div>
+                </div>
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/60">
+                    <h3 className="border-b border-slate-200 px-5 py-4 font-bold dark:border-white/10">Saldo per event</h3>
+                    {balances.length === 0 ? (
+                        <Empty text="Belum ada penjualan tiket yang lunas." />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr>
+                                        <th className={th}>Event</th>
+                                        <th className={`${th} text-right`}>Penjualan tiket</th>
+                                        <th className={`${th} text-right`}>Bagi hasil paket</th>
+                                        <th className={`${th} text-right`}>Dalam proses</th>
+                                        <th className={`${th} text-right`}>Sudah ditarik</th>
+                                        <th className={`${th} text-right`}>Saldo tersedia</th>
+                                        <th className={`${th} text-right`}>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {balances.map((b) => {
+                                        const blocked = !can_withdraw || b.has_pending || b.available < min;
+                                        const hint = !can_withdraw ? 'Tidak punya izin penarikan' : b.has_pending ? 'Masih ada permintaan menunggu' : b.available < min ? `Minimal ${rp(min)}` : '';
+                                        return (
+                                            <tr key={b.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5">
+                                                <td className={`${td} font-semibold`}>{b.title}</td>
+                                                <td className={`${td} text-right`}>{rp(b.subtotal)}</td>
+                                                <td className={`${td} text-right`}>{rp(b.share)}</td>
+                                                <td className={`${td} text-right text-amber-700`}>{rp(b.processing)}</td>
+                                                <td className={`${td} text-right`}>{rp(b.transferred)}</td>
+                                                <td className={`${td} text-right font-bold text-cyan-700`}>{rp(b.available)}</td>
+                                                <td className={`${td} text-right`}>
+                                                    <button type="button" disabled={blocked} title={hint} onClick={() => start(b)}
+                                                        className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">
+                                                        Tarik dana
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/60">
+                    <h3 className="border-b border-slate-200 px-5 py-4 font-bold dark:border-white/10">Riwayat penarikan</h3>
+                    {history.length === 0 ? (
+                        <Empty text="Belum ada permintaan penarikan." />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr>
+                                        <th className={th}>Diajukan</th>
+                                        <th className={th}>Event</th>
+                                        <th className={th}>Rekening tujuan</th>
+                                        <th className={`${th} text-right`}>Nominal</th>
+                                        <th className={th}>Status</th>
+                                        <th className={`${th} text-right`}>Bukti</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {history.map((h) => {
+                                        const st = STATUS[h.status] ?? STATUS.menunggu;
+                                        return (
+                                            <tr key={h.id}>
+                                                <td className={`${td} whitespace-nowrap text-xs text-slate-500`}>{h.requested_at}</td>
+                                                <td className={`${td} font-semibold`}>{h.event}</td>
+                                                <td className={td}>
+                                                    <div className="font-semibold">{h.bank_name} · {h.account_number}</div>
+                                                    <div className="text-xs text-slate-500">a.n. {h.account_name}</div>
+                                                </td>
+                                                <td className={`${td} text-right font-bold`}>{rp(h.amount)}</td>
+                                                <td className={td}>
+                                                    <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${st.style}`}>{st.label}</span>
+                                                    {h.status === 'ditolak' && h.reject_reason && <div className="mt-1 max-w-[220px] text-xs text-rose-600">{h.reject_reason}</div>}
+                                                    {h.status === 'ditransfer' && h.transferred_at && <div className="mt-1 text-xs text-slate-500">{h.transferred_at}</div>}
+                                                </td>
+                                                <td className={`${td} text-right`}>
+                                                    {h.proof ? (
+                                                        h.proof.is_pdf ? (
+                                                            <a href={h.proof.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 underline">
+                                                                <FileText className="h-4 w-4" /> PDF
+                                                            </a>
+                                                        ) : (
+                                                            <button type="button" onClick={() => setZoom(h.proof!.url)} className="text-xs font-bold text-indigo-600 underline">Lihat bukti</button>
+                                                        )
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+            </div>
+
+            {open && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 p-4" onClick={() => setOpen(null)}>
+                    <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-extrabold">Tarik dana</h3>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                            {open.title}. Saldo tersedia <b>{rp(open.available)}</b>, minimal {rp(min)}.
+                        </p>
+
+                        <label className="mt-4 block text-sm font-semibold">Nominal (Rp)
+                            <input type="number" inputMode="numeric" min={min} max={open.available} value={form.data.amount}
+                                onChange={(e) => form.setData('amount', e.target.value)} className={input} />
+                        </label>
+                        <button type="button" onClick={() => form.setData('amount', String(open.available))} className="mt-1 text-xs font-bold text-indigo-600 underline">
+                            Tarik semua saldo
+                        </button>
+                        {form.errors.amount && <p className="mt-1 text-sm text-rose-600">{form.errors.amount}</p>}
+
+                        <label className="mt-3 block text-sm font-semibold">Nama bank
+                            <input value={form.data.bank_name} onChange={(e) => form.setData('bank_name', e.target.value)} className={input} />
+                        </label>
+                        {form.errors.bank_name && <p className="mt-1 text-sm text-rose-600">{form.errors.bank_name}</p>}
+
+                        <label className="mt-3 block text-sm font-semibold">Nomor rekening
+                            <input inputMode="numeric" value={form.data.account_number} onChange={(e) => form.setData('account_number', e.target.value)} className={input} />
+                        </label>
+                        {form.errors.account_number && <p className="mt-1 text-sm text-rose-600">{form.errors.account_number}</p>}
+
+                        <label className="mt-3 block text-sm font-semibold">Atas nama
+                            <input value={form.data.account_name} onChange={(e) => form.setData('account_name', e.target.value)} className={input} />
+                        </label>
+                        {form.errors.account_name && <p className="mt-1 text-sm text-rose-600">{form.errors.account_name}</p>}
+
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button type="button" onClick={() => setOpen(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold dark:border-white/10">Batal</button>
+                            <button type="submit" disabled={form.processing} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60">
+                                {form.processing ? 'Mengirim...' : 'Ajukan penarikan'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {zoom && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 p-4" onClick={() => setZoom(null)}>
+                    <button type="button" aria-label="Tutup" className="absolute right-5 top-5 rounded-full bg-white/90 p-2 text-slate-700"><X className="h-5 w-5" /></button>
+                    <img src={zoom} alt="Bukti transfer" className="max-h-[90vh] max-w-full rounded-2xl bg-white object-contain shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
+        </UserLayout>
+    );
+}
+
+function Empty({ text }: { text: string }) {
+    return (
+        <div className="flex flex-col items-center px-4 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-white/10">
+                <Inbox className="h-6 w-6" />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{text}</p>
+        </div>
+    );
+}

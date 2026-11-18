@@ -1,0 +1,151 @@
+import { Link, usePage } from '@inertiajs/react';
+import { ArrowRight, CalendarDays, CheckCircle2, Circle, Clock, MapPin } from 'lucide-react';
+import PanelLayout from '@/components/panel/panel-layout';
+import { eventMenuIcons } from '@/data/event-menu-icons';
+
+type Ev = {
+    id: number;
+    title: string;
+    category: string;
+    location: string;
+    starts_at: string;
+    ends_at: string;
+    status: 'pending' | 'published' | 'rejected';
+    rejection_reason: string | null;
+    poster_url: string | null;
+    package: string;
+    share_percent: number | null;
+};
+type Nav = { title: string; items: { key: string; label: string; href: string }[] };
+type Step = { label: string; done: boolean; href: string };
+type Prog = { steps: Step[]; done: number; total: number; next: { label: string; href: string } | null };
+
+const fmt = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+const pct = (done: number, total: number) => (total ? Math.round((done / total) * 100) : 0);
+const card = 'rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
+
+function Bar({ value }: { value: number }) {
+    return (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-white/10">
+            <div className={`h-full rounded-full transition-all ${value >= 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-violet-600'}`} style={{ width: `${value}%` }} />
+        </div>
+    );
+}
+
+export default function EventDashboard({ event, progress = {} }: { event: Ev; progress?: Record<string, Prog> }) {
+    const { eventNav } = usePage<{ eventNav: Nav }>().props;
+    const shortcuts = eventNav.items.filter((i) => i.key !== 'dashboard');
+    const tracked = shortcuts.filter((s) => progress[s.key]);
+    const sumDone = tracked.reduce((a, s) => a + progress[s.key].done, 0);
+    const sumTotal = tracked.reduce((a, s) => a + progress[s.key].total, 0);
+    const overall = pct(sumDone, sumTotal);
+    const firstNext = tracked.map((s) => ({ label: s.label, next: progress[s.key].next })).find((x) => x.next);
+
+    return (
+        <PanelLayout title="Dashboard Event">
+            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-900/20">
+                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
+                <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
+                <div className="relative flex flex-wrap items-center justify-between gap-6">
+                    <div>
+                        <span className="inline-flex rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
+                            {event.category} · Paket {event.package}
+                            {event.share_percent ? ` (${event.share_percent}%)` : ''}
+                        </span>
+                        <h2 className="mt-4 text-3xl font-extrabold">{event.title}</h2>
+                        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-blue-50/90">
+                            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{event.location}</span>
+                            <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{fmt(event.starts_at)} – {fmt(event.ends_at)}</span>
+                        </div>
+                    </div>
+                    {event.poster_url && (
+                        <img src={event.poster_url} alt={event.title} className="hidden h-32 w-[102px] rounded-xl object-cover shadow-lg ring-2 ring-white/30 sm:block" />
+                    )}
+                </div>
+            </section>
+
+            {event.status === 'pending' && (
+                <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 font-semibold text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+                    <Clock className="h-6 w-6 shrink-0" />
+                    Event sedang diperiksa admin. Fitur paket terbuka setelah event tayang.
+                </div>
+            )}
+            {event.status === 'rejected' && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 font-semibold text-rose-800 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
+                    Event ditolak{event.rejection_reason ? `: ${event.rejection_reason}` : '.'}
+                </div>
+            )}
+
+            {tracked.length > 0 && (
+                <section className={`${card} flex flex-wrap items-center gap-6`}>
+                    <div className="min-w-[220px] flex-1">
+                        <div className="text-[11px] font-extrabold tracking-[0.22em] text-slate-500 uppercase">Kesiapan event</div>
+                        <div className="mt-1 flex items-end gap-3">
+                            <span className="text-4xl font-extrabold">{overall}%</span>
+                            <span className="pb-1 text-sm font-semibold text-slate-500">{sumDone} dari {sumTotal} langkah selesai</span>
+                        </div>
+                        <div className="mt-3"><Bar value={overall} /></div>
+                    </div>
+                    {firstNext?.next ? (
+                        <Link href={firstNext.next.href} className="group flex items-center gap-3 rounded-2xl bg-indigo-50 px-5 py-4 transition hover:bg-indigo-100 dark:bg-white/5 dark:hover:bg-white/10">
+                            <span>
+                                <span className="block text-[11px] font-extrabold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-300">Langkah berikutnya · {firstNext.label}</span>
+                                <span className="block font-extrabold">{firstNext.next.label}</span>
+                            </span>
+                            <ArrowRight className="h-5 w-5 text-indigo-600 transition group-hover:translate-x-1 dark:text-indigo-300" />
+                        </Link>
+                    ) : (
+                        <span className="inline-flex items-center gap-2 rounded-2xl bg-emerald-50 px-5 py-4 font-extrabold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 className="h-5 w-5" /> Semua langkah selesai</span>
+                    )}
+                </section>
+            )}
+
+            {shortcuts.length > 0 && (
+                <section>
+                    <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Fitur paket Anda</h3>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {shortcuts.map((s) => {
+                            const Icon = eventMenuIcons[s.key] ?? eventMenuIcons.dashboard;
+                            const p = progress[s.key];
+                            const value = p ? pct(p.done, p.total) : 0;
+                            return (
+                                <div key={s.key} className={`${card} flex flex-col transition hover:-translate-y-0.5 hover:shadow-md`}>
+                                    <Link href={s.href} className="flex items-center gap-4">
+                                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-md">
+                                            <Icon className="h-6 w-6" />
+                                        </span>
+                                        <span className="min-w-0 flex-1 font-extrabold">{s.label}</span>
+                                        {p && <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${value >= 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200'}`}>{value}%</span>}
+                                    </Link>
+
+                                    {p && (
+                                        <>
+                                            <div className="mt-4"><Bar value={value} /></div>
+                                            <ul className="mt-3 space-y-1.5">
+                                                {p.steps.map((st) => (
+                                                    <li key={st.label} className={`flex items-center gap-2 text-sm ${st.done ? 'text-slate-500 line-through decoration-slate-300 dark:text-slate-400' : 'font-semibold text-slate-700 dark:text-slate-200'}`}>
+                                                        {st.done ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" /> : <Circle className="h-4 w-4 shrink-0 text-slate-300" />}
+                                                        {st.label}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <div className="mt-4 border-t border-slate-200/70 pt-3 dark:border-white/10">
+                                                {p.next ? (
+                                                    <Link href={p.next.href} className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-pink-500 dark:text-indigo-300">
+                                                        Lanjutkan: {p.next.label} <ArrowRight className="h-4 w-4" />
+                                                    </Link>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Lengkap</span>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+        </PanelLayout>
+    );
+}

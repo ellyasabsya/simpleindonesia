@@ -29,6 +29,38 @@ class Package extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (Package $package) {
+            if ($package->wasChanged(['features', 'modules'])) {
+                $package->syncEventSnapshots();
+            }
+        });
+    }
+
+    /** Menambah fitur dan modul baru paket ke snapshot event yang memakai paket ini. Harga, bagi hasil, dan opsi tidak disentuh; fitur tidak pernah dicabut dari event lama. */
+    public function syncEventSnapshots(bool $dryRun = false): int
+    {
+        $n = 0;
+        foreach (Event::where('package_id', $this->id)->whereNotNull('package_snapshot')->get() as $event) {
+            $snap = (array) $event->package_snapshot;
+            $oldF = array_values((array) ($snap['features'] ?? []));
+            $oldM = array_values((array) ($snap['modules'] ?? []));
+            $features = array_values(array_unique(array_merge($oldF, (array) $this->features)));
+            $modules = array_values(array_unique(array_merge($oldM, (array) $this->modules)));
+            if ($features === $oldF && $modules === $oldM) {
+                continue;
+            }
+            $n++;
+            if (! $dryRun) {
+                $event->package_snapshot = array_merge($snap, ['features' => $features, 'modules' => $modules]);
+                $event->saveQuietly();
+            }
+        }
+
+        return $n;
+    }
+
     /** Menu dashboard event yang terbuka untuk paket ini. */
     public function menus(): array
     {

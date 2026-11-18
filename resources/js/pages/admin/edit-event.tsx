@@ -1,0 +1,392 @@
+import { Link, useForm } from '@inertiajs/react';
+import { ArrowLeft, Copy, Link2, Loader2, Lock, MapPin, Plus, Save, Trash2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import AdminLayout from '@/components/admin/admin-layout';
+
+type Prize = { rank: string; prize: string };
+type Cat = { id?: number; name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: Prize[]; registrants?: number };
+type Tix = { id?: number; name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string; orders?: number; sold?: number };
+export type Det = {
+    id: number; title: string; description: string; starts_at: string; ends_at: string; category: string; location: string;
+    poster_url: string | null; juknis_url: string | null; poster: File | null; juknis: File | null;
+    competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string;
+    registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string;
+    contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
+    participant_categories: Cat[]; ticket_types: Tix[]; has_registrants: boolean;
+};
+type FormShape = Det & { subs: Det[] };
+type Props = { event: Det; subs: Det[]; series: boolean; categories: Record<string, string>; institution: string | null; links?: LinkRow[] };
+
+const COMP = ['perlombaan', 'olahraga'];
+const inp = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:bg-slate-100 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5 dark:disabled:bg-white/10';
+const box = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/60';
+const h3 = 'text-base font-extrabold';
+const mini = 'rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-white/10 dark:bg-white/5';
+
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+    return (
+        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {label}
+            {children}
+            {error && <span className="mt-1 block text-xs font-normal text-rose-500">{error}</span>}
+        </label>
+    );
+}
+
+export function DetailForm({ d, set, pre, err, categories, detail }: {
+    d: Det; set: (p: Partial<Det>) => void; pre: string; err: (k: string) => string | undefined; categories: Record<string, string>; detail: boolean;
+}) {
+    const comp = COMP.includes(d.category);
+    const team = comp && d.competition_type === 'team';
+    const lockTeam = d.has_registrants;
+    const updCat = (i: number, p: Partial<Cat>) => set({ participant_categories: d.participant_categories.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+    const updTix = (i: number, p: Partial<Tix>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+    const text = (k: keyof Det, label: string, type = 'text') => (
+        <Field label={label} error={err(pre + k)}>
+            <input type={type} className={inp} value={String(d[k] ?? '')} onChange={(e) => set({ [k]: e.target.value } as Partial<Det>)} />
+        </Field>
+    );
+
+    return (
+        <div className="mt-4 space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">{text('title', 'Judul')}</div>
+                <div className="sm:col-span-2">
+                    <Field label="Deskripsi" error={err(pre + 'description')}>
+                        <textarea rows={4} className={inp} value={d.description} onChange={(e) => set({ description: e.target.value })} />
+                    </Field>
+                </div>
+                {text('starts_at', 'Mulai', 'date')}
+                {text('ends_at', 'Selesai', 'date')}
+                {detail && (
+                    <>
+                        <Field label="Kategori" error={err(pre + 'category')}>
+                            <select className={inp} value={d.category} onChange={(e) => set({ category: e.target.value })}>
+                                <option value="">Pilih kategori</option>
+                                {Object.entries(categories).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                            </select>
+                        </Field>
+                        <div className="sm:col-span-2">
+                            <Field label="Lokasi acara" error={err(pre + 'location')}>
+                                <input className={inp} maxLength={150} value={d.location} onChange={(e) => set({ location: e.target.value })} placeholder="Contoh: Universitas Batam, Jl. Uniba No. 5, Batam" />
+                                <span className="mt-1.5 flex items-start gap-1.5 text-xs font-normal text-slate-500 dark:text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />Tulis nama tempat, alamat, dan kota agar peserta mudah menemukan lokasi lewat Google Maps.</span>
+                            </Field>
+                        </div>
+                    </>
+                )}
+                <Field label="Poster (kosongkan jika tidak diganti)" error={err(pre + 'poster')}>
+                    {d.poster_url && <img src={d.poster_url} alt="" className="mt-1 h-24 rounded-lg object-cover" />}
+                    <input type="file" accept="image/*" className="mt-1 block w-full text-sm" onChange={(e) => set({ poster: e.target.files?.[0] ?? null })} />
+                </Field>
+                <Field label="Juknis PDF (kosongkan jika tidak diganti)" error={err(pre + 'juknis')}>
+                    {d.juknis_url && <a href={d.juknis_url} target="_blank" rel="noreferrer" className="mt-1 block text-sm font-semibold text-indigo-700 hover:underline">Lihat juknis saat ini</a>}
+                    <input type="file" accept="application/pdf" className="mt-1 block w-full text-sm" onChange={(e) => set({ juknis: e.target.files?.[0] ?? null })} />
+                </Field>
+            </div>
+
+            {detail && comp && (
+                <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                    <h4 className={h3}>Jenis perlombaan</h4>
+                    {lockTeam && <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><Lock className="h-3.5 w-3.5" /> Sudah ada pendaftar. Jenis dan susunan tim dikunci.</p>}
+                    <div className="grid gap-3 sm:grid-cols-4">
+                        <Field label="Jenis" error={err(pre + 'competition_type')}>
+                            <select className={inp} disabled={lockTeam} value={d.competition_type} onChange={(e) => set({ competition_type: e.target.value })}>
+                                <option value="">Pilih</option>
+                                <option value="individual">Perorangan</option>
+                                <option value="team">Tim</option>
+                            </select>
+                        </Field>
+                        {team && (
+                            <>
+                                <Field label="Peserta per tim" error={err(pre + 'team_size')}>
+                                    <input type="number" min={2} className={inp} disabled={lockTeam} value={d.team_size} onChange={(e) => set({ team_size: e.target.value })} />
+                                </Field>
+                                <Field label="Peserta per baris" error={err(pre + 'team_per_row')}>
+                                    <input type="number" min={1} className={inp} disabled={lockTeam} value={d.team_per_row} onChange={(e) => set({ team_per_row: e.target.value })} />
+                                </Field>
+                                <Field label="Kotak ketua" error={err(pre + 'team_leaders')}>
+                                    <input type="number" min={0} className={inp} disabled={lockTeam} value={d.team_leaders} onChange={(e) => set({ team_leaders: e.target.value })} />
+                                </Field>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {detail && (
+                <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                    <h4 className={h3}>Kategori peserta</h4>
+                    {d.participant_categories.map((c, i) => {
+                        const k = `${pre}participant_categories.${i}.`;
+                        return (
+                            <div key={c.id ?? `n${i}`} className={mini}>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <span className="text-xs font-bold">Kategori {i + 1}{c.registrants ? ` · ${c.registrants} pendaftar` : ''}</span>
+                                    <button type="button" disabled={!!c.registrants || d.participant_categories.length <= 1}
+                                        onClick={() => set({ participant_categories: d.participant_categories.filter((_, j) => j !== i) })}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Hapus</button>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <Field label="Nama kategori" error={err(k + 'name')}><input className={inp} value={c.name} onChange={(e) => updCat(i, { name: e.target.value })} /></Field>
+                                    <Field label={c.registrants ? `Kuota (min ${c.registrants})` : 'Kuota'} error={err(k + 'quota')}><input type="number" min={1} className={inp} value={c.quota} onChange={(e) => updCat(i, { quota: e.target.value })} /></Field>
+                                    {comp && (
+                                        <>
+                                            <div className="sm:col-span-2"><Field label="Nama perlombaan/pertandingan" error={err(k + 'competition_name')}><input className={inp} value={c.competition_name} onChange={(e) => updCat(i, { competition_name: e.target.value })} /></Field></div>
+                                            <Field label="Usia minimal" error={err(k + 'min_age')}><input type="number" min={0} className={inp} value={c.min_age} onChange={(e) => updCat(i, { min_age: e.target.value })} /></Field>
+                                            <Field label="Usia maksimal" error={err(k + 'max_age')}><input type="number" min={0} className={inp} value={c.max_age} onChange={(e) => updCat(i, { max_age: e.target.value })} /></Field>
+                                            <div className="sm:col-span-2"><Field label="Syarat tambahan" error={err(k + 'requirements')}><textarea rows={2} className={inp} value={c.requirements} onChange={(e) => updCat(i, { requirements: e.target.value })} /></Field></div>
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Hadiah</span>
+                                                {c.prizes.map((p, pi) => (
+                                                    <div key={pi} className="flex gap-2">
+                                                        <input placeholder="Juara" className={`${inp} mt-0 w-32`} value={p.rank} onChange={(e) => updCat(i, { prizes: c.prizes.map((x, j) => (j === pi ? { ...x, rank: e.target.value } : x)) })} />
+                                                        <input placeholder="Hadiah" className={`${inp} mt-0`} value={p.prize} onChange={(e) => updCat(i, { prizes: c.prizes.map((x, j) => (j === pi ? { ...x, prize: e.target.value } : x)) })} />
+                                                        <button type="button" aria-label="Hapus hadiah" onClick={() => updCat(i, { prizes: c.prizes.filter((_, j) => j !== pi) })} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
+                                                    </div>
+                                                ))}
+                                                {c.prizes.length < 10 && (
+                                                    <button type="button" onClick={() => updCat(i, { prizes: [...c.prizes, { rank: '', prize: '' }] })} className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700"><Plus className="h-3.5 w-3.5" /> Tambah hadiah</button>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {err(pre + 'participant_categories') && <p className="text-xs text-rose-500">{err(pre + 'participant_categories')}</p>}
+                    <button type="button" onClick={() => set({ participant_categories: [...d.participant_categories, { name: '', quota: '', competition_name: '', min_age: '', max_age: '', requirements: '', prizes: [] }] })}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 px-3 py-2 text-sm font-bold text-indigo-700"><Plus className="h-4 w-4" /> Tambah kategori peserta</button>
+                </div>
+            )}
+
+            {detail && (
+                <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                    <h4 className={h3}>Pendaftaran</h4>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><Lock className="h-3.5 w-3.5" /> Metode: {d.registration_method === 'ticket' ? 'Tiket' : 'Transfer manual'} (tidak bisa diubah)</p>
+                    {d.registration_method === 'transfer_manual' && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {text('registration_fee', 'Biaya pendaftaran (Rp)', 'number')}
+                            {text('bank_name', 'Nama bank')}
+                            {text('bank_account_number', 'Nomor rekening')}
+                            {text('bank_account_name', 'Nama pemilik rekening')}
+                        </div>
+                    )}
+                    {d.registration_method === 'ticket' && (
+                        <>
+                            {d.ticket_types.map((t, i) => {
+                                const k = `${pre}ticket_types.${i}.`;
+                                return (
+                                    <div key={t.id ?? `n${i}`} className={mini}>
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-xs font-bold">Tiket {i + 1}{t.orders ? ` · ${t.sold ?? 0} terpesan, harga dikunci` : ''}</span>
+                                            <button type="button" disabled={!!t.orders || d.ticket_types.length <= 1} onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })}
+                                                className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Hapus</button>
+                                        </div>
+                                        <div className="grid gap-3 sm:grid-cols-3">
+                                            <Field label="Nama tiket" error={err(k + 'name')}><input className={inp} value={t.name} onChange={(e) => updTix(i, { name: e.target.value })} /></Field>
+                                            <Field label="Harga (Rp)" error={err(k + 'price')}><input type="number" min={0} className={inp} disabled={!!t.orders} value={t.price} onChange={(e) => updTix(i, { price: e.target.value })} /></Field>
+                                            <Field label={t.sold ? `Kuota (min ${t.sold})` : 'Kuota'} error={err(k + 'quota')}><input type="number" min={1} className={inp} value={t.quota} onChange={(e) => updTix(i, { quota: e.target.value })} /></Field>
+                                            <Field label="Berlaku mulai" error={err(k + 'valid_from')}><input type="date" className={inp} value={t.valid_from} onChange={(e) => updTix(i, { valid_from: e.target.value })} /></Field>
+                                            <Field label="Berlaku sampai" error={err(k + 'valid_until')}><input type="date" className={inp} value={t.valid_until} onChange={(e) => updTix(i, { valid_until: e.target.value })} /></Field>
+                                            <Field label="Maks. per pesanan" error={err(k + 'max_per_order')}><input type="number" min={1} max={10} className={inp} value={t.max_per_order} onChange={(e) => updTix(i, { max_per_order: e.target.value })} /></Field>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {err(pre + 'ticket_types') && <p className="text-xs text-rose-500">{err(pre + 'ticket_types')}</p>}
+                            {d.ticket_types.length < 10 && (
+                                <button type="button" onClick={() => set({ ticket_types: [...d.ticket_types, { name: '', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '10' }] })}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 px-3 py-2 text-sm font-bold text-indigo-700"><Plus className="h-4 w-4" /> Tambah jenis tiket</button>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
+            {detail && (
+                <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-white/10">
+                    <h4 className={h3}>Penanggung jawab</h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {text('contact_name', 'Nama')}
+                        {text('contact_phone', 'Nomor kontak')}
+                        {text('contact_email', 'Email', 'email')}
+                        {text('contact_position', 'Jabatan')}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+type LinkRow = { id: number; status: string; expires_at: string; created_at: string; last_opened_at: string | null; edited_at: string | null };
+
+const LINK_LABEL: Record<string, string> = { aktif: 'Aktif', dipakai: 'Sudah dipakai', kedaluwarsa: 'Kedaluwarsa', dicabut: 'Dicabut' };
+
+function xsrf(): string {
+    const m = document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='));
+    return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : '';
+}
+
+function EditLinkPanel({ eventId, initial }: { eventId: number; initial: LinkRow[] }) {
+    const [rows, setRows] = useState<LinkRow[]>(initial);
+    const [days, setDays] = useState('7');
+    const [url, setUrl] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState('');
+
+    const call = async (path: string, method: string, body?: object) => {
+        const res = await fetch(path, {
+            method,
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf() },
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json();
+    };
+
+    const create = async () => {
+        setBusy(true);
+        setMsg('');
+        try {
+            const r = await call(`/admin/events/${eventId}/edit-links`, 'POST', { days: Number(days) });
+            setUrl(r.url);
+            setRows(r.links);
+        } catch {
+            setMsg('Gagal membuat link. Muat ulang halaman lalu coba lagi.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const revoke = async (id: number) => {
+        if (!window.confirm('Cabut link ini? Panitia tidak bisa lagi membukanya.')) return;
+        try {
+            const r = await call(`/admin/events/${eventId}/edit-links/${id}/revoke`, 'PATCH');
+            setRows(r.links);
+        } catch {
+            setMsg('Gagal mencabut link.');
+        }
+    };
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(url);
+            setMsg('Link disalin.');
+        } catch {
+            setMsg('Gagal menyalin otomatis. Salin manual dari kotak di atas.');
+        }
+    };
+
+    return (
+        <section className={box}>
+            <h3 className={h3}>Link edit untuk panitia</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Panitia mengedit sendiri lewat link ini, tanpa login. Satu link hanya bisa dipakai untuk sekali simpan. Membuat link baru mencabut link aktif sebelumnya.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Masa berlaku
+                    <select className={inp} value={days} onChange={(e) => setDays(e.target.value)}>
+                        {['1', '3', '7', '14', '30'].map((d) => <option key={d} value={d}>{d} hari</option>)}
+                    </select>
+                </label>
+                <button type="button" onClick={create} disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />} Buat link baru
+                </button>
+            </div>
+
+            {url && (
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-200">Salin sekarang. Link ini tidak akan ditampilkan lagi.</p>
+                    <div className="mt-2 flex gap-2">
+                        <input readOnly className={`${inp} mt-0`} value={url} onFocus={(e) => e.currentTarget.select()} />
+                        <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 px-3 py-2 text-sm font-bold text-emerald-700"><Copy className="h-4 w-4" /> Salin</button>
+                    </div>
+                </div>
+            )}
+            {msg && <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{msg}</p>}
+
+            {rows.length > 0 && (
+                <div className="mt-4 space-y-2">
+                    {rows.map((r) => (
+                        <div key={r.id} className={`${mini} flex flex-wrap items-center justify-between gap-2`}>
+                            <div className="text-xs">
+                                <span className="font-bold">{LINK_LABEL[r.status] ?? r.status}</span>
+                                <span className="text-slate-500"> · dibuat {r.created_at} · berlaku sampai {r.expires_at}</span>
+                                {r.last_opened_at && <span className="text-slate-500"> · dibuka {r.last_opened_at}</span>}
+                                {r.edited_at && <span className="text-slate-500"> · disimpan {r.edited_at}</span>}
+                            </div>
+                            {r.status === 'aktif' && (
+                                <button type="button" onClick={() => revoke(r.id)} className="text-xs font-bold text-rose-600 hover:underline">Cabut</button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+}
+
+export default function EditEvent({ event, subs, series, categories, institution, links = [] }: Props) {
+    const form = useForm<FormShape>({
+        ...event, poster: null, juknis: null,
+        subs: subs.map((s) => ({ ...s, poster: null, juknis: null })),
+    });
+    const err = (k: string) => (form.errors as Record<string, string>)[k];
+    const nErr = Object.keys(form.errors).length;
+    const setMain = (p: Partial<Det>) => form.setData((d) => ({ ...d, ...p }));
+    const setSub = (i: number, p: Partial<Det>) => form.setData((d) => ({ ...d, subs: d.subs.map((s, j) => (j === i ? { ...s, ...p } : s)) }));
+    const save = () => form.post(`/admin/events/${event.id}/detail`, { forceFormData: true, preserveScroll: true, preserveState: true });
+
+    return (
+        <AdminLayout title="Edit Event">
+            <div className="w-full space-y-5">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
+                    <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
+                    <div className="relative">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Event Management
+                        </span>
+                        <h2 className="mt-3 text-2xl font-extrabold">Edit Event</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-white/80">
+                            {institution ? `${institution} · ` : ''}Paket, metode pendaftaran, dan jumlah kegiatan tidak bisa diubah dari sini.
+                        </p>
+                    </div>
+                </div>
+
+                <Link href="/admin/events" className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:underline dark:text-indigo-300">
+                    <ArrowLeft className="h-4 w-4" /> Kembali ke Manajemen Event
+                </Link>
+
+                <EditLinkPanel eventId={event.id} initial={links} />
+
+                {nErr > 0 && (
+                    <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
+                        Ada {nErr} kolom yang perlu diperbaiki. Periksa pesan merah di bawah.
+                    </div>
+                )}
+
+                <section className={box}>
+                    <h3 className={h3}>{series ? 'Event utama (rangkaian)' : 'Informasi event'}</h3>
+                    <DetailForm d={form.data} set={setMain} pre="" err={err} categories={categories} detail={!series} />
+                </section>
+
+                {form.data.subs.map((s, i) => (
+                    <section key={s.id} className={box}>
+                        <h3 className={h3}>Kegiatan {i + 1}: {subs[i]?.title}</h3>
+                        <DetailForm d={s} set={(p) => setSub(i, p)} pre={`subs.${i}.`} err={err} categories={categories} detail />
+                    </section>
+                ))}
+
+                <div className="sticky bottom-4 z-10 flex justify-end gap-2 rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/90">
+                    <Link href="/admin/events" className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10">Batal</Link>
+                    <button type="button" onClick={save} disabled={form.processing} className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
+                        {form.processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Simpan perubahan
+                    </button>
+                </div>
+            </div>
+        </AdminLayout>
+    );
+}

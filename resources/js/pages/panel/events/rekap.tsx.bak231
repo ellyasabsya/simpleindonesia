@@ -1,0 +1,597 @@
+import { router, usePage } from '@inertiajs/react';
+import { AlertTriangle, BarChart3, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Gavel, History, Loader2, Lock, Pencil, Plus, Unlock, ShieldCheck, X } from 'lucide-react';
+import { Fragment, useState } from 'react';
+
+type Cmp = { code: string; value: number };
+type Trail = { label: string; value: number; result: 'sama' | 'unggul' | 'kalah'; cmp: Cmp[] };
+type Decision = 'bersama' | 'ulang' | 'urut';
+type Tie = { with: string[]; trail: Trail[]; by: string | null; council: boolean; decision: Decision | null; key: string | null };
+type Row = {
+    rank: number | null; rank_shared: boolean; id: number; code: string; order?: number | null; judges_done: number;
+    base: number | null; deduction: number; penalty: number; score: number | null; provisional: boolean; final: number | null;
+    status: 'belum' | 'sebagian' | 'selesai'; tie: Tie | null; tie_text: string;
+};
+type Penalty = { id: number; team: string; type: string; points: number; reason: string; status: string; created_at: string };
+type Check = { key: string; ok: boolean; manual?: boolean; title: string; detail: string };
+type Council = { key: string; ids: number[]; codes: string[]; decision: Decision | null; order: string[] | null; note: string | null; decided_by: string | null; decided_at: string | null; resolved: boolean };
+type LogItem = { id: number; codes: string[]; decision: Decision; order: string[]; note: string; by: string | null; at: string };
+type HistItem = { id: number; version: number; action: 'simpan' | 'buka_kembali'; reason: string | null; actor: string | null; at: string };
+type Recap = {
+    category: { id: number; name: string }; enabled: boolean; judge_need: number; scale: number; info: string;
+    rows: Row[]; penalties: Penalty[]; checks: Check[]; locked: boolean; finalized_at: string | null; finalized_by: string | null;
+    councils: Council[]; tie_log: LogItem[];
+    saved: boolean; saved_at: string | null; saved_by: string | null; saved_version: number; history: HistItem[];
+};
+
+const solid = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
+const h = 'text-lg font-black text-slate-900 dark:text-white';
+const field = 'h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+const area = 'w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+const num = (v: number | null) => (v === null || v === undefined ? '-' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(v));
+const TYPES = ['Teguran', 'Peringatan resmi', 'Pengurangan nilai', 'Konsekuensi khusus', 'Pembatalan hasil', 'Diskualifikasi'];
+const DEC_TEXT: Record<Decision, string> = { bersama: 'Juara bersama', ulang: 'Tanding ulang', urut: 'Hasil tanding ulang' };
+
+const statusStyle: Record<Row['status'], string> = {
+    belum: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200',
+    sebagian: 'bg-amber-100 text-amber-900',
+    selesai: 'bg-emerald-100 text-emerald-900',
+};
+const statusText: Record<Row['status'], string> = { belum: 'Belum dinilai', sebagian: 'Sedang dinilai', selesai: 'Selesai' };
+const resStyle = { sama: 'bg-slate-100 text-slate-700', unggul: 'bg-emerald-100 text-emerald-900', kalah: 'bg-rose-100 text-rose-800' };
+const resText = { sama: 'Masih sama', unggul: 'Unggul', kalah: 'Kalah' };
+
+function RankBadge({ rank, shared }: { rank: number | null; shared?: boolean }) {
+    const tone = rank === 1 ? 'bg-amber-400 text-white' : rank === 2 ? 'bg-slate-400 text-white' : rank === 3 ? 'bg-orange-400 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300';
+    return (
+        <span className="inline-flex items-center gap-1">
+            <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-black ${tone}`}>{rank ?? '-'}</span>
+            {shared && <span className="text-xs font-black text-amber-700" title="Peringkat sama">=</span>}
+        </span>
+    );
+}
+
+function FinalizeDialog({ rec, base, onClose }: { rec: Recap; base: string; onClose: () => void }) {
+    const [confirmDed, setConfirmDed] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const manual = rec.checks.find((c) => c.key === 'deduction' && c.manual);
+    const allOk = rec.checks.every((c) => c.ok) && (!manual || confirmDed);
+
+    const submit = () => {
+        setBusy(true);
+        router.post(`${base}/simpan`, { category_id: rec.category.id, confirm_deduction: confirmDed }, {
+            preserveScroll: true,
+            onSuccess: () => onClose(),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+                <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><AlertTriangle className="h-6 w-6" /></span>
+                    <div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white">Simpan hasil kategori {rec.category.name}?</h3>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil disimpan sebagai <b>versi baru di riwayat</b>. Setelah disimpan, penalti, nilai juri, dan keputusan dewan juri terkunci sampai Anda menekan <b>Edit</b>. Penetapan akhir dilakukan di tab Penetapan & SK. Periksa dulu 4 hal ini.</p>
+                    </div>
+                </div>
+
+                <ol className="mt-5 space-y-3">
+                    {rec.checks.map((c, i) => {
+                        const ok = c.ok && (c.key !== 'deduction' || !c.manual || confirmDed);
+                        return (
+                            <li key={c.key} className={`rounded-2xl border px-4 py-3 ${ok ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-500/10' : 'border-rose-300 bg-rose-50 dark:bg-rose-500/10'}`}>
+                                <div className="flex items-start gap-3">
+                                    <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white ${ok ? 'bg-emerald-600' : 'bg-rose-600'}`}>{ok ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}</span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">{i + 1}. {c.title}</p>
+                                        <p className="mt-0.5 text-xs text-slate-700 dark:text-slate-300">{c.detail}</p>
+                                        {c.key === 'deduction' && c.manual && c.ok && (
+                                            <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs font-bold text-slate-900 dark:text-white">
+                                                <input type="checkbox" checked={confirmDed} onChange={(e) => setConfirmDed(e.target.checked)} className="mt-0.5 h-4 w-4" />
+                                                Saya sudah memastikan pengurangan nilai telah dilaksanakan.
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ol>
+
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
+                    <button type="button" onClick={onClose} className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
+                    <button type="button" disabled={!allOk || busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Simpan hasil
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function CouncilCard({ c, rec, base }: { c: Council; rec: Recap; base: string }) {
+    const [decision, setDecision] = useState<Decision | ''>(c.decision ?? '');
+    const [note, setNote] = useState('');
+    const [ranks, setRanks] = useState<Record<number, string>>({});
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+    const [edit, setEdit] = useState(!c.resolved && c.decision !== 'ulang' ? true : false);
+
+    const submit = () => {
+        if (!decision) return setErr('Pilih keputusan dewan juri.');
+        if (note.trim().length < 5) return setErr('Catatan keputusan wajib diisi.');
+        let order: number[] = [];
+        if (decision === 'urut') {
+            const nums = c.ids.map((id) => Number(ranks[id] || 0));
+            if (new Set(nums).size !== c.ids.length || nums.some((n) => n < 1 || n > c.ids.length)) return setErr(`Isi urutan 1 sampai ${c.ids.length} untuk tiap tim, tanpa angka kembar.`);
+            order = [...c.ids].sort((a, b) => Number(ranks[a]) - Number(ranks[b]));
+        }
+        setErr(null);
+        setBusy(true);
+        router.post(`${base}/seri`, { category_id: rec.category.id, key: c.key, decision, note, order }, {
+            preserveScroll: true,
+            onSuccess: () => { setNote(''); setEdit(false); },
+            onError: (e) => setErr((Object.values(e)[0] as string) || 'Gagal menyimpan keputusan.'),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    const opts: { k: Decision; t: string; d: string }[] = [
+        { k: 'bersama', t: 'Juara bersama', d: 'Semua tim ini berbagi peringkat yang sama.' },
+        { k: 'ulang', t: 'Tanding ulang', d: 'Menahan penetapan hasil sampai ada hasil akhir.' },
+        { k: 'urut', t: 'Hasil tanding ulang', d: 'Isi urutan akhir setelah tanding ulang.' },
+    ];
+
+    return (
+        <div className={`rounded-2xl border px-4 py-4 ${c.resolved ? 'border-emerald-300 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-amber-300 bg-amber-50 dark:bg-amber-400/10'}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                    {c.codes.map((code) => <span key={code} className="rounded-lg bg-white px-2 py-1 font-mono text-xs font-bold text-indigo-800 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-200 dark:ring-white/10">{code}</span>)}
+                    <span className="text-sm font-extrabold text-slate-900 dark:text-white">seri sampai tahap terakhir</span>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${c.resolved ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-200 text-amber-900'}`}>{c.decision ? DEC_TEXT[c.decision] : 'Menunggu keputusan'}</span>
+            </div>
+
+            {c.decision && !edit && (
+                <div className="mt-2 text-sm text-slate-800 dark:text-slate-100">
+                    {c.order && <p className="font-bold">Urutan: {c.order.map((x, i) => `${i + 1}. ${x}`).join('  ·  ')}</p>}
+                    <p>{c.note}</p>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{c.decided_at}{c.decided_by ? ` · ${c.decided_by}` : ''}</p>
+                    {!(rec.locked || rec.saved) && <button type="button" onClick={() => setEdit(true)} className="mt-2 rounded-lg bg-white px-3 py-1.5 text-xs font-extrabold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Ubah keputusan</button>}
+                </div>
+            )}
+
+            {edit && !(rec.locked || rec.saved) && (
+                <div className="mt-3 space-y-3">
+                    <div className="grid gap-2 md:grid-cols-3">
+                        {opts.map((o) => (
+                            <button key={o.k} type="button" onClick={() => setDecision(o.k)} className={`rounded-xl border-2 p-3 text-left ${decision === o.k ? 'border-indigo-600 bg-white dark:bg-slate-900' : 'border-transparent bg-white/70 hover:bg-white dark:bg-white/5'}`}>
+                                <div className="text-sm font-extrabold text-slate-900 dark:text-white">{o.t}</div>
+                                <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{o.d}</div>
+                            </button>
+                        ))}
+                    </div>
+                    {decision === 'urut' && (
+                        <div className="flex flex-wrap gap-3">
+                            {c.ids.map((id, i) => (
+                                <label key={id} className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                                    <span className="font-mono text-xs">{c.codes[i]}</span>
+                                    <input type="number" min={1} max={c.ids.length} value={ranks[id] ?? ''} onChange={(e) => setRanks({ ...ranks, [id]: e.target.value })} placeholder="urutan" className="h-10 w-24 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900" />
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                    <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Catatan keputusan dewan juri (wajib)" className={area} />
+                    {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gavel className="h-4 w-4" />} Simpan keputusan
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function TieSection({ rec, base }: { rec: Recap; base: string }) {
+    const hasTie = rec.rows.some((r) => r.tie);
+    if (!hasTie && rec.tie_log.length === 0) return null;
+    return (
+        <div className="mt-6 border-t border-slate-200 pt-6 dark:border-white/10">
+            <h3 className={h}>Seri dan keputusan dewan juri</h3>
+            <details className="group mt-2 text-sm">
+                <summary className="cursor-pointer list-none text-xs font-extrabold text-indigo-700">Lihat aturan penentu seri</summary>
+            <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-sm text-slate-700 dark:text-slate-200">
+                <li>Nilai akhir sama, lihat Kriteria 1. Kalau masih sama, Kriteria 2, dan seterusnya.</li>
+                <li>Kalau semua kriteria sama, siapa yang paling banyak mendapat nilai 5 dari tiap juri. Masih sama, nilai 4, lalu 3, 2, 1.</li>
+                <li>Kalau masih sama, masuk keputusan dewan juri: juara bersama atau tanding ulang.</li>
+            </ol>
+            </details>
+
+            {rec.councils.length > 0 && <div className="mt-4 space-y-3">{rec.councils.map((c) => <CouncilCard key={c.key + (c.decision ?? '')} c={c} rec={rec} base={base} />)}</div>}
+            {rec.councils.length === 0 && hasTie && <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200">Semua seri sudah terpecahkan oleh aturan. Rincian ada di kolom Seri & penentu pada tabel.</p>}
+
+            {rec.tie_log.length > 0 && (
+                <details className="group mt-4 rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm">
+                        <span className="font-extrabold text-slate-900 dark:text-white">Riwayat keputusan <span className="font-semibold text-slate-500">({rec.tie_log.length})</span></span>
+                        <span className="text-xs font-semibold text-indigo-700"><span className="group-open:hidden">Lihat</span><span className="hidden group-open:inline">Tutup</span></span>
+                    </summary>
+                    <ul className="mt-3 divide-y divide-slate-100 dark:divide-white/10">
+                        {rec.tie_log.map((l) => (
+                            <li key={l.id} className="py-2 text-sm">
+                                <span className="font-bold text-slate-900 dark:text-white">{l.codes.join(' = ')} · {DEC_TEXT[l.decision]}{l.order.length > 0 ? ` (${l.order.map((x, i) => `${i + 1}. ${x}`).join(', ')})` : ''}</span>
+                                <span className="text-xs text-slate-500"> · {l.at}{l.by ? ` · ${l.by}` : ''}</span>
+                                {l.note && <p className="mt-0.5 text-slate-600 dark:text-slate-300">{l.note}</p>}
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+        </div>
+    );
+}
+
+function TieDetail({ r }: { r: Row }) {
+    const t = r.tie!;
+    return (
+        <div className="space-y-3 text-sm">
+            <p className="font-extrabold text-slate-900 dark:text-white">Nilai akhir {num(r.score)} sama dengan {t.with.join(', ')}. Diperiksa berurutan:</p>
+            <ol className="space-y-2">
+                {t.trail.map((s, i) => (
+                    <li key={i} className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-bold text-slate-900 dark:text-white">{i + 1}. {s.label}</span>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold ${resStyle[s.result]}`}>{resText[s.result]}</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                            {s.cmp.map((c) => (
+                                <span key={c.code} className={`rounded-lg px-2 py-1 text-xs font-bold ${c.code === r.code ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800 dark:bg-white/10 dark:text-slate-100'}`}>{c.code}: {num(c.value)}</span>
+                            ))}
+                        </div>
+                    </li>
+                ))}
+            </ol>
+            <p className="font-bold text-slate-900 dark:text-white">
+                {t.council
+                    ? (t.decision ? `Tetap seri sampai tahap akhir. Keputusan dewan juri: ${DEC_TEXT[t.decision]}.` : 'Tetap seri sampai tahap akhir. Menunggu keputusan dewan juri.')
+                    : `Seri dipecahkan di tahap: ${t.by ?? '-'}.`}
+            </p>
+        </div>
+    );
+}
+
+function RecapTable({ rec }: { rec: Recap }) {
+    const [open, setOpen] = useState<number | null>(null);
+    return (
+        <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-left text-sm">
+                <thead>
+                    <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10 dark:text-slate-400">
+                        <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Tim</th><th className="py-3 pr-3">Juri</th>
+                        <th className="py-3 pr-3 text-right">Nilai dasar</th><th className="py-3 pr-3 text-right">Pengurangan</th>
+                        <th className="py-3 pr-3 text-right">Penalti</th><th className="py-3 pr-3 text-right">Nilai akhir</th>
+                        <th className="py-3 pr-3">Seri & penentu</th><th className="py-3 pr-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rec.rows.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-slate-600 dark:text-slate-300">Belum ada peserta terdaftar.</td></tr>}
+                    {rec.rows.map((r, k) => (
+                        <Fragment key={r.id}>
+                            <tr className={k % 2 ? 'bg-slate-50/70 dark:bg-white/[0.03]' : ''}>
+                                <td className="py-3 pr-3 pl-1"><RankBadge rank={r.rank} shared={r.rank_shared} /></td>
+                                <td className="py-3 pr-3">
+                                    <span className="rounded-lg bg-indigo-50 px-2 py-1 font-mono text-xs font-bold text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200">{r.code}</span>
+                                    {r.order != null && <span className="ml-2 font-black text-slate-900 dark:text-white">#{r.order}</span>}
+                                </td>
+                                <td className="py-3 pr-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-indigo-500" style={{ width: `${rec.judge_need ? Math.min(100, (r.judges_done / rec.judge_need) * 100) : 0}%` }} /></span>
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{r.judges_done}/{rec.judge_need}</span>
+                                    </div>
+                                </td>
+                                <td className="py-3 pr-3 text-right font-semibold text-slate-800 dark:text-slate-100">{num(r.base)}</td>
+                                <td className="py-3 pr-3 text-right font-semibold text-slate-800 dark:text-slate-100">{num(r.deduction)}</td>
+                                <td className="py-3 pr-3 text-right font-semibold text-slate-800 dark:text-slate-100">{num(r.penalty)}</td>
+                                <td className="py-3 pr-3 text-right text-base font-black text-slate-900 dark:text-white">
+                                    {num(r.final ?? r.score)}
+                                    {r.provisional && <span className="ml-1 block text-[10px] font-bold uppercase text-amber-700">sementara</span>}
+                                </td>
+                                <td className="py-3 pr-3">
+                                    {r.tie ? (
+                                        <button type="button" title={r.tie_text} onClick={() => setOpen(open === r.id ? null : r.id)} className="tie-ringkas flex items-center gap-2 text-left">
+                                            <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${r.tie.council && r.tie.decision !== 'bersama' && r.tie.decision !== 'urut' ? 'bg-amber-200 text-amber-900' : 'bg-indigo-100 text-indigo-900'}`}>SERI</span>
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{r.tie.council ? (r.tie.decision ? 'diputuskan' : 'menunggu keputusan') : 'terpecahkan'}</span>
+                                            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open === r.id ? 'rotate-180' : ''}`} />
+                                        </button>
+                                    ) : <span className="text-xs text-slate-400">-</span>}
+                                </td>
+                                <td className="py-3 pr-3"><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${statusStyle[r.status]}`}>{statusText[r.status]}</span></td>
+                            </tr>
+                            {open === r.id && r.tie && (
+                                <tr><td colSpan={9} className="bg-indigo-50/60 px-4 py-4 dark:bg-indigo-500/10"><TieDetail r={r} /></td></tr>
+                            )}
+                        </Fragment>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function PenaltySection({ rec, base }: { rec: Recap; base: string }) {
+    const [open, setOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [team, setTeam] = useState('');
+    const [type, setType] = useState(TYPES[0]);
+    const [points, setPoints] = useState('');
+    const [reason, setReason] = useState('');
+    const [err, setErr] = useState<string | null>(null);
+    const frozen = rec.locked || rec.saved;
+
+    const decide = (id: number, status: string) => router.put(`${base}/penalti/${id}`, { status }, { preserveScroll: true });
+
+    const submit = () => {
+        if (!team) return setErr('Pilih tim terlebih dulu.');
+        if (reason.trim().length < 5) return setErr('Alasan wajib diisi dengan jelas.');
+        setErr(null);
+        setBusy(true);
+        router.post(`${base}/penalti`, { category_id: rec.category.id, team, type, points: type === 'Pengurangan nilai' ? Number(points || 0) : 0, reason }, {
+            preserveScroll: true,
+            onSuccess: () => { setOpen(false); setTeam(''); setPoints(''); setReason(''); },
+            onError: (e) => setErr((Object.values(e)[0] as string) || 'Gagal menyimpan penalti.'),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    return (
+        <div className="mt-6 border-t border-slate-200 pt-6 dark:border-white/10">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 max-w-2xl">
+                    <h3 className={h}>Penalti</h3>
+                    <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">Dicatat panitia, diperiksa, lalu diputuskan lewat musyawarah panitia sebelum hasil ditetapkan. Setiap catatan wajib disertai alasan yang jelas.</p>
+                </div>
+                <button type="button" disabled={frozen} onClick={() => setOpen(!open)} title={frozen ? (rec.locked ? 'Hasil sudah ditetapkan' : 'Hasil sudah disimpan. Klik Edit untuk membukanya kembali.') : undefined} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                    {frozen ? <Lock className="h-4 w-4" /> : open ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {frozen ? (rec.locked ? 'Terkunci' : 'Hasil disimpan') : open ? 'Batal' : 'Catat penalti'}
+                </button>
+            </div>
+
+            {open && !frozen && (
+                <div className="mt-4 space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-white/5">
+                    <div className="grid gap-3 md:grid-cols-3">
+                        <select value={team} onChange={(e) => setTeam(e.target.value)} className={field}>
+                            <option value="">Pilih tim</option>
+                            {rec.rows.map((r) => <option key={r.code} value={r.code}>{r.code}</option>)}
+                        </select>
+                        <select value={type} onChange={(e) => setType(e.target.value)} className={field}>
+                            {TYPES.map((t) => <option key={t}>{t}</option>)}
+                        </select>
+                        {type === 'Pengurangan nilai' && <input type="number" min={0} value={points} onChange={(e) => setPoints(e.target.value)} placeholder="Poin pengurangan" className={field} />}
+                    </div>
+                    <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Alasan (wajib)" className={area} />
+                    {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                        {busy && <Loader2 className="h-4 w-4 animate-spin" />} Simpan penalti
+                    </button>
+                </div>
+            )}
+
+            {rec.penalties.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">Belum ada penalti pada lomba ini.</p>
+            ) : (
+                <ul className="mt-4 space-y-2">
+                    {rec.penalties.map((p) => (
+                        <li key={p.id} className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-extrabold text-slate-900 dark:text-white"><span className="font-mono text-sm text-indigo-700 dark:text-indigo-300">{p.team}</span> · {p.type}{p.points > 0 ? ` (−${num(p.points)})` : ''}</span>
+                                <span className="flex items-center gap-2">
+                                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${p.status === 'disetujui' ? 'bg-emerald-100 text-emerald-900' : p.status === 'ditolak' ? 'bg-slate-200 text-slate-700' : 'bg-amber-100 text-amber-900'}`}>{p.status}</span>
+                                    {p.status === 'diajukan' && !frozen && <>
+                                        <button type="button" onClick={() => decide(p.id, 'disetujui')} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-emerald-700">Setujui</button>
+                                        <button type="button" onClick={() => decide(p.id, 'ditolak')} className="rounded-lg bg-slate-500 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-slate-600">Tolak</button>
+                                    </>}
+                                </span>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{p.reason}</p>
+                            <p className="mt-1 text-xs text-slate-500">{p.created_at}</p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function ReopenDialog({ rec, base, onClose }: { rec: Recap; base: string; onClose: () => void }) {
+    const [reason, setReason] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+
+    const submit = () => {
+        if (reason.trim().length < 5) return setErr('Alasan wajib diisi dengan jelas.');
+        setErr(null);
+        setBusy(true);
+        router.post(`${base}/buka-kembali`, { category_id: rec.category.id, reason }, {
+            preserveScroll: true,
+            onSuccess: () => onClose(),
+            onError: (e) => setErr((Object.values(e)[0] as string) || 'Gagal membuka hasil.'),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+                <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700"><Pencil className="h-6 w-6" /></span>
+                    <div>
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white">Buka kunci hasil kategori {rec.category.name}?</h3>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil versi {rec.saved_version} dibuka kembali: penalti, keputusan seri, dan nilai juri bisa diubah lagi. Pembukaan ini <b>tercatat di riwayat</b> beserta alasannya. Setelah selesai, simpan hasil lagi untuk membuat versi baru.</p>
+                    </div>
+                </div>
+                <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Alasan membuka kembali (wajib)" className={`${area} mt-4`} />
+                {err && <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                    <button type="button" onClick={onClose} className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Buka kunci
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function HistorySection({ rec, open }: { rec: Recap; open?: boolean }) {
+    const list = rec.history ?? [];
+    if (list.length === 0) return null;
+    const last = list[0];
+    const label = (x: HistItem) => (x.action === 'simpan' ? `Disimpan (versi ${x.version})` : `Dibuka kembali (dari versi ${x.version})`);
+    return (
+        <details open={open} className="group mt-6 rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="inline-flex items-center gap-2 font-extrabold text-slate-900 dark:text-white"><History className="h-4 w-4 text-indigo-600" /> Riwayat perubahan <span className="font-semibold text-slate-500">({list.length})</span></span>
+                <span className="text-xs font-semibold text-slate-500">Terakhir: {label(last)} · {last.at} <span className="ml-1 text-indigo-700 group-open:hidden">Lihat</span><span className="ml-1 hidden text-indigo-700 group-open:inline">Tutup</span></span>
+            </summary>
+            <ul className="mt-3 divide-y divide-slate-100 dark:divide-white/10">
+                {list.map((x) => (
+                    <li key={x.id} className="py-2 text-sm">
+                        <span className={`font-bold ${x.action === 'simpan' ? 'text-emerald-800' : 'text-amber-800'}`}>{label(x)}</span>
+                        <span className="text-xs text-slate-500"> · {x.at}{x.actor ? ` · ${x.actor}` : ''}</span>
+                        {x.reason && <p className="mt-0.5 text-slate-600 dark:text-slate-300">Alasan: {x.reason}</p>}
+                    </li>
+                ))}
+            </ul>
+        </details>
+    );
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: any }) {
+    return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+                    <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+                </div>
+                <div className="[&>div]:!mt-2 [&>div]:!border-t-0 [&>div]:!pt-0 [&>details]:!mt-2">{children}</div>
+            </div>
+        </div>
+    );
+}
+
+function FollowUp({ rec, base }: { rec: Recap; base: string }) {
+    const [m, setM] = useState<'seri' | 'penalti' | 'riwayat' | null>(null);
+    const frozen = rec.locked || rec.saved;
+    const hasTie = rec.rows.some((r) => r.tie) || rec.tie_log.length > 0;
+    const waitTie = (rec.councils ?? []).filter((c) => !c.decision).length;
+    const pens: { status?: string }[] = (rec as any).penalties ?? [];
+    const waitPen = pens.filter((p) => p.status === 'diajukan').length;
+    const hist = rec.history?.length ?? 0;
+
+    const items: { k: 'seri' | 'penalti' | 'riwayat'; t: string; d: string; wait: number }[] = [];
+    if (hasTie) items.push({ k: 'seri', t: 'Seri', d: waitTie > 0 ? `${waitTie} seri menunggu keputusan dewan juri` : 'Semua seri sudah beres', wait: waitTie });
+    items.push({ k: 'penalti', t: 'Penalti', d: pens.length === 0 ? 'Belum ada penalti' : `${pens.length} penalti${waitPen > 0 ? `, ${waitPen} menunggu keputusan` : ''}`, wait: waitPen });
+    if (hist > 0) items.push({ k: 'riwayat', t: 'Riwayat perubahan', d: `${hist} catatan simpan dan buka kembali`, wait: 0 });
+
+    return (
+        <div className="mt-6 rounded-2xl border border-slate-200 dark:border-white/10">
+            <p className="px-4 pt-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tindak lanjut panitia</p>
+            <ul className="divide-y divide-slate-100 dark:divide-white/10">
+                {items.map((x) => (
+                    <li key={x.k} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0">
+                            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{x.t}</p>
+                            <p className={`text-xs font-semibold ${x.wait > 0 ? 'text-amber-700' : 'text-slate-500'}`}>{x.d}</p>
+                        </div>
+                        <button type="button" onClick={() => setM(x.k)} className={`h-9 shrink-0 rounded-xl px-4 text-xs font-extrabold ${x.wait > 0 && !frozen ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200'}`}>
+                            {x.wait > 0 && !frozen ? 'Putuskan' : x.k === 'penalti' && !frozen ? 'Kelola' : 'Lihat'}
+                        </button>
+                    </li>
+                ))}
+            </ul>
+            {m === 'seri' && <Modal title="Seri dan keputusan dewan juri" onClose={() => setM(null)}><TieSection rec={rec} base={base} /></Modal>}
+            {m === 'penalti' && <Modal title="Penalti" onClose={() => setM(null)}><PenaltySection rec={rec} base={base} /></Modal>}
+            {m === 'riwayat' && <Modal title="Riwayat perubahan" onClose={() => setM(null)}><HistorySection rec={rec} open /></Modal>}
+        </div>
+    );
+}
+
+export default function Rekap() {
+    const page = usePage().props as any;
+    const base: string = page.inviteBase;
+    const recaps: Recap[] = page.recap ?? [];
+    const [idx, setIdx] = useState(Math.max(0, recaps.findIndex((r) => r.category.id === page.category?.id)));
+    const [dialog, setDialog] = useState(false);
+    const [reopen, setReopen] = useState(false);
+
+    if (recaps.length === 0) {
+        return (
+            <div className={`${solid} p-8 text-center`}>
+                <BarChart3 className="mx-auto h-8 w-8 text-indigo-600" />
+                <p className="mt-3 font-extrabold text-slate-900 dark:text-white">Data rekap belum tersedia</p>
+            </div>
+        );
+    }
+
+    const i = Math.min(idx, recaps.length - 1);
+    const rec = recaps[i];
+    const done = recaps.filter((r) => r.locked).length;
+    const pct = Math.round((done / recaps.length) * 100);
+    const q = `?kategori=${rec.category.id}`;
+    const go = (n: number) => setIdx((n + recaps.length) % recaps.length);
+
+    return (
+        <div className="space-y-5">
+            <div className={`${solid} p-5 sm:p-6`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-[14rem]">
+                        <h3 className={h}>Rekap nilai per lomba</h3>
+                        <div className="mt-2 flex items-center gap-3">
+                            <span className="h-2.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: `${pct}%` }} /></span>
+                            <span className="text-sm font-extrabold text-slate-600 dark:text-slate-300">{done}/{recaps.length} ditetapkan</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <a href={`${base}/rekap/lembar${q}`} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25"><Download className="h-4 w-4" /> Unduh lembar manual</a>
+                        <a href={`${base}/rekap/excel${q}`} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"><FileSpreadsheet className="h-4 w-4" /> Unduh Excel hitung nilai</a>
+                    </div>
+                </div>
+
+                <div className="mt-5 flex items-center gap-2 border-b border-slate-100 pb-5 dark:border-white/10">
+                    <button type="button" onClick={() => go(i - 1)} disabled={recaps.length < 2} aria-label="Sebelumnya" className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronLeft className="h-4 w-4" /></button>
+                    <select value={i} onChange={(e) => setIdx(Number(e.target.value))} className={`${field} flex-1 !h-11 font-extrabold`}>
+                        {recaps.map((r, k) => <option key={r.category.id} value={k}>{r.locked ? '🔒 ' : r.saved ? '✔ ' : r.enabled ? '● ' : '○ '}{r.category.name} ({r.locked ? 'ditetapkan' : r.saved ? 'tersimpan' : r.enabled ? 'disahkan' : 'belum disahkan'})</option>)}
+                    </select>
+                    <button type="button" onClick={() => go(i + 1)} disabled={recaps.length < 2} aria-label="Berikutnya" className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronRight className="h-4 w-4" /></button>
+                    <span className="w-12 text-right text-sm font-extrabold text-slate-500">{i + 1}/{recaps.length}</span>
+                </div>
+
+                {rec.locked ? (
+                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
+                        <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-700" />
+                        <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Hasil kategori {rec.category.name} sudah ditetapkan{rec.finalized_at ? ` pada ${rec.finalized_at}` : ''}{rec.finalized_by ? ` oleh ${rec.finalized_by}` : ''}. Nilai, penalti, dan keputusan sudah tertutup untuk diubah.</p>
+                    </div>
+                ) : rec.saved ? (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-white/5">
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Hasil terkunci (versi {rec.saved_version}). Buka kunci dulu kalau ada yang perlu diubah.</p>
+                        <button type="button" onClick={() => setReopen(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-amber-300 bg-white px-5 text-sm font-extrabold text-amber-800 hover:bg-amber-50"><Unlock className="h-4 w-4" /> Buka kunci</button>
+                    </div>
+                ) : (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-white/5">
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{rec.enabled ? (rec.saved_version > 0 ? 'Hasil dibuka untuk diedit. Kunci ulang setelah perubahan selesai.' : 'Nilai masih sementara. Simpan hasil setelah semua pemeriksaan lolos.') : `Penilaian kategori ${rec.category.name} belum disahkan.`}</p>
+                        <button type="button" disabled={!rec.enabled} onClick={() => setDialog(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"><Lock className="h-4 w-4" /> {rec.saved_version > 0 ? 'Kunci ulang hasil' : 'Simpan hasil'}</button>
+                    </div>
+                )}
+
+                <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-white/5 dark:text-slate-200">{rec.info}</p>
+
+                <RecapTable key={rec.category.id} rec={rec} />
+                <FollowUp key={`f${rec.category.id}`} rec={rec} base={base} />
+            </div>
+
+            {dialog && <FinalizeDialog key={rec.category.id} rec={rec} base={base} onClose={() => setDialog(false)} />}
+            {reopen && <ReopenDialog key={`r${rec.category.id}`} rec={rec} base={base} onClose={() => setReopen(false)} />}
+        </div>
+    );
+}

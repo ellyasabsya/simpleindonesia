@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class RevenueController extends Controller
+{
+    private const PERIODS = ['bulan_ini', '3_bulan', 'tahun_ini', 'semua'];
+
+    public function index(Request $request): Response
+    {
+        $period = (string) $request->query('periode', 'tahun_ini');
+        $period = in_array($period, self::PERIODS, true) ? $period : 'tahun_ini';
+        $source = (string) $request->query('sumber', 'all');
+        $source = in_array($source, ['all', 'paket', 'layanan'], true) ? $source : 'all';
+        $page = max(1, (int) $request->query('page', 1));
+
+        $now = Carbon::now();
+        $from = match ($period) {
+            'bulan_ini' => $now->copy()->startOfMonth(),
+            '3_bulan' => $now->copy()->subMonthsNoOverflow(2)->startOfMonth(),
+            'tahun_ini' => $now->copy()->startOfYear(),
+            default => null,
+        };
+
+        $all = $this->entries()->sortByDesc('ts')->values();
+        $inPeriod = $from ? $all->filter(fn ($e) => $e['ts'] >= $from->timestamp)->values() : $all;
+        $rows = $source === 'all' ? $inPeriod : $inPeriod->where('source', $source)->values();
+
+        $monthStart = $now->copy()->startOfMonth()->timestamp;
+        $summary = [
+            'total' => (int) $inPeriod->sum('amount'),
+            'this_month' => (int) $all->filter(fn ($e) => $e['ts'] >= $monthStart)->sum('amount'),
+            'paket' => (int) $inPeriod->where('source', 'paket')->sum('amount'),
+            'layanan' => (int) $inPeriod->where('source', 'layanan')->sum('amount'),
+        ];
+        $counts = [
+            'all' => $inPeriod->count(),
+            'paket' => $inPeriod->where('source', 'paket')->count(),
+            'layanan' => $inPeriod->where('source', 'layanan')->count(),
+        ];
+
+        $chart = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m = $now->copy()->startOfMonth()->subMonthsNoOverflow($i);
+            $s = $m->timestamp;
+            $e = $m->copy()->endOfMonth()->timestamp;
+            $inMonth = $all->filter(fn ($x) => $x['ts'] >= $s && $x['ts'] <= $e);
+            $chart[] = [
+                'label' => $m->locale('id')->translatedFormat('M y'),
+                'paket' => (int) $inMonth->where('source', 'paket')->sum('amount'),
+                'layanan' => (int) $inMonth->where('source', 'layanan')->sum('amount'),
+            ];
+        }
+
+        $per = 10;
+        $total = $rows->count();
+        $last = max(1, (int) ceil($total / $per));
+        $page = min($page, $last);
+        $slice = $rows->slice(($page - 1) * $per, $per)->values()->map(fn ($e) => collect($e)->except('ts')->all());
+
+        return Inertia::render('admin/pendapatan', [
+            'entries' => $slice,
+            'summary' => $summary,
+            'chart' => $chart,
+            'periode' => $period,
+            'sumber' => $source,
+            'counts' => $counts,
+            'pg' => [
+                'current' => $page,
+                'last' => $last,
+                'total' => $total,
+                'from' => $total ? ($page - 1) * $per + 1 : null,
+                'to' => $total ? min($page * $per, $total) : null,
+            ],
+        ]);
+    }
+
+    /** Semua pemasukan platform: bayar di muka paket (Lunas) dan biaya layanan tiket (Lunas). */
+    private function entries(): Collection
+    {
+        $paket = Event::whereNull('parent_id')->where('payment_status', 'lunas')
+            ->with('institution:id,name')->get()
+            ->map(function (Event $e) {
+                $snap = $e->package_snapshot ?? [];
+                $at = Carbon::parse($e->payment_reviewed_at ?? $e->updated_at ?? $e->created_at);
+
+                return [
+                    'key' => 'p'.$e->id,
+                    'ts' => $at->timestamp,
+                    'date' => $at->locale('id')->translatedFormat('j M Y, H:i'),
+                    'source' => 'paket',
+                    'title' => $e->title,
+                    'institution' => $e->institution?->name ?? '-',
+                    'detail' => 'Paket '.($snap['name'] ?? '-').' (bayar di muka)',
+                    'amount' => (int) ($snap['estimated_upfront'] ?? 0),
+                ];
+            })
+            ->filter(fn ($x) => $x['amount'] > 0);
+
+        $layanan = DB::table('ticket_orders')
+            ->join('events', 'events.id', '=', 'ticket_orders.event_id')
+            ->leftJoin('institutions', 'institutions.id', '=', 'events.institution_id')
+            ->where('ticket_orders.status', 'lunas')
+            ->where('ticket_orders.fee', '>', 0)
+            ->get([
+                'ticket_orders.id', 'ticket_orders.code', 'ticket_orders.fee', 'ticket_orders.quantity',
+                'ticket_orders.paid_at', 'ticket_orders.created_at',
+                'events.title as event_title', 'institutions.name as institution_name',
+            ])
+            ->map(function ($o) {
+                $at = Carbon::parse($o->paid_at ?? $o->created_at);
+
+                return [
+                    'key' => 't'.$o->id,
+                    'ts' => $at->timestamp,
+                    'date' => $at->locale('id')->translatedFormat('j M Y, H:i'),
+                    'source' => 'layanan',
+                    'title' => $o->event_title,
+                    'institution' => $o->institution_name ?? '-',
+                    'detail' => 'Biaya layanan tiket '.$o->code.' ('.$o->quantity.' tiket)',
+                    'amount' => (int) $o->fee,
+                ];
+            });
+
+        return $paket->concat($layanan)->values();
+    }
+}

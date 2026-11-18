@@ -16,7 +16,7 @@ class PackageSeeder extends Seeder
             'professional' => 0,
         ];
 
-        $iklan = ['dashboard_event', 'registrasi_event', 'kalender_kegiatan'];
+        $iklan = ['dashboard_event', 'registrasi_peserta', 'kalender_kegiatan'];
         $starter = [...$iklan, 'qr_checkin', 'laporan_gabungan'];
         $pro = [...$starter, 'sub_event', 'tiket_multi', 'pembayaran_online', 'sertifikat',
             'laporan_transaksi', 'penilaian_juri', 'voting_event', 'manajemen_tim'];

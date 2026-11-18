@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { CalendarDays, Dumbbell, MapPin, PartyPopper, Presentation, Store, Tag, Trophy, User } from 'lucide-react';
+import { CalendarDays, Dumbbell, Layers, MapPin, PartyPopper, Presentation, Store, Tag, Trophy, User } from 'lucide-react';
 import type { ComponentType } from 'react';
 import Section, { Placeholder } from './section';
 
@@ -17,6 +17,9 @@ export type EventCard = {
     starts_at: string | null;
     ends_at: string | null;
     status: { key: StatusKey; label: string };
+    is_series?: boolean;
+    sub_count?: number;
+    href?: string | null;
 };
 
 // Ganti kalau rute detail event berbeda.
@@ -28,6 +31,7 @@ const CATEGORY_ICON: Record<string, ComponentType<{ className?: string }>> = {
     olahraga: Dumbbell,
     festival: PartyPopper,
     pameran: Store,
+    voting: Trophy,
 };
 
 const STATUS_STYLE: Record<StatusKey, { badge: string; dot: string }> = {
@@ -61,10 +65,19 @@ export function Card({ event }: { event: EventCard }) {
     const CatIcon = (event.category_key && CATEGORY_ICON[event.category_key]) || Tag;
     const st = STATUS_STYLE[event.status.key];
 
+    const series = !!event.is_series;
+
     return (
+        <div className={`group relative ${series ? 'pb-3' : ''}`}>
+            {series && (
+                <>
+                    <span aria-hidden className="absolute inset-x-5 bottom-0 h-full rounded-2xl border border-violet-200/80 bg-violet-100 dark:border-white/10 dark:bg-violet-500/20" />
+                    <span aria-hidden className="absolute inset-x-2.5 bottom-1.5 h-full rounded-2xl border border-violet-200/80 bg-violet-50 dark:border-white/10 dark:bg-violet-500/10" />
+                </>
+            )}
         <Link
-            href={eventUrl(event)}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-neutral-900"
+            href={event.href ?? eventUrl(event)}
+            className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-neutral-900"
         >
             <div className="relative aspect-[4/5] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                 {event.poster ? (
@@ -80,7 +93,14 @@ export function Card({ event }: { event: EventCard }) {
                     </div>
                 )}
 
-                {event.category && (
+                {series && (
+                    <span className="absolute top-2.5 left-2.5 inline-flex max-w-[60%] items-center gap-1 rounded-full bg-violet-700 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white shadow-lg">
+                        <Layers className="size-3.5 shrink-0" />
+                        <span className="truncate">RANGKAIAN{event.sub_count ? ` · ${event.sub_count}` : ''}</span>
+                    </span>
+                )}
+
+                {!series && event.category && (
                     <span className="absolute top-2.5 left-2.5 inline-flex max-w-[60%] items-center gap-1 rounded-full bg-blue-700 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white shadow-lg">
                         <CatIcon className="size-3.5 shrink-0" />
                         <span className="truncate">{event.category}</span>
@@ -120,6 +140,7 @@ export function Card({ event }: { event: EventCard }) {
                 )}
             </div>
         </Link>
+        </div>
     );
 }
 

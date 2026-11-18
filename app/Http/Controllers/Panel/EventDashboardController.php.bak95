@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Models\Event;
+use Inertia\Response;
+
+class EventDashboardController extends EventScopedController
+{
+    public function show(Event $event): Response|\Illuminate\Http\RedirectResponse
+    {
+        if ($event->status !== Event::PUBLISHED) {
+            return redirect('/panel');
+        }
+
+        return $this->render('panel/events/show', $event);
+    }
+
+    /** Pengaturan tiket: jenis, harga, kuota, dan buka/tutup penjualan. */
+    private function tiket(\Illuminate\Http\Request $request, Event $event): Response
+    {
+        $perms = (array) $request->attributes->get('panel_perms', []);
+        abort_unless($request->attributes->get('is_owner') || in_array('events', $perms, true), 403);
+
+        $db = \Illuminate\Support\Facades\DB::class;
+        $types = \App\Models\TicketType::where('event_id', $event->id)->orderBy('id')->get()->map(function ($t) use ($db) {
+            $sold = TicketSettingsController::sold($t->id);
+
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'price' => (int) $t->price,
+                'quota' => (int) $t->quota,
+                'valid_from' => $t->valid_from->toDateString(),
+                'valid_until' => $t->valid_until->toDateString(),
+                'max_per_order' => (int) $t->max_per_order,
+                'sold' => $sold,
+                'remaining' => max(0, (int) $t->quota - $sold),
+                'revenue' => (int) $db::table('ticket_orders')->where('ticket_type_id', $t->id)->where('status', 'lunas')->sum('subtotal'),
+                'locked' => $db::table('ticket_orders')->where('ticket_type_id', $t->id)->where('status', '!=', 'batal')->exists(),
+            ];
+        })->values();
+
+        return $this->render('panel/events/tiket', $event, [
+            'eventId' => $event->id,
+            'salesOpen' => (bool) $event->ticket_sales_open,
+            'feePercent' => \App\Models\Setting::serviceFeePercent(),
+            'types' => $types,
+        ]);
+    }
+
+    /** Registrasi peserta untuk event yang pendaftarannya lewat pembelian tiket. */
+    private function registrasi(Event $event): Response
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
+        $orders = $db::table('ticket_orders')->where('event_id', $event->id)->orderByDesc('id')
+            ->get(['id', 'code', 'buyer_name', 'buyer_email', 'ticket_type_id', 'quantity', 'status', 'holders']);
+        $holders = $db::table('ticket_holders')->where('event_id', $event->id)
+            ->get(['ticket_order_id', 'code', 'holder_name', 'checked_in_at'])->groupBy('ticket_order_id');
+
+        $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
+        $rows = [];
+        $sum = ['orders' => $orders->count(), 'sold' => 0, 'pending' => 0, 'checked_in' => 0];
+
+        foreach ($orders as $o) {
+            $type = $typeName[$o->ticket_type_id] ?? '-';
+            $list = $holders[$o->id] ?? collect();
+            $names = $list->isNotEmpty() ? [] : (json_decode((string) $o->holders, true) ?: []);
+
+            if ($o->status === 'lunas') {
+                $sum['sold'] += (int) $o->quantity;
+            } elseif (! in_array($o->status, $closed, true)) {
+                $sum['pending'] += (int) $o->quantity;
+            }
+
+            $base = ['order' => $o->code, 'type' => $type, 'buyer' => $o->buyer_name, 'email' => $o->buyer_email, 'status' => $o->status];
+            foreach ($list as $h) {
+                $in = $h->checked_in_at !== null;
+                $sum['checked_in'] += $in ? 1 : 0;
+                $rows[] = $base + ['name' => $h->holder_name, 'code' => $h->code, 'checked_in' => $in];
+            }
+            foreach ($names as $n) {
+                $rows[] = $base + ['name' => (string) $n, 'code' => null, 'checked_in' => false];
+            }
+        }
+
+        return $this->render('panel/events/registrasi', $event, [
+            'eventId' => $event->id,
+            'summary' => $sum,
+            'types' => $typeName->values(),
+            'rows' => $rows,
+        ]);
+    }
+
+    /** Halaman menu yang belum dibuat; diganti satu per satu. */
+    public function menu(\Illuminate\Http\Request $request, Event $event, string $menu): Response
+    {
+        $label = config('features.menus')[$menu] ?? null;
+        abort_if($label === null, 404);
+
+        if ($menu === 'tiket' && $event->registration_method === 'ticket') {
+            return $this->tiket($request, $event);
+        }
+
+        if ($menu === 'registrasi' && $event->registration_method === 'ticket') {
+            return $this->registrasi($event);
+        }
+
+        return $this->render('panel/events/menu', $event, [
+            'menu' => ['key' => $menu, 'label' => $label],
+        ]);
+    }
+}

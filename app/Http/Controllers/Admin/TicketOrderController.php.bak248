@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class TicketOrderController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $status = $request->query('status', 'menunggu_verifikasi');
+        $status = in_array($status, ['all', 'menunggu_verifikasi', 'lunas', 'batal', 'menunggu'], true) ? $status : 'menunggu_verifikasi';
+        $q = trim((string) $request->query('q', ''));
+
+        $counts = DB::table('ticket_orders')->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+
+        $orders = DB::table('ticket_orders')
+            ->join('events', 'events.id', '=', 'ticket_orders.event_id')
+            ->join('ticket_types', 'ticket_types.id', '=', 'ticket_orders.ticket_type_id')
+            ->when($status !== 'all', fn ($w) => $w->where('ticket_orders.status', $status))
+            ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
+                $s->where('ticket_orders.code', 'like', "%{$q}%")
+                    ->orWhere('ticket_orders.buyer_name', 'like', "%{$q}%")
+                    ->orWhere('ticket_orders.buyer_email', 'like', "%{$q}%")
+                    ->orWhere('events.title', 'like', "%{$q}%");
+            }))
+            ->orderByDesc('ticket_orders.id')
+            ->paginate(10, [
+                'ticket_orders.id', 'ticket_orders.code', 'ticket_orders.buyer_name', 'ticket_orders.buyer_email',
+                'ticket_orders.buyer_phone', 'ticket_orders.quantity', 'ticket_orders.subtotal', 'ticket_orders.fee',
+                'ticket_orders.total', 'ticket_orders.status', 'ticket_orders.payment_proof', 'ticket_orders.created_at',
+                'events.title as event_title', 'ticket_types.name as type_name',
+            ])
+            ->withQueryString()
+            ->through(fn ($o) => [
+                'id' => $o->id,
+                'code' => $o->code,
+                'buyer_name' => $o->buyer_name,
+                'buyer_email' => $o->buyer_email,
+                'buyer_phone' => $o->buyer_phone,
+                'quantity' => (int) $o->quantity,
+                'subtotal' => (int) $o->subtotal,
+                'fee' => (int) $o->fee,
+                'total' => (int) $o->total,
+                'status' => $o->status,
+                'event_title' => $o->event_title,
+                'type_name' => $o->type_name,
+                'proof' => $o->payment_proof ? [
+                    'url' => "/admin/pesanan-tiket/{$o->id}/bukti",
+                    'is_pdf' => strtolower(pathinfo($o->payment_proof, PATHINFO_EXTENSION)) === 'pdf',
+                ] : null,
+                'created_at' => Carbon::parse($o->created_at)->locale('id')->translatedFormat('j M Y, H:i'),
+            ]);
+
+        return Inertia::render('admin/pesanan-tiket', [
+            'orders' => $orders->items(),
+            'pg' => [
+                'current' => $orders->currentPage(),
+                'last' => $orders->lastPage(),
+                'total' => $orders->total(),
+                'from' => $orders->firstItem(),
+                'to' => $orders->lastItem(),
+            ],
+            'status' => $status,
+            'q' => $q,
+            'counts' => [
+                'menunggu_verifikasi' => (int) ($counts['menunggu_verifikasi'] ?? 0),
+                'lunas' => (int) ($counts['lunas'] ?? 0),
+                'batal' => (int) ($counts['batal'] ?? 0),
+                'menunggu' => (int) ($counts['menunggu'] ?? 0),
+            ],
+        ]);
+    }
+
+    public function approve(int $order): RedirectResponse
+    {
+        $n = DB::table('ticket_orders')->where('id', $order)->where('status', 'menunggu_verifikasi')
+            ->update(['status' => 'lunas', 'paid_at' => now(), 'updated_at' => now()]);
+        if ($n === 1) {
+            \App\Support\TicketIssuer::issue($order);
+        }
+
+        return $n === 1
+            ? back()->with('success', 'Pesanan disetujui dan tiket sudah diterbitkan.')
+            : back()->with('error', 'Pesanan sudah diproses sebelumnya. Muat ulang halaman.');
+    }
+
+    public function reject(int $order): RedirectResponse
+    {
+        DB::table('ticket_orders')->where('id', $order)->where('status', 'menunggu_verifikasi')
+            ->update(['status' => 'batal', 'updated_at' => now()]);
+
+        return back()->with('success', 'Pesanan ditolak.');
+    }
+
+    public function proof(int $order)
+    {
+        $path = DB::table('ticket_orders')->where('id', $order)->value('payment_proof');
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path);
+    }
+}

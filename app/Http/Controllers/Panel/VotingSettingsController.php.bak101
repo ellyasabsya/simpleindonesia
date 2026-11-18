@@ -1,0 +1,245 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+
+class VotingSettingsController extends Controller
+{
+    private function guard(Request $request, Event $event): void
+    {
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst && $event->institution_id === $inst->id, 404);
+    }
+
+    private function owned(string $table, int $eventId, int $id): void
+    {
+        abort_unless(DB::table($table)->where('id', $id)->where('event_id', $eventId)->exists(), 404);
+    }
+
+    private function settings(int $eventId): object
+    {
+        DB::table('voting_settings')->insertOrIgnore(['event_id' => $eventId, 'created_at' => now(), 'updated_at' => now()]);
+
+        return DB::table('voting_settings')->where('event_id', $eventId)->first();
+    }
+
+    public function index(Request $request, Event $event)
+    {
+        $this->guard($request, $event);
+        $s = $this->settings($event->id);
+
+        $props = [
+            'eventId' => $event->id,
+            'settings' => [
+                'enabled' => (bool) $s->enabled,
+                'price_per_vote' => (int) $s->price_per_vote,
+                'min_votes' => (int) $s->min_votes,
+                'message_enabled' => (bool) $s->message_enabled,
+                'message_max' => (int) $s->message_max,
+                'sound_min_votes' => (int) $s->sound_min_votes,
+                'show_sender' => (bool) $s->show_sender,
+                'show_ranking' => (bool) $s->show_ranking,
+                'show_votes' => (bool) $s->show_votes,
+            ],
+            'categories' => DB::table('voting_categories')->where('event_id', $event->id)->orderBy('sort')->orderBy('id')->get(['id', 'name'])
+                ->map(fn ($r) => ['id' => (int) $r->id, 'name' => $r->name])->all(),
+            'participants' => DB::table('voting_participants')->where('event_id', $event->id)->orderBy('sort')->orderBy('id')->get(['id', 'category_id', 'name', 'description', 'active'])
+                ->map(fn ($r) => ['id' => (int) $r->id, 'category_id' => $r->category_id ? (int) $r->category_id : null, 'name' => $r->name, 'description' => $r->description, 'active' => (bool) $r->active])->all(),
+            'gifts' => DB::table('voting_gifts')->where('event_id', $event->id)->orderBy('votes')->orderBy('id')->get(['id', 'emoji', 'name', 'votes', 'price', 'active'])
+                ->map(fn ($r) => ['id' => (int) $r->id, 'emoji' => $r->emoji, 'name' => $r->name, 'votes' => (int) $r->votes, 'price' => (int) $r->price, 'active' => (bool) $r->active])->all(),
+        ];
+
+        $dash = app(\App\Http\Controllers\Panel\EventDashboardController::class);
+
+        return \Closure::bind(fn () => $this->render('panel/events/voting', $event, $props), $dash, \App\Http\Controllers\Panel\EventDashboardController::class)();
+    }
+
+    public function toggle(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $request->validate(['open' => ['required', 'boolean']]);
+        $this->settings($event->id);
+
+        if ($data['open'] && DB::table('voting_participants')->where('event_id', $event->id)->where('active', 1)->count() < 2) {
+            return back()->with('error', 'Tambahkan minimal 2 peserta aktif dulu.');
+        }
+
+        DB::table('voting_settings')->where('event_id', $event->id)->update(['enabled' => $data['open'] ? 1 : 0, 'updated_at' => now()]);
+
+        return back()->with('success', $data['open'] ? 'Voting dibuka.' : 'Voting ditutup.');
+    }
+
+    public function settingsUpdate(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $request->validate([
+            'price_per_vote' => ['required', 'integer', 'min:1', 'max:10000000'],
+            'min_votes' => ['required', 'integer', 'min:1', 'max:1000'],
+            'message_enabled' => ['required', 'boolean'],
+            'message_max' => ['required', 'integer', 'min:1', 'max:200'],
+            'sound_min_votes' => ['required', 'integer', 'min:0', 'max:100000'],
+            'show_sender' => ['required', 'boolean'],
+            'show_ranking' => ['required', 'boolean'],
+            'show_votes' => ['required', 'boolean'],
+        ], [
+            'price_per_vote.min' => 'Harga per vote minimal Rp1.',
+            'message_max.max' => 'Batas karakter pesan maksimal 200.',
+            'message_max.min' => 'Batas karakter pesan minimal 1.',
+        ]);
+        $this->settings($event->id);
+        DB::table('voting_settings')->where('event_id', $event->id)->update($data + ['updated_at' => now()]);
+
+        return back()->with('success', 'Pengaturan voting disimpan.');
+    }
+
+    /* ---------- Kategori ---------- */
+
+    public function storeCategory(Request $request, Event $event): RedirectResponse
+    {
+        \Log::info('DEBUG voting kategori masuk', $request->all());
+        $this->guard($request, $event);
+        $data = $request->validate(['name' => ['required', 'string', 'max:60']], ['name.required' => 'Isi nama kategori.']);
+        $name = trim($data['name']);
+
+        if (DB::table('voting_categories')->where('event_id', $event->id)->whereRaw('lower(name) = ?', [mb_strtolower($name)])->exists()) {
+            return back()->withErrors(['name' => 'Kategori itu sudah ada.']);
+        }
+        if (DB::table('voting_categories')->where('event_id', $event->id)->count() >= 20) {
+            return back()->withErrors(['name' => 'Maksimal 20 kategori.']);
+        }
+        $sort = (int) DB::table('voting_categories')->where('event_id', $event->id)->max('sort') + 1;
+        DB::table('voting_categories')->insert(['event_id' => $event->id, 'name' => $name, 'sort' => $sort, 'created_at' => now(), 'updated_at' => now()]);
+
+        return back()->with('success', 'Kategori ditambahkan.');
+    }
+
+    public function destroyCategory(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_categories', $event->id, $item);
+        DB::table('voting_participants')->where('event_id', $event->id)->where('category_id', $item)->update(['category_id' => null]);
+        DB::table('voting_categories')->where('id', $item)->delete();
+
+        return back()->with('success', 'Kategori dihapus. Pesertanya pindah ke Tanpa kategori.');
+    }
+
+    /* ---------- Peserta ---------- */
+
+    private function participantData(Request $request, Event $event): array
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:160'],
+            'category_id' => ['nullable', 'integer'],
+            'active' => ['required', 'boolean'],
+        ], ['name.required' => 'Isi nama peserta.']);
+
+        if (! empty($data['category_id']) && ! DB::table('voting_categories')->where('id', $data['category_id'])->where('event_id', $event->id)->exists()) {
+            throw ValidationException::withMessages(['category_id' => 'Kategori tidak valid.']);
+        }
+        $data['name'] = trim($data['name']);
+        $data['description'] = isset($data['description']) ? trim($data['description']) ?: null : null;
+
+        return $data;
+    }
+
+    public function storeParticipant(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $this->participantData($request, $event);
+        if (DB::table('voting_participants')->where('event_id', $event->id)->count() >= 200) {
+            return back()->with('error', 'Maksimal 200 peserta.');
+        }
+        $sort = (int) DB::table('voting_participants')->where('event_id', $event->id)->max('sort') + 1;
+        DB::table('voting_participants')->insert($data + ['event_id' => $event->id, 'sort' => $sort, 'created_at' => now(), 'updated_at' => now()]);
+
+        return back()->with('success', 'Peserta ditambahkan.');
+    }
+
+    public function updateParticipant(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_participants', $event->id, $item);
+        $data = $this->participantData($request, $event);
+        DB::table('voting_participants')->where('id', $item)->update($data + ['updated_at' => now()]);
+
+        return back()->with('success', 'Peserta diperbarui.');
+    }
+
+    public function destroyParticipant(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_participants', $event->id, $item);
+        DB::table('voting_participants')->where('id', $item)->delete();
+
+        return back()->with('success', 'Peserta dihapus.');
+    }
+
+    /* ---------- Gift ---------- */
+
+    private function giftData(Request $request): array
+    {
+        $data = $request->validate([
+            'emoji' => ['required', 'string', 'max:8'],
+            'name' => ['required', 'string', 'max:40'],
+            'votes' => ['required', 'integer', 'min:1', 'max:100000'],
+            'price' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'active' => ['required', 'boolean'],
+        ], [
+            'emoji.required' => 'Pilih emoji gift.',
+            'name.required' => 'Isi nama gift.',
+            'votes.required' => 'Isi jumlah vote.',
+            'votes.min' => 'Jumlah vote minimal 1.',
+            'price.required' => 'Isi harga gift.',
+        ]);
+        $data['name'] = trim($data['name']);
+
+        return $data;
+    }
+
+    public function storeGift(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $this->giftData($request);
+        if (DB::table('voting_gifts')->where('event_id', $event->id)->count() >= 12) {
+            return back()->with('error', 'Maksimal 12 gift.');
+        }
+        DB::table('voting_gifts')->insert($data + ['event_id' => $event->id, 'created_at' => now(), 'updated_at' => now()]);
+
+        return back()->with('success', 'Gift ditambahkan.');
+    }
+
+    public function updateGift(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_gifts', $event->id, $item);
+        DB::table('voting_gifts')->where('id', $item)->update($this->giftData($request) + ['updated_at' => now()]);
+
+        return back()->with('success', 'Gift diperbarui.');
+    }
+
+    public function toggleGift(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_gifts', $event->id, $item);
+        DB::table('voting_gifts')->where('id', $item)->update(['active' => DB::raw('1 - active'), 'updated_at' => now()]);
+
+        return back();
+    }
+
+    public function destroyGift(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->owned('voting_gifts', $event->id, $item);
+        DB::table('voting_gifts')->where('id', $item)->delete();
+
+        return back()->with('success', 'Gift dihapus.');
+    }
+}

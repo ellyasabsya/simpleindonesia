@@ -1,4 +1,5 @@
-import Section, { Placeholder } from './section';
+import TicketShowcase from '@/components/landing/ticket-showcase';
+import Section from './section';
 
 export default function TicketSection() {
     return (
@@ -9,7 +10,7 @@ export default function TicketSection() {
             href="/tickets"
             linkLabel="Lihat Semua Tiket"
         >
-            <Placeholder label="Kartu tiket akan ditempatkan di sini" />
+            <TicketShowcase />
         </Section>
     );
 }

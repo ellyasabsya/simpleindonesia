@@ -1,0 +1,175 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\InstitutionMember;
+use App\Models\Withdrawal;
+use App\Support\Revenue;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class WithdrawalController extends Controller
+{
+    public const MIN = 50000;
+
+    /** @return array{0: \App\Models\Institution, 1: bool, 2: bool} lembaga, boleh lihat, boleh tarik */
+    private function access(Request $request): array
+    {
+        $inst = $request->attributes->get('institution');
+        $user = $request->user();
+        $owner = $user->id === $inst->user_id;
+        $perms = [];
+
+        if (! $owner) {
+            $m = InstitutionMember::where('institution_id', $inst->id)->where('user_id', $user->id)->first();
+            $p = $m?->permissions ?? [];
+            if (is_string($p)) {
+                $p = json_decode($p, true) ?: [];
+            }
+            $perms = is_array($p) ? $p : [];
+        }
+
+        $withdraw = $owner || in_array('withdraw', $perms, true);
+        $view = $withdraw || in_array('finance', $perms, true);
+
+        return [$inst, $view, $withdraw];
+    }
+
+    public function index(Request $request): Response
+    {
+        [$inst, $canView, $canWithdraw] = $this->access($request);
+        abort_unless($canView, 403);
+
+        $report = Revenue::report($inst->id);
+        $fmt = fn ($d) => $d ? $d->copy()->locale('id')->translatedFormat('j M Y, H:i') : null;
+
+        $history = Withdrawal::with('event:id,title')->where('institution_id', $inst->id)->latest('id')->limit(100)->get();
+        $pendingEvents = $history->where('status', Withdrawal::MENUNGGU)->pluck('event_id')->all();
+        $last = $history->first();
+
+        return Inertia::render('panel/pendapatan', [
+            'summary' => [
+                'available' => $report['summary']['available'],
+                'processing' => $report['summary']['processing'] + $report['summary']['pending'],
+                'withdrawn' => $report['summary']['transferred'],
+            ],
+            'balances' => $report['balances']->map(fn ($b) => [
+                'id' => $b['id'],
+                'title' => $b['title'],
+                'subtotal' => $b['subtotal'],
+                'share' => $b['share'],
+                'entitlement' => $b['entitlement'],
+                'transferred' => $b['transferred'],
+                'processing' => $b['processing'],
+                'available' => $b['available'],
+                'has_pending' => in_array($b['id'], $pendingEvents, true),
+            ])->values(),
+            'history' => $history->map(fn (Withdrawal $w) => [
+                'id' => $w->id,
+                'event' => $w->event?->title ?? '-',
+                'amount' => (int) $w->amount,
+                'bank_name' => $w->bank_name,
+                'account_number' => $w->account_number,
+                'account_name' => $w->account_name,
+                'status' => $w->status,
+                'reject_reason' => $w->reject_reason,
+                'proof' => $w->transfer_proof ? [
+                    'url' => route('panel.penarikan.bukti', $w->id),
+                    'is_pdf' => str_ends_with(strtolower($w->transfer_proof), '.pdf'),
+                ] : null,
+                'requested_at' => $fmt($w->created_at),
+                'transferred_at' => $fmt($w->transferred_at),
+            ])->values(),
+            'last_account' => $last ? [
+                'bank_name' => $last->bank_name,
+                'account_number' => $last->account_number,
+                'account_name' => $last->account_name,
+            ] : null,
+            'can_withdraw' => $canWithdraw,
+            'min' => self::MIN,
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        [$inst, , $canWithdraw] = $this->access($request);
+        abort_unless($canWithdraw, 403);
+
+        $min = self::MIN;
+        $data = $request->validate([
+            'event_id' => ['required', 'integer'],
+            'amount' => ['required', 'integer', "min:{$min}"],
+            'bank_name' => ['required', 'string', 'max:60'],
+            'account_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 \-]+$/'],
+            'account_name' => ['required', 'string', 'max:100'],
+        ], [
+            'amount.required' => 'Isi nominal penarikan.',
+            'amount.integer' => 'Nominal harus berupa angka.',
+            'amount.min' => 'Minimal penarikan Rp'.number_format($min, 0, ',', '.').'.',
+            'bank_name.required' => 'Isi nama bank.',
+            'account_number.required' => 'Isi nomor rekening.',
+            'account_number.regex' => 'Nomor rekening hanya boleh angka.',
+            'account_name.required' => 'Isi nama pemilik rekening.',
+        ]);
+
+        $error = null;
+
+        DB::transaction(function () use ($inst, $data, &$error) {
+            $bal = Revenue::report($inst->id)['balances']->firstWhere('id', (int) $data['event_id']);
+
+            if (! $bal) {
+                $error = 'Event tidak ditemukan atau belum punya saldo.';
+
+                return;
+            }
+            if (Withdrawal::where('event_id', $bal['id'])->where('status', Withdrawal::MENUNGGU)->exists()) {
+                $error = 'Masih ada permintaan penarikan yang menunggu untuk event ini.';
+
+                return;
+            }
+            if ((int) $data['amount'] > $bal['available']) {
+                $error = 'Nominal melebihi saldo tersedia (Rp'.number_format($bal['available'], 0, ',', '.').').';
+
+                return;
+            }
+
+            Withdrawal::create([
+                'institution_id' => $inst->id,
+                'event_id' => $bal['id'],
+                'amount' => (int) $data['amount'],
+                'bank_name' => trim($data['bank_name']),
+                'account_number' => trim($data['account_number']),
+                'account_name' => trim($data['account_name']),
+                'status' => Withdrawal::MENUNGGU,
+            ]);
+        });
+
+        if ($error) {
+            return back()->withErrors(['amount' => $error])->withInput();
+        }
+
+        \App\Support\AdminNotifier::send(
+            'Permintaan penarikan dana baru',
+            "{$inst->name} meminta penarikan Rp".number_format((int) $data['amount'], 0, ',', '.').'.',
+            '/admin/pendapatan?tab=penarikan&status=menunggu'
+        );
+
+        return back()->with('success', 'Permintaan penarikan dikirim. Admin akan memprosesnya.');
+    }
+
+    public function proof(Request $request, Withdrawal $withdrawal)
+    {
+        [$inst, $canView] = $this->access($request);
+        abort_unless($canView && $withdrawal->institution_id === $inst->id, 403);
+
+        $path = $withdrawal->transfer_proof;
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
+    }
+}

@@ -1,0 +1,145 @@
+import { Head, Link, useForm } from '@inertiajs/react';
+import { CheckCircle2, ClipboardList, Lock } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+
+type Field = { key: string; label: string; type: 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file'; required: boolean; options: string[] };
+type Props = {
+    event: { id: number; title: string; location?: string | null; starts_at?: string | null };
+    fields: Field[];
+    closed: string | null;
+    done: boolean;
+    message: string | null;
+    backUrl: string;
+};
+
+const box = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+const lbl = 'mb-1 block text-sm font-bold';
+
+export default function EventDaftar({ event, fields, closed, done, message, backUrl }: Props) {
+    const form = useForm<{ name: string; email: string; whatsapp: string; answers: Record<string, string | string[] | File | null>; consent: boolean; website: string }>({
+        name: '', email: '', whatsapp: '', answers: {}, consent: false, website: '',
+    });
+    const errs = form.errors as unknown as Record<string, string | undefined>;
+    const [fileErr, setFileErr] = useState<Record<string, string>>({});
+    const err = (k: string) => { const m = fileErr[k] ?? errs[k]; return m ? <p className="mt-1 text-xs font-semibold text-rose-600">{m}</p> : null; };
+    const setAnswer = (k: string, v: string | string[] | File | null) => form.setData('answers', { ...form.data.answers, [k]: v });
+    const toggle = (k: string, opt: string) => {
+        const cur = (form.data.answers[k] as string[] | undefined) ?? [];
+        setAnswer(k, cur.includes(opt) ? cur.filter((o) => o !== opt) : [...cur, opt]);
+    };
+    const submit = (e: FormEvent) => { e.preventDefault(); form.post(`/events/${event.id}/daftar`, { preserveScroll: true, forceFormData: true }); };
+    const when = event.starts_at ? new Date(event.starts_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-violet-50 px-4 py-10 text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-white">
+            <Head title={`Daftar ${event.title}`} />
+            <div className="mx-auto max-w-xl">
+                <div className="mb-6 flex items-start gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white"><ClipboardList className="h-6 w-6" /></span>
+                    <div>
+                        <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Pendaftaran</div>
+                        <h1 className="text-2xl font-extrabold">{event.title}</h1>
+                        <p className="mt-1 text-sm text-slate-500">{[when, event.location].filter(Boolean).join(' · ')}</p>
+                    </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+                    {done ? (
+                        <div className="text-center">
+                            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
+                            <h2 className="mt-3 text-xl font-extrabold">Pendaftaran berhasil</h2>
+                            <p className="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{message ?? 'Terima kasih, data Anda sudah kami terima.'}</p>
+                            <Link href={backUrl} className="mt-5 inline-block rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800">Kembali ke halaman event</Link>
+                        </div>
+                    ) : closed ? (
+                        <div className="text-center">
+                            <Lock className="mx-auto h-10 w-10 text-slate-400" />
+                            <p className="mt-3 text-base font-extrabold">{closed}</p>
+                            <Link href={backUrl} className="mt-5 inline-block rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800">Kembali ke halaman event</Link>
+                        </div>
+                    ) : (
+                        <form onSubmit={submit} className="space-y-4">
+                            <div>
+                                <label className={lbl}>Nama lengkap <span className="text-rose-600">*</span></label>
+                                <input className={box} value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} maxLength={120} />
+                                {err('name')}
+                            </div>
+                            <div>
+                                <label className={lbl}>Email <span className="text-rose-600">*</span></label>
+                                <input type="email" className={box} value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} maxLength={150} />
+                                {err('email')}
+                            </div>
+                            <div>
+                                <label className={lbl}>Nomor WhatsApp</label>
+                                <input type="tel" className={box} value={form.data.whatsapp} onChange={(e) => form.setData('whatsapp', e.target.value)} maxLength={25} />
+                                {err('whatsapp')}
+                            </div>
+
+                            {fields.map((f) => {
+                                const k = `answers.${f.key}`;
+                                const v = form.data.answers[f.key];
+                                return (
+                                    <div key={f.key}>
+                                        <label className={lbl}>{f.label} {f.required && <span className="text-rose-600">*</span>}</label>
+                                        {f.type === 'file' ? (
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                                                    className={box}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] ?? null;
+                                                        if (file && file.size > 5 * 1024 * 1024) {
+                                                            setFileErr((m) => ({ ...m, [k]: 'Ukuran berkas maksimal 5 MB.' }));
+                                                            e.target.value = '';
+                                                            setAnswer(f.key, null);
+                                                            return;
+                                                        }
+                                                        setFileErr((m) => { const { [k]: _omit, ...rest } = m; return rest; });
+                                                        setAnswer(f.key, file);
+                                                    }}
+                                                />
+                                                <p className="mt-1 text-xs text-slate-500">JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.</p>
+                                            </div>
+                                        ) : f.type === 'textarea' ? (
+                                            <textarea rows={4} className={box} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.key, e.target.value)} />
+                                        ) : f.type === 'select' ? (
+                                            <select className={box} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.key, e.target.value)}>
+                                                <option value="">Pilih...</option>
+                                                {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                        ) : f.type === 'checkbox' ? (
+                                            <div className="space-y-2">
+                                                {f.options.map((o) => (
+                                                    <label key={o} className="flex items-center gap-2 text-sm">
+                                                        <input type="checkbox" checked={((v as string[] | undefined) ?? []).includes(o)} onChange={() => toggle(f.key, o)} /> {o}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <input type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'} className={box} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.key, e.target.value)} />
+                                        )}
+                                        {err(k)}
+                                    </div>
+                                );
+                            })}
+
+                            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={form.data.website} onChange={(e) => form.setData('website', e.target.value)} className="absolute left-[-9999px] h-0 w-0 opacity-0" />
+
+                            <label className="flex items-start gap-2 text-sm">
+                                <input type="checkbox" className="mt-1" checked={form.data.consent} onChange={(e) => form.setData('consent', e.target.checked)} />
+                                <span>Saya setuju data saya digunakan penyelenggara untuk keperluan event ini.</span>
+                            </label>
+                            {err('consent')}
+                            {err('form')}
+
+                            <button type="submit" disabled={form.processing} className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 text-sm font-bold text-white shadow hover:opacity-90 disabled:opacity-60">
+                                {form.processing ? 'Mengirim...' : 'Daftar'}
+                            </button>
+                        </form>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

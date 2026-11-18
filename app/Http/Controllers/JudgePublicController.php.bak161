@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Support\Judging;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class JudgePublicController extends Controller
+{
+    private function judge(string $token): object
+    {
+        $j = DB::table('judges')->where('token', $token)->first();
+        abort_unless($j, 404);
+
+        return $j;
+    }
+
+    public function show(string $token): Response
+    {
+        $j = $this->judge($token);
+        $ev = DB::table('events')->where('id', $j->event_id)->first(['id', 'title']);
+        $crit = Judging::criteria($j->event_id);
+
+        $scores = [];
+        foreach (DB::table('judging_scores')->where('judge_id', $j->id)->get() as $s) {
+            $scores[(int) $s->registration_id][(int) $s->criterion_id] = (float) $s->score;
+        }
+
+        return Inertia::render('juri/nilai', [
+            'token' => $token,
+            'judge' => ['name' => $j->name, 'active' => (bool) $j->active],
+            'event' => ['title' => $ev->title],
+            'enabled' => (bool) Judging::settings($j->event_id)->enabled,
+            'scale' => (int) Judging::settings($j->event_id)->scale,
+            'criteria' => $crit->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'description' => $c->description, 'weight' => (int) $c->weight, 'max_score' => (int) $c->max_score])->values(),
+            'participants' => Judging::participants($j->event_id),
+            'scores' => (object) $scores,
+        ]);
+    }
+
+    public function store(Request $request, string $token): RedirectResponse
+    {
+        $j = $this->judge($token);
+        abort_unless($j->active, 403);
+        abort_unless(Judging::settings($j->event_id)->enabled, 403);
+
+        $crit = Judging::criteria($j->event_id);
+        $reg = (int) $request->input('registration_id');
+        abort_unless(collect(Judging::participants($j->event_id))->contains('id', $reg), 404);
+
+        $in = (array) $request->input('scores', []);
+        foreach ($crit as $c) {
+            $v = $in[$c->id] ?? null;
+            $ok = is_numeric($v);
+            if ($ok) {
+                $ok = false;
+                foreach ([1, 2, 3, 4, 5] as $k) {
+                    if (abs(round($c->max_score * $k / 5, 2) - (float) $v) < 0.01) {
+                        $ok = true;
+                    }
+                }
+            }
+            if (! $ok) {
+                throw ValidationException::withMessages(['scores' => "Pilih salah satu nilai untuk {$c->name}."]);
+            }
+        }
+        foreach ($crit as $c) {
+            DB::table('judging_scores')->updateOrInsert(
+                ['judge_id' => $j->id, 'registration_id' => $reg, 'criterion_id' => $c->id],
+                ['event_id' => $j->event_id, 'score' => (float) $in[$c->id], 'created_at' => now(), 'updated_at' => now()],
+            );
+        }
+
+        return back()->with('success', 'Nilai tersimpan.');
+    }
+}

@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Building2, CheckCircle2, Clock, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AdminLayout from '@/components/admin/admin-layout';
+import Pagination from '@/components/admin/pagination';
 import type { InstitutionRow, Paginated } from '@/types';
 
 type Status = 'pending' | 'approved' | 'all';
@@ -18,7 +19,7 @@ const dateFmt = new Intl.DateTimeFormat('id-ID', {
     year: 'numeric',
 });
 const card =
-    'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+    'rounded-2xl border border-slate-200 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/5';
 
 function Stat({
     label,
@@ -33,20 +34,10 @@ function Stat({
 }) {
     return (
         <div className={`${card} p-5`}>
-            <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
-                    {label}
-                </span>
-                <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}
-                >
-                    <Icon className="h-5 w-5" />
-                </span>
+            <div className="flex items-center justify-between text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                {label} <Icon className={`h-4 w-4 ${tone}`} />
             </div>
-            <p className="mt-4 text-3xl font-extrabold">{value}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-                Data lembaga SIMPLE
-            </p>
+            <div className={`mt-2 text-3xl font-extrabold tabular-nums ${tone}`}>{value}</div>
         </div>
     );
 }
@@ -118,62 +109,45 @@ export default function AdminLembaga({ institutions, filters, counts }: Props) {
 
     return (
         <AdminLayout title="Admin Panel">
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-8 text-white shadow-xl shadow-indigo-900/20">
-                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
-                <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
+            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
+                <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
                 <div className="relative">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em]">
                         <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
                         SIMPLE Platform Management
                     </span>
-                    <h2 className="mt-4 text-3xl font-extrabold">Manajemen Lembaga</h2>
-                    <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-blue-50/90">
+                    <h2 className="mt-3 text-2xl font-extrabold">Manajemen Lembaga</h2>
+                    <p className="mt-1 max-w-2xl text-sm text-white/80">
                         Kelola data lembaga penyelenggara, periksa keanggotaan, dan lakukan verifikasi lembaga yang terdaftar di SIMPLE.
                     </p>
                 </div>
             </section>
             <Head title="Lembaga" />
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-3">
                 <Stat
                     label="Total Lembaga"
                     value={counts.all}
                     icon={Building2}
-                    tone="bg-indigo-100 text-indigo-700"
+                    tone="text-indigo-600"
                 />
                 <Stat
                     label="Terverifikasi"
                     value={counts.approved}
                     icon={CheckCircle2}
-                    tone="bg-emerald-100 text-emerald-700"
+                    tone="text-emerald-600"
                 />
                 <Stat
                     label="Menunggu Verifikasi"
                     value={counts.pending}
                     icon={Clock}
-                    tone="bg-amber-100 text-amber-700"
+                    tone="text-amber-600"
                 />
             </div>
 
             <section className={card}>
-                <div className="p-5 lg:p-6">
-                    <h2 className="text-xl font-extrabold">Daftar Lembaga</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Periksa informasi dan status verifikasi setiap lembaga.
-                    </p>
-
-                    <div className="relative mt-5">
-                        <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Cari nama lembaga, email, telepon, atau anggota..."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pr-4 pl-11 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/5"
-                        />
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
                         {tabs.map((t) => (
                             <Link
                                 key={t.key}
@@ -183,16 +157,35 @@ export default function AdminLembaga({ institutions, filters, counts }: Props) {
                                     search: search || undefined,
                                 }}
                                 preserveScroll
-                                className={`rounded-xl border px-4 py-2.5 text-sm font-bold transition ${
+                                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
                                     filters.status === t.key
-                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-200'
-                                        : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'
                                 }`}
                             >
-                                {t.label}{' '}
-                                <span className="ml-2 text-xs">{t.count}</span>
+                                {t.label}
+                                <span
+                                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                        filters.status === t.key
+                                            ? 'bg-white/25 text-white'
+                                            : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                                    }`}
+                                >
+                                    {t.count}
+                                </span>
                             </Link>
                         ))}
+                    </div>
+
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Cari lembaga, email, telepon"
+                            className="w-64 rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5"
+                        />
                     </div>
                 </div>
 
@@ -292,42 +285,7 @@ export default function AdminLembaga({ institutions, filters, counts }: Props) {
                         Menampilkan {institutions.from ?? 0}–
                         {institutions.to ?? 0} dari {institutions.total} lembaga
                     </span>
-                    {institutions.last_page > 1 && (
-                        <nav
-                            className="flex flex-wrap gap-1"
-                            aria-label="Pagination"
-                        >
-                            {institutions.links.map((link, idx) => {
-                                const label = link.label
-                                    .replace('&laquo;', '«')
-                                    .replace('&raquo;', '»')
-                                    .replace('Previous', 'Sebelumnya')
-                                    .replace('Next', 'Berikutnya');
-                                const cls = `rounded-lg border px-3 py-1.5 text-xs font-bold ${
-                                    link.active
-                                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200'
-                                        : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200'
-                                }`;
-                                return link.url ? (
-                                    <Link
-                                        key={idx}
-                                        href={link.url}
-                                        preserveScroll
-                                        className={cls}
-                                    >
-                                        {label}
-                                    </Link>
-                                ) : (
-                                    <span
-                                        key={idx}
-                                        className={`${cls} opacity-40`}
-                                    >
-                                        {label}
-                                    </span>
-                                );
-                            })}
-                        </nav>
-                    )}
+                    <Pagination current={Number(institutions.links.find((l) => l.active)?.label ?? 1)} last={institutions.last_page} total={(institutions as unknown as { total?: number }).total ?? 0} from={(institutions as unknown as { from?: number | null }).from} to={(institutions as unknown as { to?: number | null }).to} unit="lembaga" />
                 </div>
             </section>
         </AdminLayout>

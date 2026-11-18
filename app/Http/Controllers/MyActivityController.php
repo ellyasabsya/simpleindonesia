@@ -33,13 +33,26 @@ class MyActivityController extends Controller
 
     public function tiket(Request $request)
     {
-        $rows = Ticket::with('event')
-            ->where('user_id', $request->user()->id)->latest()->get()
-            ->map(fn ($t) => [
-                'id' => $t->id, 'code' => $t->code, 'quantity' => $t->quantity,
-                'total_price' => $t->total_price, 'status' => $t->status,
-            ] + $this->eventData($t->event))
-            ->all();
+        $orders = \Illuminate\Support\Facades\DB::table('ticket_orders')
+            ->where('status', 'lunas')->where('user_id', $request->user()->id)
+            ->latest('id')->get();
+        $holders = \Illuminate\Support\Facades\DB::table('ticket_holders')
+            ->whereIn('ticket_order_id', $orders->pluck('id'))->orderBy('id')->get()
+            ->groupBy('ticket_order_id');
+        $events = \App\Models\Event::whereIn('id', $orders->pluck('event_id'))->get()->keyBy('id');
+
+        $rows = $orders->map(fn ($o) => [
+            'id' => $o->id,
+            'code' => $o->code,
+            'quantity' => (int) $o->quantity,
+            'total_price' => (int) $o->total,
+            'status' => $o->status,
+            'tickets' => $holders->get($o->id, collect())->map(fn ($h) => [
+                'code' => $h->code,
+                'holder_name' => $h->holder_name,
+                'checked_in' => $h->checked_in_at !== null,
+            ])->values()->all(),
+        ] + $this->eventData($events->get($o->event_id)))->values()->all();
 
         return Inertia::render('saya/tiket', ['rows' => $rows]);
     }

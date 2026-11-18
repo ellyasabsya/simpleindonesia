@@ -1,12 +1,15 @@
+import { usePage as usePanelPage } from '@inertiajs/react';
+import { createPortal } from 'react-dom';
 import UserLayout from '@/components/user/user-layout';
 import { Link, router } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Banknote, CalendarDays, Check, Clock, Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, Wallet, X } from 'lucide-react';
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 
 type Perm = 'events' | 'checkin' | 'finance' | 'withdraw' | 'members';
 type Inst = { id: number; name: string; email: string; phone: string; status: string; logo_url: string | null };
-type Member = { id: number; name: string | null; email: string | null; avatar?: string | null; role: string; permissions: Perm[]; is_owner?: boolean };
-type Ev = { id: number; title: string; category: string; package: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null };
+type Member = { id: number; name: string | null; email: string | null; avatar?: string | null; role: string; permissions: Perm[]; is_owner?: boolean; status?: string };
+type SubEv = { id: number; title: string; category: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null };
+type Ev = { id: number; title: string; category: string; package: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null; subs?: SubEv[] };
 type Props = {
     institution: Inst;
     isOwner: boolean;
@@ -83,6 +86,33 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
     const [perms, setPerms] = useState<Perm[]>(member?.permissions ?? ROLES.manajer.perms);
     const [busy, setBusy] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [lookup, setLookup] = useState<any>(null);
+    const [checking, setChecking] = useState(false);
+    const [recheck, setRecheck] = useState(0);
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (editing) return;
+        const v = email.trim();
+        setLookup(null);
+        if (!/^\S+@\S+\.\S+$/.test(v)) { setChecking(false); return; }
+        setChecking(true);
+        const ctl = new AbortController();
+        const t = setTimeout(() => {
+            fetch(`/panel/anggota/cari?email=${encodeURIComponent(v)}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, signal: ctl.signal })
+                .then((r) => (r.ok ? r.json() : Promise.reject(new Error('gagal'))))
+                .then((d) => setLookup(d))
+                .catch((e) => { if (e?.name !== 'AbortError') setLookup({ status: 'error' }); })
+                .finally(() => { if (!ctl.signal.aborted) setChecking(false); });
+        }, 450);
+        return () => { clearTimeout(t); ctl.abort(); };
+    }, [email, recheck, editing]);
+
+    const registerUrl = typeof window !== 'undefined' ? `${window.location.origin}/register` : '/register';
+    const copyRegister = () => {
+        navigator.clipboard?.writeText(registerUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+    };
+    const canSubmit = editing || lookup?.status === 'ok';
 
     const pickRole = (k: string) => { setRole(k); setPerms(ROLES[k].perms); };
     const toggle = (p: Perm) => setPerms((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
@@ -95,10 +125,10 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
         else router.post('/panel/anggota', { email, role, permissions: perms }, opts);
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm sm:items-center" onMouseDown={onClose}>
-            <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-                <div className="flex items-start justify-between gap-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm sm:items-center" onMouseDown={onClose}>
+            <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl [scrollbar-width:none] dark:bg-slate-900 [&::-webkit-scrollbar]:hidden">
+                <div className="sticky top-0 z-10 -mx-6 -mt-6 flex items-start justify-between gap-4 bg-white px-6 pb-3 pt-6 dark:bg-slate-900">
                     <div>
                         <p className={eyebrow}>Anggota lembaga</p>
                         <h3 className="mt-1 text-xl font-extrabold">{editing ? `Ubah akses ${member!.name ?? ''}` : 'Tambah anggota'}</h3>
@@ -113,6 +143,43 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
                         {errors.email && <span className="mt-1 block text-xs font-semibold text-rose-600">{errors.email}</span>}
                         <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Orang ini harus sudah punya akun SIMPLE.</span>
                     </label>
+                )}
+
+                {!editing && checking && (
+                    <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">Memeriksa akun…</p>
+                )}
+
+                {!editing && !checking && lookup?.status === 'ok' && (
+                    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-400/30 dark:bg-emerald-500/10">
+                        <Avatar name={lookup.user.name} src={lookup.user.avatar} className="h-12 w-12 rounded-full text-base" />
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate font-extrabold">{lookup.user.name}</p>
+                            <p className="truncate text-xs text-slate-600 dark:text-slate-300">{[lookup.user.username ? `@${lookup.user.username}` : null, lookup.user.city].filter(Boolean).join(' · ') || 'Akun SIMPLE'}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-extrabold text-white">Akun ditemukan</span>
+                    </div>
+                )}
+
+                {!editing && !checking && lookup?.status === 'not_found' && (
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/30 dark:bg-amber-500/10">
+                        <p className="text-sm font-extrabold text-amber-800 dark:text-amber-200">Email ini belum terdaftar di SIMPLE.</p>
+                        <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">Minta orangnya membuat akun dulu dengan email ini. Setelah mendaftar, tekan “Periksa lagi”, lalu anggota bisa ditambahkan.</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <button type="button" onClick={copyRegister} className="rounded-xl bg-white px-3 py-2 text-xs font-bold shadow-sm hover:bg-slate-50 dark:bg-white/10">{copied ? 'Tautan tersalin' : 'Salin tautan daftar'}</button>
+                            <a href={`https://wa.me/?text=${encodeURIComponent(`Halo, silakan daftar akun SIMPLE dulu dengan email ini: ${registerUrl}`)}`} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-white px-3 py-2 text-xs font-bold shadow-sm hover:bg-slate-50 dark:bg-white/10">Kirim lewat WhatsApp</a>
+                            <button type="button" onClick={() => setRecheck((n) => n + 1)} className="rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700">Periksa lagi</button>
+                        </div>
+                    </div>
+                )}
+
+                {!editing && !checking && lookup?.status === 'owner' && (
+                    <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">Akun ini adalah pemilik lembaga, tidak perlu ditambahkan.</p>
+                )}
+                {!editing && !checking && lookup?.status === 'member' && (
+                    <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">Akun ini sudah menjadi anggota lembaga.</p>
+                )}
+                {!editing && !checking && lookup?.status === 'error' && (
+                    <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200">Gagal memeriksa akun. Coba lagi sebentar lagi.</p>
                 )}
 
                 <div className="mt-5">
@@ -142,12 +209,13 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
+                <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex justify-end gap-2 border-t border-slate-100 bg-white px-6 py-4 dark:border-white/10 dark:bg-slate-900">
                     <button type="button" onClick={onClose} className={ghost}>Batal</button>
-                    <button type="submit" disabled={busy} className={`${primary} disabled:opacity-60`}>{busy ? 'Menyimpan…' : editing ? 'Simpan akses' : 'Tambah anggota'}</button>
+                    <button type="submit" disabled={busy || !canSubmit} className={`${primary} disabled:cursor-not-allowed disabled:opacity-60`}>{busy ? 'Menyimpan…' : editing ? 'Simpan akses' : 'Tambah anggota'}</button>
                 </div>
             </form>
-        </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -175,6 +243,8 @@ function Pager({ page, last, total, per, onPage }: { page: number; last: number;
 }
 
 export default function PanelDashboard({ institution, isOwner, owner, members, counts, balance, events, pagination, filter, upcoming }: Props) {
+    const myPerms: string[] = ((usePanelPage().props as any).panelPerms as string[] | null) ?? ['events', 'checkin', 'finance', 'withdraw', 'members'];
+    const can = (p: string) => isOwner || myPerms.includes(p);
     const [modal, setModal] = useState<{ open: boolean; member: Member | null }>({ open: false, member: null });
     const verified = institution.status === 'approved';
     const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -227,7 +297,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
     ];
 
     const removeMember = (m: Member) => {
-        if (confirm(`Keluarkan ${m.name ?? 'anggota ini'} dari lembaga?`)) router.delete(`/panel/anggota/${m.id}`, { preserveScroll: true });
+        if (confirm(m.status === 'menunggu' ? `Batalkan undangan untuk ${m.name ?? 'anggota ini'}?` : `Keluarkan ${m.name ?? 'anggota ini'} dari lembaga?`)) router.delete(`/panel/anggota/${m.id}`, { preserveScroll: true });
     };
 
     return (
@@ -249,7 +319,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                     <div className="flex flex-wrap gap-2">
                         <Link href="/dashboard" className={ghost}><ArrowLeft className="h-4 w-4" /> Dashboard</Link>
                         <Link href="/panel/profil" className={ghost}>Ubah profil</Link>
-                        <Link href="/panel/ajukan" className={primary}><Plus className="h-4 w-4" /> Buat event</Link>
+                        <Link href="/panel/ajukan" className={`${primary} ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                     </div>
                 </header>
 
@@ -311,14 +381,14 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                 </section>
 
                 {/* KEUANGAN */}
-                <section id="keuangan" className="scroll-mt-24 space-y-4">
+                <section id="keuangan" className={`scroll-mt-24 space-y-4 ${can('finance') || can('withdraw') ? '' : '!hidden'}`}>
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                             <p className={eyebrow}>Keuangan</p>
                             <h2 className="mt-1 text-2xl font-extrabold">Saldo lembaga</h2>
                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pantau pendapatan tiket dan penarikan dana lembaga.</p>
                         </div>
-                        <Link href="/panel/pendapatan" className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline">Lihat pendapatan <ArrowRight className="h-4 w-4" /></Link>
+                        <Link href="/panel/pendapatan" className={`inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline ${can('finance') ? '' : '!hidden'}`}>Lihat pendapatan <ArrowRight className="h-4 w-4" /></Link>
                     </div>
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-sky-400 p-6 text-white shadow-xl shadow-blue-500/20">
@@ -327,7 +397,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                 <div className="flex items-center justify-between"><p className="text-sm font-bold">Saldo tersedia</p><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20"><Wallet className="h-5 w-5" /></span></div>
                                 <p className="mt-4 text-3xl font-extrabold">{rp(balance.available)}</p>
                                 <p className="mt-1 text-sm text-white/80">Siap ditarik ke rekening</p>
-                                <Link href="/panel/pendapatan" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-blue-700 shadow transition hover:-translate-y-0.5">Tarik saldo <ArrowRight className="h-4 w-4" /></Link>
+                                <Link href="/panel/pendapatan" className={`mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-blue-700 shadow transition hover:-translate-y-0.5 ${can('withdraw') ? '' : '!hidden'}`}>Tarik saldo <ArrowRight className="h-4 w-4" /></Link>
                             </div>
                         </div>
                         <div className="rounded-3xl bg-gradient-to-br from-slate-950 to-blue-950 p-6 text-white shadow-xl">
@@ -348,7 +418,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                     <div id="event" className={`${card} scroll-mt-24 p-6`}>
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-extrabold">Event lembaga</h3>
-                            <Link href="/panel/ajukan" className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"><Plus className="h-4 w-4" /> Buat event</Link>
+                            <Link href="/panel/ajukan" className={`inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                         </div>
                         {counts.total > 0 && (
                             <div className="mt-4 flex flex-wrap gap-2">
@@ -367,7 +437,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                 <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-50 dark:bg-white/10"><CalendarDays className="h-7 w-7 text-sky-500" /></span>
                                 <p className="text-lg font-extrabold">Belum ada event</p>
                                 <p className="max-w-xs text-sm text-slate-500 dark:text-slate-400">Ajukan event pertama Anda. Event tayang setelah diperiksa admin.</p>
-                                <Link href="/panel/ajukan" className={primary}><Plus className="h-4 w-4" /> Buat event</Link>
+                                <Link href="/panel/ajukan" className={`${primary} ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                             </div>
                         ) : (
                             <ul className="mt-4 divide-y divide-slate-100 dark:divide-white/10">
@@ -379,11 +449,35 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                                 <span className={`absolute left-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${STATUS[e.status].dot}`} />
                                             </span>
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate font-extrabold">{e.title}</span>
-                                                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{e.category} · {tgl(e.starts_at)}{e.ends_at !== e.starts_at && ` – ${tgl(e.ends_at)}`} · Paket {e.package}</span>
+                                                <span className="flex items-center gap-2">
+                                                    <span className="truncate font-extrabold">{e.title}</span>
+                                                    {e.subs && e.subs.length > 0 && (
+                                                        <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200">Rangkaian · {e.subs.length} kegiatan</span>
+                                                    )}
+                                                </span>
+                                                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{e.category ? `${e.category} · ` : ''}{tgl(e.starts_at)}{e.ends_at !== e.starts_at && ` – ${tgl(e.ends_at)}`} · Paket {e.package}</span>
                                             </span>
                                             <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS[e.status].badge}`}>{STATUS[e.status].label}</span>
                                         </Link>
+                                        {e.subs && e.subs.length > 0 && (
+                                            <ul className="mb-3 ml-8 space-y-1 border-l-2 border-indigo-100 pl-4 dark:border-white/10">
+                                                {e.subs.map((c) => (
+                                                    <li key={c.id}>
+                                                        <Link href={`/panel/event/${c.id}`} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-50 dark:hover:bg-white/5">
+                                                            <span className="relative flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-sky-50 to-indigo-50 ring-1 ring-slate-200/70 dark:from-white/10 dark:to-white/5 dark:ring-white/10">
+                                                                {c.poster_url ? <img src={c.poster_url} alt={c.title} loading="lazy" className="h-full w-full object-cover" /> : <CalendarDays className="h-4 w-4 text-blue-600" />}
+                                                                <span className={`absolute left-1 top-1 h-2 w-2 rounded-full ring-2 ring-white ${STATUS[c.status].dot}`} />
+                                                            </span>
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate text-sm font-bold">{c.title}</span>
+                                                                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{c.category ? `${c.category} · ` : ''}{tgl(c.starts_at)}{c.ends_at !== c.starts_at && ` – ${tgl(c.ends_at)}`}</span>
+                                                            </span>
+                                                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS[c.status].badge}`}>{STATUS[c.status].label}</span>
+                                                        </Link>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -404,11 +498,12 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm font-extrabold">{m.name ?? m.email}</span>
                                             <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{m.is_owner ? 'Pemilik · Semua akses' : `${ROLES[m.role]?.label ?? m.role} · ${m.permissions.length} akses`}</span>
+                                            {m.status === 'menunggu' && <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">Menunggu persetujuan</span>}
                                         </span>
                                         {isOwner && !m.is_owner && (
                                             <span className="flex gap-1">
                                                 <button onClick={() => setModal({ open: true, member: m })} aria-label="Ubah akses" className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
-                                                <button onClick={() => removeMember(m)} aria-label="Keluarkan" className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                                                <button onClick={() => removeMember(m)} aria-label={m.status === 'menunggu' ? 'Batalkan undangan' : 'Keluarkan'} title={m.status === 'menunggu' ? 'Batalkan undangan' : 'Keluarkan'} className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
                                             </span>
                                         )}
                                     </li>

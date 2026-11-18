@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+
+class TicketScanController extends Controller
+{
+    public function store(Request $request, Event $event): JsonResponse
+    {
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst && $event->institution_id === $inst->id, 404);
+
+        $code = $this->extract((string) $request->input('code'));
+        if ($code === '') {
+            return response()->json(['status' => 'tidak_ditemukan', 'code' => '']);
+        }
+
+        $h = DB::table('ticket_holders')
+            ->where('event_id', $event->id)
+            ->where(function ($q) use ($code) {
+                $q->whereRaw('LOWER(code) = ?', [mb_strtolower($code)])
+                    ->orWhereRaw('LOWER(reg_code) = ?', [mb_strtolower($code)]);
+            })
+            ->first();
+
+        if (! $h) {
+            return response()->json(['status' => 'tidak_ditemukan', 'code' => $code]);
+        }
+
+        $order = DB::table('ticket_orders')->where('id', $h->ticket_order_id)->first();
+        $type = $h->ticket_type_id ? DB::table('ticket_types')->where('id', $h->ticket_type_id)->value('name') : null;
+
+        $info = [
+            'code' => $h->code,
+            'reg_id' => $h->reg_code,
+            'name' => $h->holder_name,
+            'type' => $type,
+            'buyer' => data_get($order, 'buyer_name') ?? data_get($order, 'name') ?? data_get($order, 'buyer_email'),
+        ];
+
+        if (! $order || $order->status !== 'lunas') {
+            return response()->json($info + ['status' => 'belum_lunas', 'order_status' => $order->status ?? null]);
+        }
+
+        $claimed = DB::table('ticket_holders')
+            ->where('id', $h->id)->whereNull('checked_in_at')
+            ->update(['checked_in_at' => now()]);
+
+        if ($claimed) {
+            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt(now())]);
+        }
+
+        $prev = DB::table('ticket_holders')->where('id', $h->id)->value('checked_in_at');
+        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($prev)]);
+    }
+
+    private function extract(string $raw): string
+    {
+        $raw = trim($raw);
+        if (str_contains($raw, '/')) {
+            $path = parse_url($raw, PHP_URL_PATH) ?: $raw;
+            $parts = array_values(array_filter(explode('/', $path), fn ($p) => $p !== ''));
+            $raw = $parts ? end($parts) : '';
+        }
+        return trim(explode('?', $raw)[0]);
+    }
+
+    private function fmt($value): string
+    {
+        return Carbon::parse($value)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d M Y H:i');
+    }
+}

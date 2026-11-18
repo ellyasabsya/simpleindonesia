@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Event;
+
+class RegistrationForm
+{
+    public const TYPES = ['text', 'textarea', 'number', 'select', 'checkbox', 'date'];
+
+    public static function needsOptions(string $type): bool
+    {
+        return in_array($type, ['select', 'checkbox'], true);
+    }
+
+    /** Semua kolom kustom event ini, termasuk yang diarsipkan. */
+    public static function fields(Event $event): array
+    {
+        $raw = $event->getAttribute('registration_fields');
+        $list = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: []);
+
+        return array_values(array_filter($list, 'is_array'));
+    }
+}

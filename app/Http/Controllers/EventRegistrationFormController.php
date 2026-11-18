@@ -1,0 +1,470 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Event;
+use App\Notifications\AdminAlert;
+use App\Support\FormFields;
+use App\Support\RegistrationForm;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EventRegistrationFormController extends Controller
+{
+    private const CLOSED = ['ditolak', 'dibatalkan', 'batal', 'kedaluwarsa'];
+
+    public function show(Request $request, Event $event): Response
+    {
+        $this->guard($event);
+        $user = $request->user();
+        $isTeam = $event->competition_type === 'team';
+        $fee = (int) $event->registration_fee;
+        $paid = $fee > 0;
+        $cats = $this->categories($event);
+        $names = $cats->pluck('name', 'id');
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+
+        $mine = DB::table('event_registrations')->where('event_id', $event->id)->where('user_id', $user->id)->first();
+        $registration = null;
+        if ($mine) {
+            $registration = [
+                'status' => $mine->status,
+                'note' => $mine->review_note,
+                'message' => (string) (DB::table('events')->where('id', $event->id)->value('registration_message') ?? ''),
+                'amount' => (int) $mine->total_fee,
+                'at' => Carbon::parse($mine->created_at)->setTimezone($tz)->format('d M Y H:i'),
+                'category' => $names->get($mine->participant_category_id),
+                'teams' => DB::table('registration_teams')->where('event_registration_id', $mine->id)->orderBy('id')->get()
+                    ->map(fn ($t) => ['name' => $t->name, 'category' => $names->get($t->participant_category_id)])->values(),
+            ];
+        }
+
+        $after = $isTeam ? [] : FormFields::active($event, 'after');
+        $hasAfter = count($after) > 0;
+        if ($isTeam) {
+            $steps = [
+                ['title' => $paid ? 'Data & Bayar' : 'Data Pendaftar', 'sub' => 'Isi data pendaftar'],
+                ['title' => 'Verifikasi', 'sub' => 'Ditinjau panitia'],
+                ['title' => 'Data Anggota', 'sub' => 'Setelah disetujui'],
+            ];
+        } elseif ($paid) {
+            $steps = [
+                ['title' => 'Data & Bayar', 'sub' => 'Isi data dan transfer'],
+                ['title' => 'Verifikasi', 'sub' => 'Ditinjau panitia'],
+                $hasAfter
+                    ? ['title' => 'Lengkapi Data', 'sub' => 'Setelah disetujui']
+                    : ['title' => 'Terdaftar', 'sub' => 'Selesai'],
+            ];
+        } elseif ($hasAfter) {
+            $steps = [
+                ['title' => 'Data Peserta', 'sub' => 'Isi data Anda'],
+                ['title' => 'Lengkapi Data', 'sub' => 'Diminta panitia'],
+            ];
+        } else {
+            $steps = [
+                ['title' => 'Data Peserta', 'sub' => 'Isi data Anda'],
+                ['title' => 'Terdaftar', 'sub' => 'Selesai'],
+            ];
+        }
+        $last = count($steps) - 1;
+        $active = 0;
+        $done = false;
+        $followup = null;
+        if ($mine) {
+            if ($mine->status === 'terdaftar') {
+                $active = $last;
+                $done = ! $isTeam && (! $hasAfter || $mine->completed_at !== null);
+                if ($hasAfter) {
+                    $vals = [];
+                    foreach ((json_decode((string) $mine->followup_answers, true) ?: []) as $k => $v) {
+                        $vals[$k] = (is_array($v) && isset($v['path'])) ? ['file' => true, 'name' => $v['name'] ?? 'berkas'] : $v;
+                    }
+                    $followup = ['fields' => $after, 'completed' => $mine->completed_at !== null, 'values' => (object) $vals];
+                }
+            } else {
+                $active = min(1, $last);
+            }
+        }
+
+        $poster = $event->poster_path
+            ? (str_starts_with($event->poster_path, 'http') ? $event->poster_path : asset('storage/'.ltrim($event->poster_path, '/')))
+            : null;
+
+        return Inertia::render('event-daftar', [
+            'event' => ['id' => $event->id, 'title' => $event->title, 'location' => $event->location, 'starts_at' => $event->starts_at, 'poster' => $poster],
+            'isTeam' => $isTeam,
+            'fee' => $fee,
+            'bank' => ($paid && $event->bank_account_number)
+                ? ['name' => $event->bank_name, 'number' => $event->bank_account_number, 'holder' => $event->bank_account_name]
+                : null,
+            'categories' => $cats->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'label' => $c->competition_name ?: $c->name])->values(),
+            'fields' => $isTeam ? [] : $this->active($event),
+            'steps' => $steps,
+            'activeStep' => $active,
+            'closed' => $mine ? null : $this->closedReason($event, $isTeam),
+            'registration' => $registration,
+            'justSent' => $request->boolean('terkirim'),
+            'done' => $done,
+            'followup' => $followup,
+            'user' => ['name' => (string) $user->name, 'email' => (string) $user->email],
+            'backUrl' => '/events/'.($event->slug ?: $event->id),
+        ]);
+    }
+
+    public function store(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($event);
+        $user = $request->user();
+        $back = redirect('/events/'.$event->id.'/daftar');
+
+        if (DB::table('event_registrations')->where('event_id', $event->id)->where('user_id', $user->id)->exists()) {
+            return $back;
+        }
+
+        $isTeam = $event->competition_type === 'team';
+        if ($reason = $this->closedReason($event, $isTeam)) {
+            throw ValidationException::withMessages(['form' => $reason]);
+        }
+
+        $fee = (int) $event->registration_fee;
+        $cats = $this->categories($event);
+        $catIds = $cats->pluck('id')->all();
+        $fields = $isTeam ? [] : $this->active($event);
+
+        $rules = [
+            'contact_name' => ['required', 'string', 'max:120'],
+            'contact_phone' => ['required', 'string', 'max:25', 'regex:/^[0-9+\-\s]+$/'],
+            'contact_email' => ['required', 'email', 'max:150'],
+            'school' => [$isTeam ? 'required' : 'nullable', 'string', 'max:120'],
+            'bukti' => [$fee > 0 ? 'required' : 'nullable', 'file', 'mimes:'.RegistrationForm::FILE_MIMES, 'max:'.RegistrationForm::FILE_MAX_KB],
+            'consent' => ['accepted'],
+        ];
+        $names = [
+            'contact_name' => $isTeam ? 'Nama penanggung jawab' : 'Nama lengkap',
+            'contact_phone' => $isTeam ? 'No. HP penanggung jawab' : 'Nomor WhatsApp',
+            'contact_email' => $isTeam ? 'Email penanggung jawab' : 'Email',
+            'school' => $isTeam ? 'Nama sekolah / organisasi' : 'Sekolah / instansi',
+            'bukti' => 'Bukti transfer',
+            'participant_category_id' => 'Kategori',
+        ];
+        $msgs = [
+            'consent.accepted' => 'Centang persetujuan penggunaan data untuk melanjutkan.',
+            'bukti.required' => 'Unggah bukti transfer.',
+            'bukti.mimes' => 'Bukti transfer harus berupa JPG, PNG, WEBP, atau PDF.',
+            'bukti.max' => 'Bukti transfer maksimal 5 MB.',
+            'bukti.uploaded' => 'Unggahan bukti transfer gagal. Ukuran berkas mungkin terlalu besar.',
+            'teams.required' => 'Tambahkan minimal satu tim.',
+            'teams.*.name.required' => 'Nama tim wajib diisi.',
+            'teams.*.category_id.required' => 'Pilih kategori untuk tim ini.',
+        ];
+
+        if ($isTeam) {
+            $rules['teams'] = ['required', 'array', 'min:1', 'max:100'];
+            $rules['teams.*.name'] = ['required', 'string', 'max:120'];
+            $rules['teams.*.category_id'] = count($catIds) > 1 ? ['required', Rule::in($catIds)] : ['nullable'];
+        } else {
+            $rules['participant_category_id'] = count($catIds) > 1 ? ['required', Rule::in($catIds)] : ['nullable'];
+        }
+
+        foreach ($fields as $f) {
+            $k = 'answers.'.$f['key'];
+            $req = $f['required'] ? 'required' : 'nullable';
+            $rules[$k] = match ($f['type']) {
+                'number' => [$req, 'numeric'],
+                'date' => [$req, 'date'],
+                'textarea' => [$req, 'string', 'max:3000'],
+                'select' => [$req, 'string', Rule::in($f['options'])],
+                'checkbox' => [$req, 'array', 'max:50'],
+                'file' => [$req, 'file', 'mimes:'.RegistrationForm::FILE_MIMES, 'max:'.RegistrationForm::FILE_MAX_KB],
+                default => [$req, 'string', 'max:255'],
+            };
+            if ($f['type'] === 'checkbox') {
+                $rules[$k.'.*'] = ['string', Rule::in($f['options'])];
+            }
+            if ($f['type'] === 'file') {
+                $msgs[$k.'.mimes'] = $f['label'].' harus berupa JPG, PNG, WEBP, atau PDF.';
+                $msgs[$k.'.max'] = $f['label'].' maksimal 5 MB.';
+                $msgs[$k.'.uploaded'] = 'Unggahan '.$f['label'].' gagal. Ukuran berkas mungkin terlalu besar.';
+            }
+            $names[$k] = $f['label'];
+        }
+
+        $v = $request->validate($rules, $msgs, $names);
+
+        $catId = null;
+        $teams = [];
+        if ($isTeam) {
+            foreach ($v['teams'] as $t) {
+                $teams[] = [
+                    'name' => trim($t['name']),
+                    'cat' => count($catIds) === 1 ? $catIds[0] : (isset($t['category_id']) && $t['category_id'] !== '' ? (int) $t['category_id'] : null),
+                ];
+            }
+        } else {
+            $catId = count($catIds) === 1 ? $catIds[0] : (isset($v['participant_category_id']) && $v['participant_category_id'] !== '' ? (int) $v['participant_category_id'] : null);
+        }
+
+        $answers = [];
+        foreach ($fields as $f) {
+            if ($f['type'] === 'file') {
+                continue;
+            }
+            $val = data_get($v, 'answers.'.$f['key']);
+            if ($val === null || $val === '' || $val === []) {
+                continue;
+            }
+            $answers[$f['key']] = $f['type'] === 'number' ? $val + 0 : (is_array($val) ? array_values($val) : $val);
+        }
+
+        $total = $fee * ($isTeam ? count($teams) : 1);
+        $status = (! $isTeam && $fee <= 0) ? 'terdaftar' : 'menunggu';
+        $stored = [];
+
+        try {
+            DB::transaction(function () use ($event, $user, $v, $isTeam, $fields, $teams, $catId, $cats, $total, $status, &$answers, &$stored) {
+                $this->assertCapacity($event, $isTeam, $teams, $catId, $cats);
+
+                $proof = null;
+                $up = data_get($v, 'bukti');
+                if ($up instanceof UploadedFile) {
+                    $proof = $this->keep($up, $event, $stored)['path'];
+                }
+                foreach ($fields as $f) {
+                    $file = $f['type'] === 'file' ? data_get($v, 'answers.'.$f['key']) : null;
+                    if ($file instanceof UploadedFile) {
+                        $answers[$f['key']] = $this->keep($file, $event, $stored);
+                    }
+                }
+
+                $id = DB::table('event_registrations')->insertGetId([
+                    'user_id' => $user->id,
+                    'event_id' => $event->id,
+                    'status' => $status,
+                    'participant_category_id' => $catId,
+                    'school' => $v['school'] ?? null,
+                    'contact_name' => trim($v['contact_name']),
+                    'contact_phone' => $v['contact_phone'],
+                    'contact_email' => mb_strtolower(trim($v['contact_email'])),
+                    'answers' => $answers ? json_encode($answers, JSON_UNESCAPED_UNICODE) : null,
+                    'payment_proof' => $proof,
+                    'total_fee' => $total,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($teams as $t) {
+                    DB::table('registration_teams')->insert([
+                        'event_registration_id' => $id,
+                        'name' => $t['name'],
+                        'participant_category_id' => $t['cat'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($stored);
+            throw $e instanceof UniqueConstraintViolationException
+                ? ValidationException::withMessages(['form' => 'Anda sudah mendaftar di event ini.'])
+                : $e;
+        }
+
+        $url = '/events/'.$event->id.'/daftar';
+        $this->alert(
+            $user,
+            $status === 'terdaftar' ? 'Pendaftaran berhasil' : 'Pendaftaran terkirim',
+            $status === 'terdaftar'
+                ? 'Anda sudah terdaftar di "'.$event->title.'".'
+                : 'Pendaftaran Anda di "'.$event->title.'" menunggu verifikasi panitia.',
+            $url
+        );
+        $this->alert(
+            \App\Models\Institution::find($event->institution_id)?->user,
+            'Pendaftar baru',
+            trim($v['contact_name']).' mendaftar di "'.$event->title.'".',
+            '/panel/event/'.$event->id.'/registrasi'
+        );
+
+        return redirect($url.'?terkirim=1');
+    }
+
+    /** Tahap setelah disetujui: pendaftar melengkapi kolom yang diminta panitia. */
+    public function complete(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($event);
+        abort_if($event->competition_type === 'team', 404);
+        $user = $request->user();
+
+        $mine = DB::table('event_registrations')->where('event_id', $event->id)->where('user_id', $user->id)->first();
+        abort_unless($mine && $mine->status === 'terdaftar', 404);
+
+        $fields = FormFields::active($event, 'after');
+        abort_if(! $fields, 404);
+
+        $old = json_decode((string) $mine->followup_answers, true) ?: [];
+        [$rules, $msgs, $names] = FormFields::rules($fields, $old);
+        $v = $request->validate($rules, $msgs, $names);
+
+        $answers = $old;
+        $stored = [];
+        $replaced = [];
+
+        try {
+            DB::transaction(function () use ($event, $mine, $fields, $v, &$answers, &$stored, &$replaced) {
+                foreach ($fields as $f) {
+                    $key = $f['key'];
+                    $val = data_get($v, 'answers.'.$key);
+                    if ($f['type'] === 'file') {
+                        if ($val instanceof UploadedFile) {
+                            if (isset($answers[$key]['path'])) {
+                                $replaced[] = $answers[$key]['path'];
+                            }
+                            $answers[$key] = $this->keep($val, $event, $stored);
+                        }
+
+                        continue;
+                    }
+                    if ($val === null || $val === '' || $val === []) {
+                        unset($answers[$key]);
+
+                        continue;
+                    }
+                    $answers[$key] = $f['type'] === 'number' ? $val + 0 : (is_array($val) ? array_values($val) : $val);
+                }
+
+                DB::table('event_registrations')->where('id', $mine->id)->update([
+                    'followup_answers' => $answers ? json_encode($answers, JSON_UNESCAPED_UNICODE) : null,
+                    'completed_at' => $mine->completed_at ?? now(),
+                    'updated_at' => now(),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($stored);
+            throw $e;
+        }
+
+        foreach ($replaced as $p) {
+            if (str_starts_with($p, 'form-registrations/'.$event->id.'/')) {
+                Storage::disk('local')->delete($p);
+            }
+        }
+
+        $this->alert(
+            \App\Models\Institution::find($event->institution_id)?->user,
+            'Data lanjutan masuk',
+            ($mine->contact_name ?: $user->name).' melengkapi data untuk "'.$event->title.'".',
+            '/panel/event/'.$event->id.'/registrasi'
+        );
+
+        return redirect('/events/'.$event->id.'/daftar?terkirim=1');
+    }
+
+    /** Notifikasi lonceng. Gagal kirim tidak boleh mengganggu pendaftaran. */
+    private function alert(?object $to, string $title, string $message, string $url): void
+    {
+        try {
+            $to?->notify(new AdminAlert($title, $message, $url));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    private function guard(Event $event): void
+    {
+        abort_unless($event->status === Event::PUBLISHED && $event->registration_method !== 'ticket', 404);
+    }
+
+    private function categories(Event $event)
+    {
+        return DB::table('event_participant_categories')->where('event_id', $event->id)->orderBy('id')
+            ->get(['id', 'name', 'competition_name', 'quota']);
+    }
+
+    private function active(Event $event): array
+    {
+        return FormFields::active($event, 'register');
+    }
+
+    private function used(Event $event, bool $isTeam, ?int $catId = null): int
+    {
+        if ($isTeam) {
+            $q = DB::table('registration_teams as t')
+                ->join('event_registrations as r', 'r.id', '=', 't.event_registration_id')
+                ->where('r.event_id', $event->id)->whereNotIn('r.status', self::CLOSED);
+            if ($catId) {
+                $q->where('t.participant_category_id', $catId);
+            }
+
+            return $q->count();
+        }
+        $q = DB::table('event_registrations')->where('event_id', $event->id)->whereNotIn('status', self::CLOSED);
+        if ($catId) {
+            $q->where('participant_category_id', $catId);
+        }
+
+        return $q->count();
+    }
+
+    private function assertCapacity(Event $event, bool $isTeam, array $teams, ?int $catId, $cats): void
+    {
+        $want = $isTeam ? count($teams) : 1;
+        $quota = (int) $event->participant_quota;
+        if ($quota > 0 && $this->used($event, $isTeam) + $want > $quota) {
+            throw ValidationException::withMessages(['form' => 'Kuota pendaftaran tidak mencukupi.']);
+        }
+
+        $perCat = $isTeam ? array_count_values(array_filter(array_column($teams, 'cat'))) : ($catId ? [$catId => 1] : []);
+        foreach ($perCat as $id => $n) {
+            $c = $cats->firstWhere('id', $id);
+            if ($c && (int) $c->quota > 0 && $this->used($event, $isTeam, (int) $id) + $n > (int) $c->quota) {
+                throw ValidationException::withMessages(['form' => 'Kuota kategori '.$c->name.' tidak mencukupi.']);
+            }
+        }
+    }
+
+    private function closedReason(Event $event, bool $isTeam): ?string
+    {
+        if ($event->registration_start && now()->lt(Carbon::parse($event->registration_start))) {
+            return 'Pendaftaran belum dibuka.';
+        }
+        if ($event->registration_end) {
+            $end = Carbon::parse($event->registration_end);
+            if ($end->format('H:i:s') === '00:00:00') {
+                $end = $end->endOfDay();
+            }
+            if (now()->gt($end)) {
+                return 'Pendaftaran sudah ditutup.';
+            }
+        }
+        $quota = (int) $event->participant_quota;
+        if ($quota > 0 && $this->used($event, $isTeam) >= $quota) {
+            return 'Kuota pendaftaran sudah penuh.';
+        }
+
+        return null;
+    }
+
+    /** Simpan berkas ke penyimpanan privat dengan nama acak. */
+    private function keep(UploadedFile $file, Event $event, array &$stored): array
+    {
+        $ext = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
+        $ext = $ext === 'jpeg' ? 'jpg' : $ext;
+        abort_unless(in_array($ext, ['jpg', 'png', 'webp', 'pdf'], true), 422);
+        $size = $file->getSize();
+        $orig = Str::limit((string) preg_replace('/[^\w.\- ]+/u', '_', $file->getClientOriginalName()), 100, '');
+        $path = $file->storeAs('form-registrations/'.$event->id, Str::random(40).'.'.$ext, 'local');
+        $stored[] = $path;
+
+        return ['path' => $path, 'name' => $orig, 'size' => $size];
+    }
+}

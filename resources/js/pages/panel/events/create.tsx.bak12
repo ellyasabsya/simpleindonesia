@@ -10,6 +10,8 @@ type Pkg = {
     event_type: string;
     is_series?: boolean;
     max_participant_categories: number | null;
+    can_ticket: boolean;
+    can_team: boolean;
     price_label: string;
     description: string | null;
     payment_type: string;
@@ -17,13 +19,14 @@ type Pkg = {
     included_sub_events: number;
     extra_sub_event_price: number | null;
     assessment_addon_price: number | null;
+    judge_addon_price: number | null;
     has_judging: boolean;
     features: string[];
 };
 type Detail = {
     title: string; category: string; location: string; starts_at: string; ends_at: string;
-    description: string; poster: File | null;
-    participant_quota: string; participant_categories: { name: string; quota: string }[]; competition_type: string; team_size: string; registration_method: string; bank_name: string; bank_account_number: string; bank_account_name: string;
+    description: string; poster: File | null; juknis: File | null;
+    participant_quota: string; participant_categories: { name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: { rank: string; prize: string }[] }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string; ticket_types: TicketType[];
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
 };
 type Props = { institution: { name: string }; packages: Pkg[]; categories: Record<string, string>; selected_package_id: number | null };
@@ -39,26 +42,31 @@ const help = 'mt-1.5 text-xs text-slate-500 dark:text-slate-400';
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
+type TicketType = { name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string };
+const newTicket = (): TicketType => ({ name: 'Reguler', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '10' });
+
 const blank = (): Detail => ({
-    title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null,
-    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', registration_method: '', bank_name: '', bank_account_number: '', bank_account_name: '',
+    title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
+    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '', ticket_types: [],
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
 const blanks = (n: number) => Array.from({ length: n }, blank);
 const isSeriesPkg = (p: Pkg) => p.is_series === true || p.event_type === 'series';
 const initialSubs = (p: Pkg | null | undefined) => (p && isSeriesPkg(p) ? blanks(Math.max(1, p.included_sub_events)) : []);
 const canAddon = (p: Pkg) => p.assessment_addon_price !== null && !p.has_judging;
-const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p);
-const maxCats = (p?: Pkg) => p?.max_participant_categories ?? (p?.slug === 'iklan' ? 3 : 100);
+const canJudge = (p: Pkg) => p.judge_addon_price !== null && !p.has_judging;
+const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p) || canJudge(p);
+const maxCats = (p?: Pkg) => p?.max_participant_categories ?? 100;
 
 const freeEvents = (p: Pkg) => p.included_sub_events + (isSeriesPkg(p) ? 0 : 1);
 
-function cost(p: Pkg, subCount: number, addon: boolean) {
+function cost(p: Pkg, subCount: number, addon: boolean, judge: boolean) {
     const base = p.payment_type === 'upfront' ? (p.price ?? 0) : 0;
     const extra = subCount === 0 ? 0 : Math.max(0, subCount - freeEvents(p));
     const sub = p.extra_sub_event_price ? extra * p.extra_sub_event_price : 0;
     const ad = addon && canAddon(p) ? (p.assessment_addon_price ?? 0) : 0;
-    return { base, extra, sub, ad, total: base + sub + ad };
+    const aj = judge && canJudge(p) ? (p.judge_addon_price ?? 0) : 0;
+    return { base, extra, sub, ad, aj, total: base + sub + ad + aj };
 }
 
 /* ---------- validasi di browser (server tetap memeriksa ulang) ---------- */
@@ -83,17 +91,43 @@ const vInfo = (d: Detail, pre: string, b?: Bounds): Errs => {
     return e;
 };
 const isComp = (c?: string) => ['perlombaan', 'olahraga'].includes(c ?? '');
+const newCat = (name: string) => ({
+    name, quota: '', competition_name: '', min_age: '', max_age: '', requirements: '',
+    prizes: [{ rank: 'Juara 1', prize: '' }, { rank: 'Juara 2', prize: '' }, { rank: 'Juara 3', prize: '' }],
+});
 const vPeserta = (d: Detail, pre: string): Errs => {
     const e: Errs = {};
     if (d.participant_categories.length < 1) e[pre + 'participant_categories'] = 'Pilih minimal 1 kategori peserta.';
     d.participant_categories.forEach((c, i) => {
         if (!/^\d+$/.test(c.quota) || Number(c.quota) < 1) e[`${pre}participant_categories.${i}.quota`] = 'Isi kuota (minimal 1).';
+        if (isComp(d.category)) {
+            if (!(c.competition_name ?? '').trim()) e[`${pre}participant_categories.${i}.competition_name`] = 'Isi nama perlombaan/pertandingan.';
+            if (c.min_age && c.max_age && Number(c.max_age) < Number(c.min_age)) e[`${pre}participant_categories.${i}.max_age`] = 'Usia maksimal tidak boleh lebih kecil dari usia minimal.';
+        }
     });
     if (isComp(d.category)) {
         if (!d.competition_type) e[pre + 'competition_type'] = 'Pilih perorangan atau tim.';
-        if (d.competition_type === 'team' && (!/^\d+$/.test(d.team_size) || Number(d.team_size) < 2)) e[pre + 'team_size'] = 'Isi jumlah anggota per tim (minimal 2).';
+        if (d.competition_type === 'team' && (!/^\d+$/.test(d.team_size) || Number(d.team_size) < 2)) e[pre + 'team_size'] = 'Isi jumlah peserta per tim (minimal 2).';
+    }
+    if (isComp(d.category) && d.competition_type === 'team') {
+        if (!(Number(d.team_per_row) >= 1)) e[pre + 'team_per_row'] = 'Isi peserta per baris (minimal 1).';
+        if (d.team_leaders === '' || Number(d.team_leaders) >= Number(d.team_size)) e[pre + 'team_leaders'] = 'Jumlah kotak ketua harus lebih kecil dari jumlah peserta per tim.';
     }
     if (!d.registration_method) e[pre + 'registration_method'] = 'Pilih metode pendaftaran.';
+    if (d.registration_method === 'ticket') {
+        if (d.ticket_types.length === 0) e[pre + 'ticket_types'] = 'Aktifkan pendaftaran tiket: tambahkan minimal satu jenis tiket.';
+        d.ticket_types.forEach((t, i) => {
+            const k = pre + `ticket_types.${i}.`;
+            if (!t.name.trim()) e[k + 'name'] = 'Nama tiket wajib diisi.';
+            if (t.price === '') e[k + 'price'] = 'Harga tiket wajib diisi (isi 0 jika gratis).';
+            if (!t.quota || Number(t.quota) < 1) e[k + 'quota'] = 'Kuota tiket minimal 1.';
+            if (!t.valid_from) e[k + 'valid_from'] = 'Tanggal mulai berlaku wajib diisi.';
+            if (!t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku wajib diisi.';
+            else if (t.valid_from && t.valid_until < t.valid_from) e[k + 'valid_until'] = 'Tanggal akhir tidak boleh sebelum tanggal mulai.';
+            if (!t.max_per_order || Number(t.max_per_order) < 1 || Number(t.max_per_order) > 10) e[k + 'max_per_order'] = 'Maksimal per pesanan 1 sampai 10.';
+        });
+    }
+    if (d.registration_fee && !/^\d+$/.test(d.registration_fee)) e[pre + 'registration_fee'] = 'Biaya pendaftaran harus berupa angka.';
     if (d.registration_method === 'transfer_manual') {
         if (!d.bank_name.trim()) e[pre + 'bank_name'] = 'Nama bank wajib diisi.';
         if (!/^[0-9 -]{5,}$/.test(d.bank_account_number.trim())) e[pre + 'bank_account_number'] = 'Isi nomor rekening yang valid.';
@@ -135,7 +169,50 @@ function PosterInput({ file, onChange, error }: { file: File | null; onChange: (
     );
 }
 
-function Schedule({ d, set, pre, err, bounds }: Sec & { bounds?: Bounds }) {
+function JuknisInput({ file, onChange, error }: { file: File | null; onChange: (f: File | null) => void; error?: string }) {
+    const [localError, setLocalError] = useState<string | null>(null);
+    const pick = (f: File | null) => {
+        if (f && f.size > 5 * 1024 * 1024) {
+            setLocalError('Ukuran file maksimal 5 MB.');
+            onChange(null);
+            return;
+        }
+        setLocalError(null);
+        onChange(f);
+    };
+    const size = file ? (file.size >= 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`) : '';
+    return (
+        <div>
+            <label className={label}>Juknis (opsional)</label>
+            <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-4 transition hover:border-indigo-400 hover:bg-indigo-50/60 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+                <input type="file" accept="application/pdf" className="hidden"
+                    onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-white">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <path d="M14 2v6h6" />
+                        <path d="M9 13h6M9 17h6" />
+                    </svg>
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">{file ? file.name : 'Pilih file PDF juknis'}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">{file ? size : 'Petunjuk teknis · PDF · maks. 5 MB'}</span>
+                </span>
+                {file ? (
+                    <button type="button" onClick={(e) => { e.preventDefault(); onChange(null); }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-200">
+                        Hapus
+                    </button>
+                ) : (
+                    <span className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-800 dark:bg-indigo-500/20 dark:text-white">Pilih File</span>
+                )}
+            </label>
+            <Err m={localError ?? error} />
+        </div>
+    );
+}
+
+function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bounds; withJuknis?: boolean }) {
     return (
         <div className="grid gap-6 md:grid-cols-[1fr_200px]">
             <div className="space-y-4">
@@ -157,6 +234,7 @@ function Schedule({ d, set, pre, err, bounds }: Sec & { bounds?: Bounds }) {
                         className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
                     <Err m={err(pre + 'description')} />
                 </div>
+                {withJuknis && <JuknisInput file={d.juknis} onChange={(f) => set({ juknis: f })} error={err(pre + 'juknis')} />}
             </div>
             <PosterInput file={d.poster} onChange={(f) => set({ poster: f })} error={err(pre + 'poster')} />
         </div>
@@ -201,7 +279,7 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
                     <Err m={err(pre + 'location')} />
                 </div>
             </div>
-            <Schedule {...props} />
+            <Schedule {...props} withJuknis />
         </div>
     );
 }
@@ -209,7 +287,63 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
 const PRESET_CATEGORIES = ['TK', 'SD', 'SMP', 'SMA', 'Mahasiswa', 'Umum'];
 const totalQuota = (d: Detail) => d.participant_categories.reduce((a, c) => a + (parseInt(c.quota, 10) || 0), 0);
 
-function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
+type CatRow = Detail['participant_categories'][number];
+
+function CompFields({ c, i, patch, err, pre, kind }: { c: CatRow; i: number; patch: (i: number, p: Partial<CatRow>) => void; err: (k: string) => any; pre: string; kind: string }) {
+    const inp = 'h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800';
+    const prizes = c.prizes ?? [];
+    const setPrize = (j: number, p: Partial<{ rank: string; prize: string }>) => patch(i, { prizes: prizes.map((x, k) => (k === j ? { ...x, ...p } : x)) });
+    const base = `${pre}participant_categories.${i}.`;
+    return (
+        <div className="w-full basis-full space-y-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
+            <div>
+                <label className={label}>Nama {kind} *</label>
+                <input className={inp} maxLength={120} value={c.competition_name ?? ''} onChange={(e) => patch(i, { competition_name: e.target.value })}
+                    placeholder={kind === 'pertandingan' ? 'Contoh: Futsal Putra' : 'Contoh: Lomba Menyanyi Solo'} />
+                <Err m={err(base + 'competition_name')} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label className={label}>Usia minimal (opsional)</label>
+                    <input inputMode="numeric" className={inp} value={c.min_age ?? ''} onChange={(e) => patch(i, { min_age: e.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="Tanpa batas" />
+                    <Err m={err(base + 'min_age')} />
+                </div>
+                <div>
+                    <label className={label}>Usia maksimal (opsional)</label>
+                    <input inputMode="numeric" className={inp} value={c.max_age ?? ''} onChange={(e) => patch(i, { max_age: e.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="Tanpa batas" />
+                    <Err m={err(base + 'max_age')} />
+                </div>
+            </div>
+            <div>
+                <label className={label}>Syarat tambahan (opsional)</label>
+                <textarea rows={3} maxLength={1000} className="w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 py-3 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                    value={c.requirements ?? ''} onChange={(e) => patch(i, { requirements: e.target.value })}
+                    placeholder="Contoh: Peserta membawa kartu pelajar, karya orisinal, dan belum pernah dipublikasikan." />
+                <Err m={err(base + 'requirements')} />
+            </div>
+            <div>
+                <b className="block text-[15px]">Hadiah &amp; Juara <span className="font-normal text-slate-500">(opsional)</span></b>
+                <p className={help}>Isi hadiah kalau ada. Kalau dikosongkan, halaman event hanya menampilkan peringkat juara.</p>
+                <div className="mt-3 space-y-2.5">
+                    {prizes.map((p, j) => (
+                        <div key={j} className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-2 sm:grid-cols-[9rem_minmax(0,1fr)_2.75rem]">
+                            <input className={`${inp} w-full min-w-0`} maxLength={40} value={p.rank} onChange={(e) => setPrize(j, { rank: e.target.value })} placeholder="Juara 1" />
+                            <input className={`${inp} order-3 col-span-2 w-full min-w-0 sm:order-none sm:col-span-1`} maxLength={150} value={p.prize} onChange={(e) => setPrize(j, { prize: e.target.value })} placeholder="Contoh: Rp1.500.000 + piala + sertifikat" />
+                            <button type="button" aria-label="Hapus hadiah" onClick={() => patch(i, { prizes: prizes.filter((_, k) => k !== j) })}
+                                className="order-2 h-11 w-11 shrink-0 rounded-xl border border-slate-200 text-slate-500 sm:order-none hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/10">×</button>
+                        </div>
+                    ))}
+                </div>
+                {prizes.length < 10 && (
+                    <button type="button" onClick={() => patch(i, { prizes: [...prizes, { rank: `Juara ${prizes.length + 1}`, prize: '' }] })}
+                        className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-800 dark:border-white/10 dark:bg-white/10 dark:text-cyan-200">+ Tambah penghargaan</button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = true, ticketOnly = false }: Sec & { max: number; canTicket?: boolean; canTeam?: boolean; ticketOnly?: boolean }) {
     const [draft, setDraft] = useState('');
     const list = d.participant_categories;
     const idx = (v: string) => list.findIndex((x) => x.name.toLowerCase() === v.toLowerCase());
@@ -217,14 +351,27 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
     const comp = isComp(d.category);
     const isTeam = comp && d.competition_type === 'team';
     const unit = isTeam ? 'tim' : 'orang';
-    const slots = Math.min(parseInt(d.team_size, 10) || 0, 30);
+    const teamN = Math.min(parseInt(d.team_size, 10) || 0, 100);
+    const perRow = Math.max(parseInt(d.team_per_row, 10) || 1, 1);
+    const leaderN = Math.min(parseInt(d.team_leaders, 10) || 0, teamN);
+    const memberN = Math.max(teamN - leaderN, 0);
+    const buildSlots = (n: number, l: number) => Array.from({ length: n }, (_, i) => (i < l ? (l > 1 ? `Ketua ${i + 1}` : 'Ketua') : `Peserta ${i - l + 1}`));
+    const updateTeam = (p: { size?: string; row?: string; lead?: string }) => {
+        const size = p.size ?? d.team_size;
+        const row = p.row ?? d.team_per_row;
+        const lead = p.lead ?? d.team_leaders;
+        const n = Math.min(parseInt(size, 10) || 0, 100);
+        const l = Math.min(parseInt(lead, 10) || 0, n);
+        set({ team_size: n ? String(n) : '', team_per_row: row, team_leaders: lead, team_slots: buildSlots(n, l) });
+    };
     const add = (v: string) => {
         const name = v.trim();
         if (!name || full || idx(name) >= 0) return;
-        set({ participant_categories: [...list, { name, quota: '' }] });
+        set({ participant_categories: [...list, newCat(name)] });
     };
     const remove = (i: number) => set({ participant_categories: list.filter((_, j) => j !== i) });
     const setQuota = (i: number, v: string) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, quota: v.replace(/\D/g, '') } : c)) });
+    const patch = (i: number, p: Partial<(typeof list)[number]>) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, ...p } : c)) });
     const toggle = (v: string) => { const i = idx(v); if (i >= 0) remove(i); else add(v); };
     const options = [...PRESET_CATEGORIES, ...list.map((x) => x.name).filter((n) => !PRESET_CATEGORIES.some((p) => p.toLowerCase() === n.toLowerCase()))];
     return (
@@ -236,7 +383,7 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
                         <p className={help}>Pilih apakah peserta mendaftar sendiri atau sebagai tim.</p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                        {[['individual', 'Perorangan', 'Peserta mendaftar sendiri-sendiri.'], ['team', 'Tim', 'Peserta mendaftar sebagai satu tim.']].map(([v, t, sub]) => (
+                        {[['individual', 'Perorangan', 'Peserta mendaftar sendiri-sendiri.'], ...(canTeam ? [['team', 'Tim', 'Peserta mendaftar sebagai satu tim.']] : [])].map(([v, t, sub]) => (
                             <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.competition_type === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
                                 <input type="radio" className="mt-1 accent-indigo-700" checked={d.competition_type === v} onChange={() => set({ competition_type: v })} />
                                 <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
@@ -244,33 +391,45 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
                         ))}
                     </div>
                     <Err m={err(pre + 'competition_type')} />
+                    {!canTeam && <p className={help}>Perlombaan tim hanya tersedia di paket dengan fitur Manajemen Tim.</p>}
 
                     {isTeam && (
                         <div className="space-y-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
-                            <div>
-                                <label className={label}>Kuota per tim (jumlah anggota) *</label>
-                                <div className="flex items-center gap-2">
-                                    <input inputMode="numeric" className="h-11 w-32 rounded-xl border border-slate-200 bg-white/90 px-3 text-right text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
-                                        value={d.team_size} placeholder="Contoh: 5" onChange={(ev) => set({ team_size: ev.target.value.replace(/\D/g, '') })} />
-                                    <span className="text-sm text-slate-500 dark:text-slate-400">orang per tim</span>
-                                </div>
-                                <Err m={err(pre + 'team_size')} />
-                            </div>
-                            <div>
-                                <label className={label}>Preview barisan</label>
-                                {slots >= 2 ? (
-                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                                        {Array.from({ length: slots }, (_, n) => (
-                                            <div key={n} className="flex h-11 items-center gap-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/60 px-3 text-sm font-semibold text-indigo-700 dark:border-indigo-400/40 dark:bg-indigo-500/10 dark:text-indigo-200">
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs text-white">{n + 1}</span>
-                                                Anggota {n + 1}
-                                            </div>
-                                        ))}
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                {([['team_size', 'Jumlah peserta per tim', 'Contoh: 6'], ['team_per_row', 'Peserta per baris', 'Contoh: 3'], ['team_leaders', 'Kotak ketua', 'Contoh: 1']] as const).map(([k, t, ph]) => (
+                                    <div key={k}>
+                                        <label className={label}>{t} *</label>
+                                        <input inputMode="numeric" className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                            value={d[k]} placeholder={ph}
+                                            onChange={(ev) => { const v = ev.target.value.replace(/\D/g, ''); updateTeam(k === 'team_size' ? { size: v } : k === 'team_per_row' ? { row: v } : { lead: v }); }} />
+                                        <Err m={err(pre + k)} />
                                     </div>
+                                ))}
+                            </div>
+                            <p className={help}>Jumlah peserta per tim sudah termasuk kotak ketua.</p>
+                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 text-center dark:border-white/10 dark:bg-white/5">
+                                <b className="block text-sm">Preview Barisan</b>
+                                {teamN > 0 ? (
+                                    <>
+                                        <div className="my-4 flex items-start justify-center gap-6">
+                                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${perRow}, 2.75rem)` }}>
+                                                {Array.from({ length: memberN }, (_, n) => (
+                                                    <div key={n} title={`Peserta ${n + 1}`} className="h-11 w-11 rounded-xl bg-sky-400" />
+                                                ))}
+                                            </div>
+                                            {leaderN > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {Array.from({ length: leaderN }, (_, n) => (
+                                                        <div key={n} title="Ketua" className="h-11 w-11 rounded-xl bg-rose-500" />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{memberN} peserta (biru) · {leaderN} ketua (merah) · {perRow} per baris</p>
+                                    </>
                                 ) : (
-                                    <p className={help}>Isi jumlah anggota untuk melihat susunan barisan satu tim.</p>
+                                    <p className={`${help} mt-3`}>Isi jumlah peserta per tim untuk melihat susunan barisan.</p>
                                 )}
-                                {(parseInt(d.team_size, 10) || 0) > 30 && <p className={help}>Ditampilkan 30 anggota pertama dari {d.team_size}.</p>}
                             </div>
                         </div>
                     )}
@@ -323,6 +482,7 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
                                 <Err m={err(`${pre}participant_categories.${i}.quota`)} />
                             </div>
                             <button type="button" onClick={() => remove(i)} className="text-sm font-bold text-rose-500">Hapus</button>
+                            {comp && <CompFields c={c} i={i} patch={patch} err={err} pre={pre} kind={d.category === 'olahraga' ? 'pertandingan' : 'perlombaan'} />}
                         </div>
                     ))}
                     <div className="flex items-center justify-between px-4 py-3 font-extrabold">
@@ -332,18 +492,101 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
                 </div>
             )}
 
+            {ticketOnly ? (
+                <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
+            ) : (
             <div>
-                <label className={label}>Pendaftaran peserta *</label>
+                <>
+                <div className={`${box} mb-6 p-5`}>
+                    <b className="block text-[15px]">Biaya pendaftaran</b>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Biaya per peserta. Kosongkan atau isi 0 kalau pendaftaran gratis.</span>
+                    <div className="mt-3 flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-950/60">
+                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
+                        <input
+                            inputMode="numeric"
+                            value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
+                            onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                            placeholder="0"
+                            className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
+                        />
+                    </div>
+                    <Err m={err(pre + 'registration_fee')} />
+                </div>
+                <label className={label}>Pendaftaran peserta *</label></>
                 <div className="grid gap-3 sm:grid-cols-2">
-                    {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']].map(([v, t, sub]) => (
+                    {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
-                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v })} />
+                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v, ticket_types: v === 'ticket' && d.ticket_types.length === 0 ? [newTicket()] : d.ticket_types })} />
                             <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
                         </label>
                     ))}
                 </div>
                 <Err m={err(pre + 'registration_method')} />
+                {!canTicket && <p className={help}>Pendaftaran lewat tiket hanya tersedia di paket dengan fitur Tiket.</p>}
             </div>
+            )}
+
+            {d.registration_method === 'ticket' && (
+                <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 dark:border-white/10 dark:bg-indigo-500/10">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">Wajib diisi. Tanpa jenis tiket, pembeli tidak bisa mendaftar.</p>
+                    </div>
+                    {d.ticket_types.map((t, i) => {
+                        const up = (patch: Partial<TicketType>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+                        const k = pre + `ticket_types.${i}.`;
+                        const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5';
+                        return (
+                            <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}</span>
+                                    {d.ticket_types.length > 1 && (
+                                        <button type="button" onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })} className="text-xs font-bold text-red-600">Hapus</button>
+                                    )}
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
+                                        <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" onChange={(e) => up({ name: e.target.value })} />
+                                        <Err m={err(k + 'name')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
+                                        <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
+                                            value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
+                                            onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                                        <Err m={err(k + 'price')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
+                                        <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
+                                        <Err m={err(k + 'quota')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Maksimal per pesanan (1-10) *</label>
+                                        <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
+                                        <Err m={err(k + 'max_per_order')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Berlaku mulai *</label>
+                                        <input type="date" className={inp} value={t.valid_from} onChange={(e) => up({ valid_from: e.target.value })} />
+                                        <Err m={err(k + 'valid_from')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Berlaku sampai *</label>
+                                        <input type="date" className={inp} value={t.valid_until} onChange={(e) => up({ valid_until: e.target.value })} />
+                                        <Err m={err(k + 'valid_until')} />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <Err m={err(pre + 'ticket_types')} />
+                    {d.ticket_types.length < 10 && (
+                        <button type="button" onClick={() => set({ ticket_types: [...d.ticket_types, newTicket()] })} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-200">+ Tambah jenis tiket</button>
+                    )}
+                </div>
+            )}
 
             {d.registration_method === 'transfer_manual' && (
                 <div className={`${box} space-y-4 p-4`}>
@@ -445,6 +688,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         {!main && <Fact icon={Tag} title="Kategori event">{categories[d.category] ?? '-'}</Fact>}
                         {!main && <Fact icon={Users} title="Kuota peserta">{totalQuota(d) || '-'} orang</Fact>}
                         {!main && <Fact icon={Ticket} title="Pendaftaran">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
+                        {!main && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
                         {!main && (
                             <Fact icon={Phone} title="Penanggung jawab">
                                 {contact || '-'}
@@ -456,7 +700,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         <div>
                             <p className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">Kategori peserta</p>
                             <div className="flex flex-wrap gap-2">
-                                {d.participant_categories.map((c) => <span key={c.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c.name} · {c.quota}</span>)}
+                                {d.participant_categories.map((c) => <span key={c.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c.competition_name ? `${c.competition_name} (${c.name})` : c.name} · {c.quota}</span>)}
                             </div>
                         </div>
                     )}
@@ -467,17 +711,21 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
 }
 
 /* ---------- halaman ---------- *//* ---------- halaman ---------- */
-export default function CreateEvent({ packages, categories, selected_package_id }: Props) {
+export default function CreateEvent({ packages, categories, selected_package_id, payment_methods = [], platform_bank = null }: Props & { payment_methods?: string[]; platform_bank?: { bank_name: string; bank_account_number: string; bank_account_holder: string } | null }) {
     const initial = packages.find((p) => p.id === selected_package_id) ?? null;
     const [step, setStep] = useState(initial && !hasOptions(initial) ? 1 : 0);
     const [local, setLocal] = useState<Errs>({});
 
-    const { data, setData, post, processing, errors } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; subs: Detail[] }>({
+    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[] }>({
         ...blank(),
         package_id: initial?.id ?? '',
         assessment_addon: false,
+        judge_addon: false,
+        payment_method: '',
+        payment_proof: null,
         subs: initialSubs(initial),
     });
+    const payMethod = payment_methods.length === 1 ? payment_methods[0] : data.payment_method;
 
     const pkg = packages.find((p) => p.id === data.package_id);
     const series = !!pkg && (isSeriesPkg(pkg) || data.subs.length > 0);
@@ -489,7 +737,13 @@ export default function CreateEvent({ packages, categories, selected_package_id 
         ({ paket: 'Paket', info: 'Informasi Event', peserta: 'Peserta & Pendaftaran', pj: 'Penanggung Jawab', utama: 'Event Utama', tinjau: 'Tinjau' } as Record<string, string>)[k];
     const cur = keys[Math.min(step, keys.length - 1)];
     const last = step >= keys.length - 1;
-    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon) : null;
+    useEffect(() => {
+        if (pkg?.payment_type !== 'revenue_share') return;
+        if (data.registration_method !== 'ticket' || data.subs.some((x) => x.registration_method !== 'ticket')) {
+            setData((d) => ({ ...d, registration_method: 'ticket', subs: d.subs.map((x) => ({ ...x, registration_method: 'ticket' })) }));
+        }
+    }, [pkg?.id, data.subs.length, data.registration_method]);
+    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
 
@@ -499,7 +753,16 @@ export default function CreateEvent({ packages, categories, selected_package_id 
     const setMain = (patch: Partial<Detail>) => setData((d) => ({ ...d, ...patch }));
     const setSub = (i: number, patch: Partial<Detail>) => setData('subs', data.subs.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
-    const choosePackage = (p: Pkg) => setData((d) => ({ ...d, package_id: p.id, subs: initialSubs(p), assessment_addon: false }));
+    const choosePackage = (p: Pkg) => setData((d) => ({
+        ...d,
+        package_id: p.id,
+        subs: initialSubs(p),
+        assessment_addon: false,
+        judge_addon: false,
+        participant_categories: d.participant_categories.slice(0, maxCats(p)),
+        registration_method: d.registration_method === 'ticket' && !p.can_ticket ? '' : d.registration_method,
+        competition_type: d.competition_type === 'team' && !p.can_team ? '' : d.competition_type,
+    }));
     // Isian = jumlah event TAMBAHAN di luar yang sudah termasuk paket.
     const setExtra = (raw: number) => {
         if (!pkg) return;
@@ -542,17 +805,18 @@ export default function CreateEvent({ packages, categories, selected_package_id 
     const back = () => { setLocal({}); setStep(step - 1); };
 
     const stepOfField = (k: string) => {
-        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon') return 'paket';
+        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon' || k === 'judge_addon') return 'paket';
         const m = k.match(/^subs\.(\d+)\./);
         if (m) return `sub:${m[1]}`;
-        if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster'].includes(k) ? 'utama' : 'tinjau';
-        if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster'].includes(k)) return 'info';
-        if (k.startsWith('participant_') || k === 'registration_method') return 'peserta';
+        if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster', 'juknis'].includes(k) ? 'utama' : 'tinjau';
+        if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster', 'juknis'].includes(k)) return 'info';
+        if (k.startsWith('participant_') || k === 'registration_method' || k === 'registration_fee' || k.includes('ticket_types')) return 'peserta';
         if (k.startsWith('contact_')) return 'pj';
         return 'tinjau';
     };
     const submit = () => {
         setLocal({});
+        transform((d) => ({ ...d, payment_method: payMethod }));
         post('/panel/ajukan', {
             forceFormData: true,
             onError: (errs) => {
@@ -678,7 +942,17 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                         <input type="checkbox" checked={data.assessment_addon} onChange={(e) => setData('assessment_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
                                         <span>
                                             <b>Tambah sistem penilaian</b> (+{rp(pkg.assessment_addon_price ?? 0)})
-                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Untuk lomba yang butuh juri dan skor.</span>
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Untuk lomba yang butuh skor dan penilaian.</span>
+                                        </span>
+                                    </label>
+                                )}
+
+                                {canJudge(pkg) && (
+                                    <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-indigo-200 pt-4 text-sm dark:border-white/10">
+                                        <input type="checkbox" checked={data.judge_addon} onChange={(e) => setData('judge_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
+                                        <span>
+                                            <b>Tambah juri</b> (+{rp(pkg.judge_addon_price ?? 0)})
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Akun juri untuk memberi nilai pada peserta.</span>
                                         </span>
                                     </label>
                                 )}
@@ -709,7 +983,7 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                 {cur === 'peserta' && (
                     <div className="space-y-4">
                         <h2 className={h2}>Peserta & Pendaftaran</h2>
-                        <PesertaSection d={data} set={setMain} pre="" err={err} max={cap} />
+                        <PesertaSection d={data} set={setMain} pre="" err={err} max={cap} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} />
                     </div>
                 )}
                 {cur === 'pj' && (
@@ -736,7 +1010,7 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                 </p>
                             </div>
                             <div><h3 className={h3}>Informasi Event</h3><InfoSection d={s} set={set} pre={pre} err={err} categories={categories} bounds={bounds} /></div>
-                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} /></div>
+                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
                             <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Penanggung Jawab</h3><PjSection d={s} set={set} pre={pre} err={err} /></div>
                         </div>
                     );
@@ -787,10 +1061,57 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                     <div className="flex justify-between"><span>Paket {pkg.name}{pkg.included_sub_events > 0 ? ` (termasuk ${pkg.included_sub_events} event)` : ''}</span><span>{c.base === 0 ? 'Gratis' : rp(c.base)}</span></div>
                                     {c.extra > 0 && <div className="flex justify-between"><span>Event tambahan ({c.extra} × {rp(pkg.extra_sub_event_price ?? 0)})</span><span>{rp(c.sub)}</span></div>}
                                     {c.ad > 0 && <div className="flex justify-between"><span>Add-on sistem penilaian</span><span>{rp(c.ad)}</span></div>}
+                                    {c.aj > 0 && <div className="flex justify-between"><span>Add-on juri</span><span>{rp(c.aj)}</span></div>}
                                     <div className="mt-2 flex justify-between border-t border-indigo-200 pt-2 font-extrabold dark:border-white/10"><span>Total di muka</span><span>{c.total === 0 ? 'Gratis' : rp(c.total)}</span></div>
                                 </div>
                             )}
                         </div>
+                        {pkg.payment_type !== 'revenue_share' && c.total > 0 && (
+                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 text-[15px] dark:border-white/10 dark:bg-white/5">
+                                <p className="mb-3 font-extrabold">Metode pembayaran</p>
+                                <div className={`grid gap-3 ${payment_methods.length > 1 ? 'md:grid-cols-2' : ''}`}>
+                                    {payment_methods.map((m) => {
+                                        const on = payMethod === m;
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={m}
+                                                onClick={() => setData('payment_method', m)}
+                                                className={`rounded-xl border p-4 text-left transition ${on ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-400/40 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 dark:border-white/10'}`}
+                                            >
+                                                <b className="block">{m === 'midtrans' ? 'Midtrans (online)' : 'Transfer manual'}</b>
+                                                <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">
+                                                    {m === 'midtrans' ? 'Bayar online, pembayaran terkonfirmasi otomatis.' : 'Transfer ke rekening SIMPLE, pembayaran diverifikasi admin.'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {payMethod === 'transfer_manual' && platform_bank && (
+                                    <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm dark:bg-white/5">
+                                        <p className="font-bold">Rekening tujuan</p>
+                                        <p>{platform_bank.bank_name} - {platform_bank.bank_account_number}</p>
+                                        <p className="text-slate-500 dark:text-slate-400">a.n. {platform_bank.bank_account_holder}</p>
+                                    </div>
+                                )}
+                                {payMethod === 'transfer_manual' && (
+                                    <div className="mt-4">
+                                        <label className="block text-sm font-bold">Bukti pembayaran *</label>
+                                        <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Transfer sesuai total di muka, lalu unggah bukti transfer (foto otomatis dikompres, PDF maks. 2 MB).</p>
+                                        <input
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                            onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)}
+                                            className="block w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white dark:border-white/10 dark:bg-white/5"
+                                        />
+                                        {data.payment_proof && <p className="mt-1 text-xs text-emerald-600">Terpilih: {data.payment_proof.name}</p>}
+                                        {errors.payment_proof && <p className="mt-2 text-sm text-rose-500">{errors.payment_proof}</p>}
+                                    </div>
+                                )}
+                                {errors.payment_method && <p className="mt-3 text-sm text-rose-500">{errors.payment_method}</p>}
+                            </div>
+                        )}
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Semua pengajuan akan ditinjau dan dikonfirmasi admin sebelum event aktif.</p>
                         {Object.keys(errors).length > 0 && <p className="text-sm text-rose-500">Ada isian yang belum sesuai. Silakan periksa langkah yang ditandai.</p>}
                     </div>
                 )}

@@ -1,0 +1,112 @@
+import { Head, Link } from '@inertiajs/react';
+import { Search, Ticket } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import TicketCardVertical, { type TicketCardProps } from '@/components/landing/ticket-card-vertical';
+
+type Row = Omit<TicketCardProps, 'startsAt' | 'endsAt' | 'ticketName' | 'validUntil'> & {
+    id: number; starts_at: string; ends_at: string; ticket_name: string; valid_until: string; poster: string | null;
+};
+
+export default function Tickets() {
+    const [rows, setRows] = useState<Row[] | null>(null);
+    const [q, setQ] = useState('');
+    const [cat, setCat] = useState('Semua');
+
+    useEffect(() => {
+        fetch('/tiket-data', { headers: { Accept: 'application/json' } })
+            .then((r) => r.json())
+            .then(setRows)
+            .catch(() => setRows([]));
+    }, []);
+
+    const cats = useMemo(() => {
+        const m = new Map<string, number>();
+        (rows ?? []).forEach((r) => r.category && m.set(r.category, (m.get(r.category) ?? 0) + 1));
+        return [...m.entries()];
+    }, [rows]);
+
+    const list = (rows ?? []).filter(
+        (r) =>
+            (cat === 'Semua' || r.category === cat) &&
+            `${r.title} ${r.location}`.toLowerCase().includes(q.trim().toLowerCase()),
+    );
+
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-neutral-950">
+            <Head title="Semua Tiket" />
+            <div className="mx-auto max-w-7xl px-5 py-10 md:px-8">
+                <Link href="/#tiket" className="text-sm font-bold text-indigo-700 dark:text-indigo-300">← Kembali</Link>
+
+                <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-4xl font-black tracking-tight text-slate-900 uppercase dark:text-white md:text-5xl">Semua Tiket</h1>
+                        <p className="mt-2 text-slate-600 dark:text-slate-300">Beli tiket event yang sudah dibuka penjualannya.</p>
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold shadow-sm dark:bg-white/10 dark:text-white">
+                        <Ticket className="size-4 text-orange-500" /> {rows?.length ?? 0} event
+                    </span>
+                </div>
+
+                <div className="mt-8 flex flex-wrap items-center gap-3 rounded-3xl bg-white p-4 shadow-sm dark:bg-white/5">
+                    <div className="relative min-w-[220px] flex-1">
+                        <Search className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder="Cari event atau lokasi..."
+                            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pr-4 pl-11 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        />
+                    </div>
+                    {['Semua', ...cats.map(([c]) => c)].map((c) => {
+                        const n = c === 'Semua' ? rows?.length ?? 0 : cats.find(([x]) => x === c)?.[1] ?? 0;
+                        return (
+                            <button
+                                key={c}
+                                type="button"
+                                onClick={() => setCat(c)}
+                                className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition ${
+                                    cat === c ? 'bg-indigo-700 text-white shadow' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10'
+                                }`}
+                            >
+                                {c}
+                                <span className={`rounded-full px-2 py-0.5 text-xs ${cat === c ? 'bg-white/20' : 'bg-slate-100 dark:bg-white/10'}`}>{n}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-8">
+                    {rows === null ? (
+                        <p className="py-16 text-center text-sm text-slate-400">Memuat tiket...</p>
+                    ) : list.length === 0 ? (
+                        <p className="py-16 text-center text-sm text-slate-500">
+                            {rows.length === 0 ? 'Belum ada event dengan tiket yang dibuka.' : 'Tidak ada tiket yang cocok dengan pencarian.'}
+                        </p>
+                    ) : (
+                        <>
+                            <p className="mb-4 text-sm font-semibold text-slate-500">Menampilkan {list.length} dari {rows.length} event</p>
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-6">
+                                {list.map((r) => (
+                                    <TicketCardVertical
+                                        key={r.id}
+                                        href={r.href}
+                                        title={r.title}
+                                        poster={r.poster}
+                                        startsAt={r.starts_at}
+                                        endsAt={r.ends_at}
+                                        location={r.location}
+                                        ticketName={r.ticket_name}
+                                        price={r.price}
+                                        validUntil={r.valid_until}
+                                        available={r.available}
+                                        category={r.category}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

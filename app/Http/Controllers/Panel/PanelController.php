@@ -29,12 +29,14 @@ class PanelController extends Controller
         $status = in_array($status, [Event::PUBLISHED, Event::PENDING, Event::REJECTED], true) ? $status : null;
 
         $page = Event::where('institution_id', $i->id)
+            ->whereNull('parent_id')
             ->when($status, fn ($q) => $q->where('status', $status))
             ->latest()
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         $by = Event::where('institution_id', $i->id)
+            ->whereNull('parent_id')
             ->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
 
         $next = Event::where('institution_id', $i->id)
@@ -62,7 +64,11 @@ class PanelController extends Controller
                 'avatar' => $m->user?->avatar,
                 'role' => $m->role,
                 'permissions' => MemberController::permissionsFor($m),
+                'status' => $m->getAttributes()['status'] ?? 'aktif',
             ]);
+
+        $kids = Event::whereIn('parent_id', $page->getCollection()->pluck('id'))
+            ->orderBy('sub_order')->orderBy('id')->get()->groupBy('parent_id');
 
         return Inertia::render('panel/dashboard', [
             'institution' => [
@@ -82,8 +88,13 @@ class PanelController extends Controller
                 'pending' => (int) ($by[Event::PENDING] ?? 0),
                 'rejected' => (int) ($by[Event::REJECTED] ?? 0),
             ],
-            // Diisi setelah tabel transaksi tiket dibuat
-            'balance' => ['available' => 0, 'processing' => 0, 'withdrawn' => 0],
+            'balance' => ! ($request->attributes->get('is_owner') || array_intersect(['finance', 'withdraw'], (array) $request->attributes->get('panel_perms', [])))
+                ? ['available' => 0, 'processing' => 0, 'withdrawn' => 0]
+                : (function () use ($i) {
+                $r = \App\Support\Revenue::report($i->id)['summary'];
+
+                return ['available' => $r['available'], 'processing' => $r['processing'] + $r['pending'], 'withdrawn' => $r['transferred']];
+            })(),
             'upcoming' => $next ? ['title' => $next->title, 'starts_at' => $next->starts_at->toDateString()] : null,
             'filter' => $status,
             'pagination' => [
@@ -101,6 +112,15 @@ class PanelController extends Controller
                 'ends_at' => $e->ends_at->toDateString(),
                 'status' => $e->status,
                 'poster_url' => $posterCol ? $posterUrl($e->{$posterCol}) : null,
+                'subs' => $kids->get($e->id, collect())->map(fn (Event $c) => [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'category' => EventController::CATEGORIES[$c->category] ?? $c->category,
+                    'starts_at' => $c->starts_at->toDateString(),
+                    'ends_at' => $c->ends_at->toDateString(),
+                    'status' => $c->status,
+                    'poster_url' => $posterCol ? $posterUrl($c->{$posterCol}) : null,
+                ])->values()->all(),
             ])->values(),
         ]);
     }

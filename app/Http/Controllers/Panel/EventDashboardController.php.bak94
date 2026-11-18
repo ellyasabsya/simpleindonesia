@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Models\Event;
+use Inertia\Response;
+
+class EventDashboardController extends EventScopedController
+{
+    public function show(Event $event): Response|\Illuminate\Http\RedirectResponse
+    {
+        if ($event->status !== Event::PUBLISHED) {
+            return redirect('/panel');
+        }
+
+        return $this->render('panel/events/show', $event);
+    }
+
+    /** Registrasi peserta untuk event yang pendaftarannya lewat pembelian tiket. */
+    private function registrasi(Event $event): Response
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
+        $orders = $db::table('ticket_orders')->where('event_id', $event->id)->orderByDesc('id')
+            ->get(['id', 'code', 'buyer_name', 'buyer_email', 'ticket_type_id', 'quantity', 'status', 'holders']);
+        $holders = $db::table('ticket_holders')->where('event_id', $event->id)
+            ->get(['ticket_order_id', 'code', 'holder_name', 'checked_in_at'])->groupBy('ticket_order_id');
+
+        $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
+        $rows = [];
+        $sum = ['orders' => $orders->count(), 'sold' => 0, 'pending' => 0, 'checked_in' => 0];
+
+        foreach ($orders as $o) {
+            $type = $typeName[$o->ticket_type_id] ?? '-';
+            $list = $holders[$o->id] ?? collect();
+            $names = $list->isNotEmpty() ? [] : (json_decode((string) $o->holders, true) ?: []);
+
+            if ($o->status === 'lunas') {
+                $sum['sold'] += (int) $o->quantity;
+            } elseif (! in_array($o->status, $closed, true)) {
+                $sum['pending'] += (int) $o->quantity;
+            }
+
+            $base = ['order' => $o->code, 'type' => $type, 'buyer' => $o->buyer_name, 'email' => $o->buyer_email, 'status' => $o->status];
+            foreach ($list as $h) {
+                $in = $h->checked_in_at !== null;
+                $sum['checked_in'] += $in ? 1 : 0;
+                $rows[] = $base + ['name' => $h->holder_name, 'code' => $h->code, 'checked_in' => $in];
+            }
+            foreach ($names as $n) {
+                $rows[] = $base + ['name' => (string) $n, 'code' => null, 'checked_in' => false];
+            }
+        }
+
+        return $this->render('panel/events/registrasi', $event, [
+            'eventId' => $event->id,
+            'summary' => $sum,
+            'types' => $typeName->values(),
+            'rows' => $rows,
+        ]);
+    }
+
+    /** Halaman menu yang belum dibuat; diganti satu per satu. */
+    public function menu(Event $event, string $menu): Response
+    {
+        $label = config('features.menus')[$menu] ?? null;
+        abort_if($label === null, 404);
+
+        if ($menu === 'registrasi' && $event->registration_method === 'ticket') {
+            return $this->registrasi($event);
+        }
+
+        return $this->render('panel/events/menu', $event, [
+            'menu' => ['key' => $menu, 'label' => $label],
+        ]);
+    }
+}

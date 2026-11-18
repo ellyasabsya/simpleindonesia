@@ -1,0 +1,270 @@
+import { router, usePage } from '@inertiajs/react';
+import { Check, Clock, Eye, EyeOff, Loader2, Megaphone, MessageSquareWarning, Send, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+type Crit = { name: string; description?: string; weight: number; subs?: { name: string; weight: number }[] };
+type Rules = {
+    method: string; combine: string; scale: string; rounding: string; ranking: string; deduction: string;
+    criteria: Crit[];
+    deductions?: { name: string; points: number }[];
+};
+type Pub = {
+    category: { id: number; name: string };
+    rules: Rules; latest_version: number | null; up_to_date: boolean; rules_sent: boolean; enabled: boolean;
+};
+type Vis = 'hidden' | 'own' | 'all';
+type Appeal = { id: number; category: string; participant: string; reason: string; status: string; created_at: string };
+type EventPub = {
+    visibility: Vis; appeals_open: boolean; appeals_deadline: string | null;
+    pending: { id: number; name: string }[]; appeals: Appeal[];
+};
+
+const solid = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
+const h = 'text-lg font-black text-slate-900 dark:text-white';
+const sub = 'mt-0.5 text-sm text-slate-600 dark:text-slate-300';
+const field = 'h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+
+function Row({ k, v }: { k: string; v: string }) {
+    return (
+        <div className="flex items-baseline justify-between gap-4 border-b border-slate-100 py-3 dark:border-white/10">
+            <span className="text-sm text-slate-500 dark:text-slate-400">{k}</span>
+            <span className="text-right text-sm font-extrabold text-slate-900 dark:text-white">{v}</span>
+        </div>
+    );
+}
+
+function Switch({ on, busy, disabled, onClick }: { on: boolean; busy?: boolean; disabled?: boolean; onClick: () => void }) {
+    return (
+        <button type="button" role="switch" aria-checked={on} disabled={busy || disabled} onClick={onClick} className={`relative h-8 w-14 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-50 ${on ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+            <span className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-all ${on ? 'left-[30px]' : 'left-1'}`}>
+                {busy && <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />}
+            </span>
+        </button>
+    );
+}
+
+function Badge({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+    return (
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold ${ok ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
+            {ok ? <Check className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{children}
+        </span>
+    );
+}
+
+function RulesCard({ pub, base, multi, onGoSettings }: { pub: Pub; base: string; multi: boolean; onGoSettings?: (id: number) => void }) {
+    const [note, setNote] = useState('');
+    const [busy, setBusy] = useState(false);
+    const r = pub.rules;
+    const who = multi ? ` kategori ${pub.category.name}` : '';
+
+    const send = (rules_sent: boolean) => {
+        setBusy(true);
+        router.put(`${base}/publikasi/pengaturan`, { category_id: pub.category.id, rules_sent, note }, {
+            preserveScroll: true,
+            onSuccess: () => setNote(''),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    return (
+        <div className={`${solid} p-5 sm:p-6`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className={h}>Aturan penilaian{multi ? ` · ${pub.category.name}` : ''}</h3>
+                {multi && <span className="rounded-full bg-indigo-900 px-3 py-1 text-xs font-black text-white">{pub.category.name}</span>}
+            </div>
+            <p className={sub}>Aturan yang dipakai di kategori ini. Peserta baru bisa melihatnya setelah saklar di bawah dinyalakan.</p>
+
+            {!pub.enabled && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 dark:bg-amber-400/10">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Penilaian{who || ' kategori ini'} belum disahkan, jadi aturan belum bisa dikirim ke peserta.</p>
+                    {onGoSettings && <button type="button" onClick={() => onGoSettings(pub.category.id)} className="rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white hover:bg-amber-600">Buka Pengaturan penilaian</button>}
+                </div>
+            )}
+
+            <div className="mt-4 grid gap-x-10 md:grid-cols-2">
+                <div><Row k="Metode" v={r.method} /><Row k="Batas nilai" v={r.scale} /><Row k="Urutan peringkat" v={r.ranking} /></div>
+                <div><Row k="Penggabungan nilai juri" v={r.combine} /><Row k="Pembulatan" v={r.rounding} /><Row k="Pengurangan nilai" v={r.deduction} /></div>
+            </div>
+
+            <ul className="mt-4 space-y-3">
+                {r.criteria.map((c) => (
+                    <li key={c.name}>
+                        <div className="flex items-center gap-4">
+                            <span className="w-40 shrink-0 truncate text-sm font-bold text-slate-800 dark:text-slate-100">{c.name}</span>
+                            <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-blue-600 to-violet-600" style={{ width: `${c.weight}%` }} /></span>
+                            <span className="w-12 text-right text-sm font-extrabold text-slate-900 dark:text-white">{c.weight}%</span>
+                        </div>
+                        {(c.subs ?? []).length > 0 && (
+                            <ul className="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-200 pl-4 dark:border-white/10">
+                                {c.subs!.map((x) => <li key={x.name} className="flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>{x.name}</span><span className="font-bold">{x.weight}%</span></li>)}
+                            </ul>
+                        )}
+                    </li>
+                ))}
+            </ul>
+
+            {(r.deductions ?? []).length > 0 && (
+                <div className="mt-4">
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Pengurangan nilai</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {r.deductions!.map((d) => <span key={d.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-800 dark:bg-white/10 dark:text-slate-100">{d.name} · {d.points} poin</span>)}
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                        <div className="font-extrabold text-slate-900 dark:text-white">Kirim aturan ke peserta</div>
+                        <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Kalau diaktifkan, aturan{who || ' penilaian ini'} akan dikirim dan tampil di akun semua peserta{multi ? ' kategori ini' : ' yang terdaftar'}.</div>
+                        <div className="mt-2">
+                            <Badge ok={pub.rules_sent && pub.up_to_date}>
+                                {!pub.rules_sent ? 'Belum dikirim ke peserta' : pub.up_to_date ? `Terkirim · versi ${pub.latest_version}` : 'Ada perubahan belum dikirim'}
+                            </Badge>
+                        </div>
+                    </div>
+                    <Switch on={pub.rules_sent} busy={busy} disabled={!pub.enabled && !pub.rules_sent} onClick={() => send(!pub.rules_sent)} />
+                </div>
+
+                {pub.rules_sent && !pub.up_to_date && (
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan perubahan untuk peserta (opsional)" className={`${field} flex-1`} />
+                        <button type="button" disabled={busy} onClick={() => send(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60"><Send className="h-4 w-4" /> Kirim perubahan</button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function EventCards({ ev, base, multi, onGoSettings }: { ev: EventPub; base: string; multi: boolean; onGoSettings?: (id: number) => void }) {
+    const [choice, setChoice] = useState<Vis>(ev.visibility);
+    const [open, setOpen] = useState(ev.appeals_open);
+    const [deadline, setDeadline] = useState(ev.appeals_deadline ?? '');
+    const [busy, setBusy] = useState<'vis' | 'appeal' | null>(null);
+
+    useEffect(() => {
+        setChoice(ev.visibility);
+        setOpen(ev.appeals_open);
+        setDeadline(ev.appeals_deadline ?? '');
+    }, [ev.visibility, ev.appeals_open, ev.appeals_deadline]);
+
+    const visOn = ev.visibility !== 'hidden';
+    const blocked = ev.pending.length > 0;
+
+    const send = (payload: Record<string, string | boolean | null>, key: 'vis' | 'appeal') => {
+        setBusy(key);
+        router.put(`${base}/publikasi/pengaturan`, payload, { preserveScroll: true, onFinish: () => setBusy(null) });
+    };
+    const toggleVis = () => send({ visibility: visOn ? 'hidden' : choice }, 'vis');
+    const toggleAppeals = () => { const v = !open; setOpen(v); send({ appeals_open: v }, 'appeal'); };
+    const saveDeadline = () => send({ appeals_deadline: deadline || null }, 'appeal');
+
+    const visOptions: { k: Vis; t: string; d: string; i: typeof Eye }[] = [
+        { k: 'hidden', t: 'Tersembunyi', d: 'Peserta belum melihat hasil apa pun.', i: EyeOff },
+        { k: 'own', t: 'Nilai peserta sendiri', d: 'Tiap peserta hanya melihat nilai timnya sendiri.', i: Eye },
+        { k: 'all', t: 'Nilai semua peserta', d: 'Semua peserta melihat peringkat dan nilai akhir.', i: Users },
+    ];
+
+    return (
+        <>
+            <div className={`${solid} p-5 sm:p-6`}>
+                <h3 className={h}>Tampilkan hasil</h3>
+                <p className={sub}>Berlaku untuk seluruh event{multi ? ' (semua kategori)' : ''}. Pilih dulu apa yang boleh dilihat peserta, lalu aktifkan saklarnya. Hasil tampil sebagai "sementara" sampai tahap Tetapkan Hasil. Nama juri dan nilai per juri tidak pernah ditampilkan.</p>
+
+                {blocked && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 dark:bg-amber-400/10">
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Hasil baru bisa ditampilkan setelah semua kategori disahkan. Belum disahkan: {ev.pending.map((p) => p.name).join(', ')}.</p>
+                        {onGoSettings && <button type="button" onClick={() => onGoSettings(ev.pending[0].id)} className="rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white hover:bg-amber-600">Buka Pengaturan penilaian</button>}
+                    </div>
+                )}
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {visOptions.map(({ k, t, d, i: Icon }) => (
+                        <button key={k} type="button" disabled={visOn} onClick={() => setChoice(k)} className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-not-allowed ${choice === k ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-slate-300 dark:border-white/10'} ${visOn && choice !== k ? 'opacity-50' : ''}`}>
+                            <Icon className={`h-5 w-5 ${choice === k ? 'text-indigo-700' : 'text-slate-400'}`} />
+                            <div className="mt-2 font-extrabold text-slate-900 dark:text-white">{t}</div>
+                            <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{d}</div>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+                    <div className="min-w-0">
+                        <div className="font-extrabold text-slate-900 dark:text-white">Aktifkan pilihan di atas</div>
+                        <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
+                            {visOn ? 'Pilihan terkunci selama aktif. Matikan saklar untuk mengganti.' : choice === 'hidden' ? 'Pilih "Nilai peserta sendiri" atau "Nilai semua peserta" dulu.' : 'Setelah diaktifkan, peserta langsung melihat hasil sesuai pilihan.'}
+                        </div>
+                        <div className="mt-2"><Badge ok={visOn}>{ev.visibility === 'hidden' ? 'Tersembunyi' : ev.visibility === 'own' ? 'Aktif · nilai peserta sendiri' : 'Aktif · nilai semua peserta'}</Badge></div>
+                    </div>
+                    <Switch on={visOn} busy={busy === 'vis'} disabled={!visOn && (choice === 'hidden' || blocked)} onClick={toggleVis} />
+                </div>
+            </div>
+
+            <div className={`${solid} p-5 sm:p-6`}>
+                <h3 className={h}>Keberatan peserta</h3>
+                <p className={sub}>Berlaku untuk seluruh event{multi ? ' (semua kategori)' : ''}. Perubahan tersimpan otomatis.</p>
+
+                <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <div className="font-extrabold text-slate-900 dark:text-white">Buka pengajuan keberatan</div>
+                            <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Kalau diaktifkan, peserta bisa mengajukan keberatan dari akun mereka.</div>
+                            <div className="mt-2"><Badge ok={open}>{open ? 'Pengajuan dibuka' : 'Pengajuan ditutup'}</Badge></div>
+                        </div>
+                        <Switch on={open} busy={busy === 'appeal'} onClick={toggleAppeals} />
+                    </div>
+                    <label className="mt-4 block">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Batas waktu keberatan (opsional)</span>
+                        <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} onBlur={saveDeadline} className={`${field} mt-1`} />
+                    </label>
+                </div>
+
+                {ev.appeals.length === 0 ? (
+                    <div className="mt-4 flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center dark:border-white/10">
+                        <MessageSquareWarning className="h-7 w-7 text-slate-400" />
+                        <p className="mt-2 font-extrabold text-slate-900 dark:text-white">Belum ada keberatan</p>
+                    </div>
+                ) : (
+                    <ul className="mt-4 space-y-2">
+                        {ev.appeals.map((a) => (
+                            <li key={a.id} className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="font-extrabold text-slate-900 dark:text-white">{a.participant}{multi && a.category ? <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200">{a.category}</span> : null}</span>
+                                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${a.status === 'baru' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}`}>{a.status === 'baru' ? 'Perlu diproses' : 'Selesai'}</span>
+                                </div>
+                                <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{a.reason}</p>
+                                <p className="mt-1 text-xs text-slate-500">{a.created_at}</p>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <p className="mt-4 text-xs text-slate-600 dark:text-slate-300">Keberatan yang diterima tidak mengubah nilai otomatis. Koreksi lewat Rekap Nilai (buka kembali, pengurangan) atau menu Penalti.</p>
+            </div>
+        </>
+    );
+}
+
+export default function Publikasi({ onGoSettings }: { btn?: string; onGoSettings?: (categoryId: number) => void }) {
+    const page = usePage().props as any;
+    const base: string = page.inviteBase;
+    const pubs: Pub[] = page.publications ?? [];
+    const ev: EventPub | null = page.publicationEvent ?? null;
+
+    if (pubs.length === 0 || !ev) {
+        return (
+            <div className={`${solid} p-8 text-center`}>
+                <Megaphone className="mx-auto h-8 w-8 text-indigo-600" />
+                <p className="mt-3 font-extrabold text-slate-900 dark:text-white">Data publikasi belum tersedia</p>
+            </div>
+        );
+    }
+
+    const multi = pubs.length > 1;
+    return (
+        <div className="space-y-5">
+            {pubs.map((p) => <RulesCard key={p.category.id} pub={p} base={base} multi={multi} onGoSettings={onGoSettings} />)}
+            <EventCards ev={ev} base={base} multi={multi} onGoSettings={onGoSettings} />
+        </div>
+    );
+}

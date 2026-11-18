@@ -1,0 +1,195 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Event;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class TicketPurchaseController extends Controller
+{
+    private const HOLD_MINUTES = 60;
+
+    private function guard(Event $event): void
+    {
+        abort_unless(
+            $event->status === Event::PUBLISHED
+            && $event->registration_method === 'ticket'
+            && $event->ticket_sales_open,
+            404
+        );
+    }
+
+    /** Metode pembayaran tiket yang benar-benar tersedia saat ini. */
+    private function methods(): array
+    {
+        $m = [];
+        if (\App\Models\Setting::manualOn() && \App\Models\Setting::bank()['bank_account_number'] !== '') {
+            $m[] = 'transfer_manual';
+        }
+
+        return $m;
+    }
+
+    private function sold(int $typeId): int
+    {
+        return (int) DB::table('ticket_orders')->where('ticket_type_id', $typeId)
+            ->where('status', '!=', 'batal')
+            ->where(fn ($q) => $q->where('status', '!=', 'menunggu')->orWhere('expires_at', '>', now()))
+            ->sum('quantity');
+    }
+
+    private function id($date, string $fmt = 'l, j F Y'): string
+    {
+        return $date->copy()->locale('id')->translatedFormat($fmt);
+    }
+
+    /** URL lama: arahkan ke halaman Semua Tiket dengan modal terbuka. */
+    public function show(Event $event): RedirectResponse
+    {
+        $this->guard($event);
+
+        return redirect('/tickets?beli='.$event->id);
+    }
+
+    public function data(Event $event): JsonResponse
+    {
+        $this->guard($event);
+
+        $types = $event->ticketTypes()
+            ->whereDate('valid_from', '<=', now()->toDateString())
+            ->whereDate('valid_until', '>=', now()->toDateString())
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'price' => (int) $t->price,
+                'remaining' => max(0, $t->quota - $this->sold($t->id)),
+                'valid_from' => $this->id($event->starts_at),
+                'valid_until' => $this->id($event->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
+                'require_holder_details' => (bool) $t->require_holder_details,
+                'max_per_order' => (int) $t->max_per_order,
+            ])->values();
+
+        return response()->json([
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'location' => $event->location,
+                'date' => $this->id($event->starts_at),
+            ],
+            'ticket_types' => $types,
+            'fee_percent' => \App\Models\Setting::serviceFeePercent(),
+            'payment' => ['methods' => $this->methods(), 'bank' => \App\Models\Setting::bank()],
+        ]);
+    }
+
+    public function store(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($event);
+
+        $tt = DB::table('ticket_types')->where('event_id', $event->id)->where('id', (int) $request->input('ticket_type_id'))->first(['price', 'require_holder_details']);
+        $free = $tt !== null && (int) $tt->price === 0;
+        $req = $tt !== null && (bool) $tt->require_holder_details;
+
+        $data = $request->validate([
+            'ticket_type_id' => ['required', 'integer'],
+            'holder_emails' => [$req ? 'required' : 'nullable', 'array', 'max:10'],
+            'holder_emails.*' => [$req ? 'required' : 'nullable', 'email', 'max:120'],
+            'holder_phones' => [$req ? 'required' : 'nullable', 'array', 'max:10'],
+            'holder_phones.*' => [$req ? 'required' : 'nullable', 'string', 'max:30'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:10'],
+            'buyer_name' => ['required', 'string', 'max:100'],
+            'buyer_email' => ['required', 'email', 'max:120'],
+            'buyer_phone' => ['required', 'string', 'max:30'],
+            'holders' => ['required', 'array', 'min:1', 'max:10'],
+            'holders.*' => ['required', 'string', 'max:100'],
+            'payment_method' => $free ? ['nullable'] : ['required', \Illuminate\Validation\Rule::in($this->methods())],
+            'payment_proof' => $free ? ['nullable'] : ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ], [
+            'required' => ':attribute wajib diisi.',
+            'email' => 'Format email tidak valid.',
+            'payment_method.in' => 'Metode pembayaran tidak tersedia.',
+            'payment_proof.mimes' => 'Bukti transfer harus JPG, PNG, WebP, atau PDF.',
+            'payment_proof.max' => 'Ukuran bukti transfer maksimal 5 MB.',
+        ], [
+            'buyer_name' => 'Nama', 'buyer_email' => 'Email', 'buyer_phone' => 'No. telepon',
+            'holders.*' => 'Nama pemegang tiket', 'ticket_type_id' => 'Jenis tiket',
+            'payment_proof' => 'Bukti transfer', 'payment_method' => 'Metode pembayaran',
+            'holder_emails.*' => 'Email pemegang tiket', 'holder_phones.*' => 'Telepon pemegang tiket',
+        ]);
+
+        $fail = fn (string $k, string $m) => throw ValidationException::withMessages([$k => $m]);
+
+        [$code, $orderId] = DB::transaction(function () use ($event, $data, $fail, $request, $free, $req) {
+            $type = $event->ticketTypes()->lockForUpdate()->find($data['ticket_type_id']);
+            if (! $type || $type->valid_until->copy()->endOfDay()->isPast() || $type->valid_from->copy()->startOfDay()->isFuture()) {
+                $fail('ticket_type_id', 'Jenis tiket tidak tersedia.');
+            }
+            if ($data['quantity'] > $type->max_per_order) {
+                $fail('quantity', "Maksimal {$type->max_per_order} tiket per pesanan.");
+            }
+            if (count($data['holders']) !== (int) $data['quantity']) {
+                $fail('holders', 'Jumlah pemegang tiket harus sama dengan jumlah tiket.');
+            }
+            if ($req && (count($data['holder_emails'] ?? []) !== (int) $data['quantity'] || count($data['holder_phones'] ?? []) !== (int) $data['quantity'])) {
+                $fail('holders', 'Lengkapi email dan telepon setiap pemegang tiket.');
+            }
+            if ($data['quantity'] > $type->quota - $this->sold($type->id)) {
+                $fail('quantity', 'Sisa tiket tidak cukup.');
+            }
+
+            $proof = $free ? null : \App\Support\ImageUploader::store($data['payment_proof'], 'payment-proofs/tiket', 'payment_proof', 1600, 'local');
+
+            $subtotal = (int) $type->price * (int) $data['quantity'];
+            $feePercent = \App\Models\Setting::serviceFeePercent();
+            $fee = (int) round($subtotal * $feePercent / 100);
+            $code = 'TKT-'.strtoupper(Str::random(8));
+
+            $orderId = DB::table('ticket_orders')->insertGetId([
+                'event_id' => $event->id,
+                'ticket_type_id' => $type->id,
+                'code' => $code,
+                'user_id' => $request->user()?->id,
+                'buyer_name' => trim($data['buyer_name']),
+                'buyer_email' => $data['buyer_email'],
+                'buyer_phone' => trim($data['buyer_phone']),
+                'quantity' => (int) $data['quantity'],
+                'subtotal' => $subtotal,
+                'fee_percent' => $feePercent,
+                'fee' => $fee,
+                'total' => $subtotal + $fee,
+                'holders' => json_encode(array_values($data['holders']), JSON_UNESCAPED_UNICODE),
+                'status' => $free ? 'lunas' : 'menunggu_verifikasi',
+                'paid_at' => $free ? now() : null,
+                'payment_method' => $free ? 'gratis' : $data['payment_method'],
+                'payment_proof' => $proof,
+                'holder_details' => $req ? json_encode(array_map(fn ($e, $p) => ['email' => $e, 'phone' => $p], array_values($data['holder_emails']), array_values($data['holder_phones'])), JSON_UNESCAPED_UNICODE) : null,
+                'expires_at' => null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return [$code, $orderId];
+        });
+
+        if ($free) {
+            try {
+                \App\Support\TicketIssuer::issue($orderId);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        } else {
+            \App\Support\AdminNotifier::send(
+                'Pesanan tiket menunggu verifikasi',
+                "Pesanan {$code} atas nama {$data['buyer_name']} menunggu verifikasi pembayaran.",
+                '/admin/pesanan-tiket'
+            );
+        }
+
+        return redirect('/tickets')->with('order_code', $code);
+    }
+}

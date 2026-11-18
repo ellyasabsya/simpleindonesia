@@ -37,7 +37,7 @@ export default function NotificationBell({
     useEffect(() => {
         const id = window.setInterval(() => {
             if (document.visibilityState === 'visible') {
-                router.reload({ only: ['notifications', 'pending_lembaga'] });
+                router.reload({ only: ['notifications', 'pending_lembaga', 'pending_comments', 'pending_review', 'pending_tiket', 'pending_paket', 'pending_penarikan'] });
             }
         }, 30000);
         return () => window.clearInterval(id);

@@ -33,8 +33,8 @@ return [
     // Menu dashboard event (dipakai nanti untuk membangun sidebar)
     'menus' => [
         'dashboard' => 'Dashboard',
-        'registrasi' => 'Registrasi',
         'kalender' => 'Kalender Kegiatan',
+        'registrasi' => 'Registrasi',
         'checkin' => 'Check-in',
         'laporan' => 'Laporan',
         'tiket' => 'Tiket',
@@ -64,7 +64,7 @@ return [
         'dukungan_prioritas' => ['label' => 'Dukungan prioritas', 'group' => 'umum', 'menu' => null],
 
         // Iklan
-        'registrasi_event' => ['label' => 'Registrasi event', 'group' => 'iklan', 'menu' => 'registrasi'],
+        'registrasi_peserta' => ['label' => 'Registrasi peserta', 'group' => 'iklan', 'menu' => 'registrasi'],
         'kalender_kegiatan' => ['label' => 'Kalender kegiatan', 'group' => 'iklan', 'menu' => 'kalender'],
         'ad_publication' => ['label' => 'Publikasi event (lama)', 'group' => 'iklan', 'menu' => 'publikasi'],
 

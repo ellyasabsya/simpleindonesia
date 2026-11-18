@@ -1,0 +1,277 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Models\Event;
+use Inertia\Response;
+
+class EventDashboardController extends EventScopedController
+{
+    public function show(Event $event): Response|\Illuminate\Http\RedirectResponse
+    {
+        if ($event->status !== Event::PUBLISHED) {
+            return redirect('/panel');
+        }
+
+        $progress = $this->progress($event);
+        $extra = [];
+
+        if ($event->parent_id) {
+            $parent = $event->parent()->first();
+            $extra['parent'] = $parent ? ['id' => $parent->id, 'title' => $parent->title] : null;
+        }
+
+        if ($event->parent_id === null && $event->children()->exists()) {
+            // Tiket dan registrasi hidup di sub-event, jadi progres induk tidak berlaku.
+            unset($progress['tiket'], $progress['registrasi']);
+            $db = \Illuminate\Support\Facades\DB::class;
+            $subs = $event->children()->get()->map(function ($c) use ($db) {
+                $ticket = $c->registration_method === 'ticket';
+
+                return [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'method' => $c->registration_method,
+                    'fee' => (int) $c->registration_fee,
+                    'published' => $c->status === Event::PUBLISHED,
+                    'count' => $ticket
+                        ? (int) $db::table('ticket_orders')->where('event_id', $c->id)->where('status', 'lunas')->sum('quantity')
+                        : (int) $db::table('event_registrations')->where('event_id', $c->id)->count(),
+                ];
+            })->values();
+            $extra['subs'] = $subs;
+        }
+
+        return $this->render('panel/events/show', $event, ['progress' => $progress] + $extra);
+    }
+
+    /** Progres kelengkapan tiap menu, dipakai kartu di dashboard event. */
+    private function progress(Event $event): array
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $base = "/panel/event/{$event->id}";
+        $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
+
+        $step = fn (string $label, bool $done, string $href) => ['label' => $label, 'done' => $done, 'href' => $href];
+        $make = function (array $steps): array {
+            $next = collect($steps)->first(fn ($s) => ! $s['done']);
+
+            return [
+                'steps' => $steps,
+                'done' => count(array_filter($steps, fn ($s) => $s['done'])),
+                'total' => count($steps),
+                'next' => $next ? ['label' => $next['label'], 'href' => $next['href']] : null,
+            ];
+        };
+
+        $regSet = (bool) ($event->registration_start && $event->registration_end);
+        $prepSet = (bool) ($event->preparation_start && $event->preparation_end);
+        $agendas = $db::table('event_agendas')->where('event_id', $event->id);
+        $orders = $db::table('ticket_orders')->where('event_id', $event->id);
+        $types = $db::table('ticket_types')->where('event_id', $event->id);
+        $vs = $db::table('voting_settings')->where('event_id', $event->id)->first();
+        $parts = $db::table('voting_participants')->where('event_id', $event->id)->where('active', 1);
+        $activeParts = (clone $parts)->count();
+
+        $out = [];
+
+        $out['kalender'] = $make([
+            $step('Atur periode pendaftaran', $regSet, "$base/kalender"),
+            $step('Atur periode persiapan', $prepSet, "$base/kalender"),
+            $step('Tambah minimal 1 agenda', (clone $agendas)->exists(), "$base/kalender"),
+            $step('Aktifkan pengingat pada agenda', (clone $agendas)->whereNotNull('remind_minutes')->exists(), "$base/kalender"),
+        ]);
+
+        $out['tiket'] = $make([
+            $step('Buat jenis tiket', (clone $types)->exists(), "$base/tiket"),
+            $step('Buka penjualan tiket', (bool) $event->ticket_sales_open, "$base/tiket"),
+            $step('Dapatkan tiket terjual', (clone $orders)->where('status', 'lunas')->exists(), "$base/tiket"),
+        ]);
+
+        $out['voting'] = $make([
+            $step('Tambah minimal 2 peserta aktif', $activeParts >= 2, "$base/voting"),
+            $step('Lengkapi foto semua peserta', $activeParts > 0 && (clone $parts)->whereNull('photo')->doesntExist(), "$base/voting"),
+            $step('Atur periode voting', (bool) ($vs && $vs->vote_start && $vs->vote_end), "$base/voting"),
+            $step('Buka voting', (bool) ($vs && $vs->enabled), "$base/voting"),
+        ]);
+
+        $reg = [$step('Atur periode pendaftaran', $regSet, "$base/kalender")];
+        if ($event->registration_method === 'ticket') {
+            $reg[] = $step('Dapatkan pendaftar pertama', (clone $orders)->whereNotIn('status', $closed)->exists(), "$base/registrasi");
+            $reg[] = $step('Ada pembayaran terkonfirmasi', (clone $orders)->where('status', 'lunas')->exists(), "$base/registrasi");
+        } else {
+            $reg[] = $step('Dapatkan pendaftar pertama', $db::table('event_registrations')->where('event_id', $event->id)->exists(), "$base/registrasi");
+        }
+        $out['registrasi'] = $make($reg);
+
+        return $out;
+    }
+
+    /** Pengaturan tiket: jenis, harga, kuota, dan buka/tutup penjualan. */
+    private function tiket(\Illuminate\Http\Request $request, Event $event): Response
+    {
+        $perms = (array) $request->attributes->get('panel_perms', []);
+        abort_unless($request->attributes->get('is_owner') || in_array('events', $perms, true), 403);
+
+        $db = \Illuminate\Support\Facades\DB::class;
+        $types = \App\Models\TicketType::where('event_id', $event->id)->orderBy('id')->get()->map(function ($t) use ($db) {
+            $sold = TicketSettingsController::sold($t->id);
+
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'price' => (int) $t->price,
+                'quota' => (int) $t->quota,
+                'valid_from' => $t->valid_from->toDateString(),
+                'valid_until' => $t->valid_until->toDateString(),
+                'valid_days' => (int) $t->valid_days,
+                'custom_sale' => (bool) $t->custom_sale,
+                'require_holder_details' => (bool) $t->require_holder_details,
+                'support_enabled' => (bool) $t->support_enabled,
+                'support_options' => json_decode((string) $t->support_options, true) ?: [],
+                'support_ranking' => (function () use ($t) {
+                    $v = \Illuminate\Support\Facades\DB::table('ticket_orders')
+                        ->where('ticket_type_id', $t->id)->where('status', 'lunas')->whereNotNull('support_choice')
+                        ->groupBy('support_choice')
+                        ->pluck(\Illuminate\Support\Facades\DB::raw('SUM(quantity)'), 'support_choice');
+
+                    return collect(json_decode((string) $t->support_options, true) ?: [])
+                        ->map(fn ($n) => ['name' => $n, 'votes' => (int) ($v[$n] ?? 0)])
+                        ->sortByDesc('votes')->values()->all();
+                })(),
+                'max_per_order' => (int) $t->max_per_order,
+                'sold' => $sold,
+                'remaining' => max(0, (int) $t->quota - $sold),
+                'revenue' => (int) $db::table('ticket_orders')->where('ticket_type_id', $t->id)->where('status', 'lunas')->sum('subtotal'),
+                'locked' => $db::table('ticket_orders')->where('ticket_type_id', $t->id)->where('status', '!=', 'batal')->exists(),
+            ];
+        })->values();
+
+        return $this->render('panel/events/tiket', $event, [
+            'eventId' => $event->id,
+            'salesOpen' => (bool) $event->ticket_sales_open,
+            'feePercent' => \App\Models\Setting::serviceFeePercent(),
+            'types' => $types,
+        ]);
+    }
+
+    /** Registrasi peserta untuk event yang pendaftarannya lewat pembelian tiket. */
+    private function registrasi(Event $event): Response
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
+        $orders = $db::table('ticket_orders')->where('event_id', $event->id)->orderByDesc('id')
+            ->get(['id', 'code', 'buyer_name', 'buyer_email', 'ticket_type_id', 'quantity', 'status', 'holders', 'holder_details', 'support_choice']);
+        $holders = $db::table('ticket_holders')->where('event_id', $event->id)
+            ->get(['ticket_order_id', 'code', 'holder_name', 'checked_in_at'])->groupBy('ticket_order_id');
+
+        $closed = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
+        $rows = [];
+        $sum = ['orders' => $orders->count(), 'sold' => 0, 'pending' => 0, 'checked_in' => 0];
+
+        foreach ($orders as $o) {
+            $type = $typeName[$o->ticket_type_id] ?? '-';
+            $list = $holders[$o->id] ?? collect();
+            $names = $list->isNotEmpty() ? [] : (json_decode((string) $o->holders, true) ?: []);
+
+            if ($o->status === 'lunas') {
+                $sum['sold'] += (int) $o->quantity;
+            } elseif (! in_array($o->status, $closed, true)) {
+                $sum['pending'] += (int) $o->quantity;
+            }
+
+            $base = ['order' => $o->code, 'type' => $type, 'buyer' => $o->buyer_name, 'email' => $o->buyer_email, 'status' => $o->status];
+            $det = json_decode((string) $o->holder_details, true) ?: [];
+            $contact = fn ($d) => $d ? trim(($d['email'] ?? '').' · '.($d['phone'] ?? ''), ' ·') : null;
+            foreach ($list->values() as $i => $h) {
+                $in = $h->checked_in_at !== null;
+                $sum['checked_in'] += $in ? 1 : 0;
+                $rows[] = $base + ['name' => $h->holder_name, 'code' => $h->code, 'checked_in' => $in, 'contact' => $contact($det[$i] ?? null), 'support' => $o->support_choice];
+            }
+            foreach ($names as $j => $n) {
+                $rows[] = $base + ['name' => (string) $n, 'code' => null, 'checked_in' => false, 'contact' => $contact($det[$j] ?? null), 'support' => $o->support_choice];
+            }
+        }
+
+        return $this->render('panel/events/registrasi', $event, [
+            'eventId' => $event->id,
+            'summary' => $sum,
+            'types' => $typeName->values(),
+            'rows' => $rows,
+        ]);
+    }
+
+    /** Registrasi untuk event non-tiket: pendaftar, verifikasi panitia, dan form buatan panitia. */
+    private function registrasiForm(Event $event): Response
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        $isTeam = $event->competition_type === 'team';
+        $cats = $db::table('event_participant_categories')->where('event_id', $event->id)->pluck('name', 'id');
+        $regs = $db::table('event_registrations')->where('event_id', $event->id)->orderByDesc('id')->get();
+        $users = $db::table('users')->whereIn('id', $regs->pluck('user_id'))->get(['id', 'name', 'email'])->keyBy('id');
+        $teams = $db::table('registration_teams')->whereIn('event_registration_id', $regs->pluck('id'))->orderBy('id')->get()->groupBy('event_registration_id');
+
+        $closed = ['ditolak', 'dibatalkan', 'batal', 'kedaluwarsa'];
+        $open = $regs->filter(fn ($r) => ! in_array($r->status, $closed, true));
+        $used = $isTeam ? $open->sum(fn ($r) => $teams->get($r->id, collect())->count()) : $open->count();
+
+        $rows = $regs->map(function ($r) use ($users, $teams, $cats, $tz) {
+            $u = $users->get($r->user_id);
+
+            return [
+                'id' => $r->id,
+                'reg_code' => $r->reg_code,
+                'name' => $r->contact_name ?: ($u->name ?? '-'),
+                'email' => $r->contact_email ?: ($u->email ?? ''),
+                'phone' => $r->contact_phone,
+                'school' => $r->school,
+                'category' => $cats->get($r->participant_category_id),
+                'status' => $r->status,
+                'amount' => (int) $r->total_fee,
+                'proof' => (bool) $r->payment_proof,
+                'note' => $r->review_note,
+                'at' => \Illuminate\Support\Carbon::parse($r->created_at)->setTimezone($tz)->format('d M Y H:i'),
+                'teams' => $teams->get($r->id, collect())->map(fn ($t) => ['name' => $t->name, 'category' => $cats->get($t->participant_category_id)])->values(),
+                'answers' => (object) array_merge((array) \App\Support\RegistrationForm::publicAnswers($r->answers), (array) \App\Support\RegistrationForm::publicAnswers($r->followup_answers)),
+                'followup_done' => $r->completed_at !== null,
+            ];
+        })->values();
+
+        return $this->render('panel/events/registrasi-form', $event, [
+            'eventId' => $event->id,
+            'fields' => \App\Support\FormFields::all($event),
+            'message' => (string) $db::table('events')->where('id', $event->id)->value('registration_message'),
+            'quota' => $event->participant_quota ? (int) $event->participant_quota : null,
+            'used' => $used,
+            'fee' => (int) $event->registration_fee,
+            'isTeam' => $isTeam,
+            'rows' => $rows,
+            'link' => url('/events/'.$event->id.'/daftar'),
+            'published' => $event->status === Event::PUBLISHED,
+        ]);
+    }
+
+    /** Halaman menu yang belum dibuat; diganti satu per satu. */
+    public function menu(\Illuminate\Http\Request $request, Event $event, string $menu): Response
+    {
+        $label = config('features.menus')[$menu] ?? null;
+        abort_if($label === null, 404);
+
+        if ($menu === 'tiket' && $event->registration_method === 'ticket') {
+            return $this->tiket($request, $event);
+        }
+
+        if ($menu === 'registrasi' && $event->registration_method === 'ticket') {
+            return $this->registrasi($event);
+        }
+
+        if ($menu === 'registrasi') {
+            return $this->registrasiForm($event);
+        }
+
+        return $this->render('panel/events/menu', $event, [
+            'menu' => ['key' => $menu, 'label' => $label],
+        ]);
+    }
+}

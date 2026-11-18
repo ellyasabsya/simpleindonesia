@@ -1,0 +1,44 @@
+import { Link } from '@inertiajs/react';
+import { ChevronRight, ClipboardList, Layers, Ticket } from 'lucide-react';
+import PanelLayout from '@/components/panel/panel-layout';
+import RegistrationIdList from '@/components/panel/registration-id-list';
+
+type Sub = { id: number; title: string; method: string | null; fee: number; published: boolean };
+
+const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
+const box = 'rounded-3xl border border-white/60 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+
+export default function RegistrasiInduk({ subs }: { subs: Sub[] }) {
+    return (
+        <PanelLayout title="Registrasi">
+            <div className="space-y-5">
+                <div className={`${box} flex items-start gap-5 p-6`}>
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
+                        <Layers className="size-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-extrabold">Pendaftaran per sub-event</h2>
+                        <p className="mt-1 text-sm text-slate-500">Setiap sub-event punya pendaftarannya sendiri. Pilih salah satu untuk mengelolanya.</p>
+                    </div>
+                </div>
+                <div className="grid gap-3">
+                    {subs.map((c) => {
+                        const ticket = c.method === 'ticket';
+                        const Icon = ticket ? Ticket : ClipboardList;
+                        return (
+                            <Link key={c.id} href={`/panel/event/${c.id}/registrasi`} className={`${box} flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-md`}>
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600"><Icon className="size-5" /></div>
+                                <div className="min-w-0 flex-1">
+                                    <b className="block truncate">{c.title}</b>
+                                    <span className="text-xs text-slate-500">{ticket ? 'Lewat tiket' : 'Lewat formulir'} · {c.fee > 0 ? rp(c.fee) : 'Gratis'}{!c.published && ' · belum terbit'}</span>
+                                </div>
+                                <ChevronRight className="size-5 text-slate-400" />
+                            </Link>
+                        );
+                    })}
+                </div>
+                <RegistrationIdList />
+            </div>
+        </PanelLayout>
+    );
+}

@@ -43,6 +43,7 @@ class EventCommentController extends Controller
 
         if ($comment->reported_at === null) {
             $comment->update(['reported_at' => now()]);
+            \App\Support\AdminNotifier::send('Komentar dilaporkan', 'Ada komentar yang dilaporkan dan perlu dimoderasi.', '/admin/komentar');
         }
 
         return back();

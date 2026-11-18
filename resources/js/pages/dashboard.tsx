@@ -1,30 +1,30 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ArrowRight, Bell, Ticket, Vote, Cake, CalendarDays, Camera, Check, Copy, Gavel, History, Mail, MapPin, Pencil, Phone, Plus, QrCode, ScanLine, Sparkles, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Bell, Ticket, Vote, Cake, CalendarCheck, CalendarDays, Camera, Check, Copy, Gavel, History, Mail, MapPin, Pencil, Phone, Plus, QrCode, ScanLine, Sparkles, UserPlus, Users, X, type LucideIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import UserLayout from '@/components/user/user-layout';
 import { Pager, usePaged } from '@/lib/pager';
 import { SocialChips } from '@/lib/socials';
 
 type Role = 'peserta' | 'penyelenggara' | 'juri';
-type Item = { id: number | string; role: Role; title: string; subtitle?: string | null; date: string; status?: string | null; href?: string };
+type Item = { id: number | string; role: Role; title: string; subtitle?: string | null; date: string; status?: string | null; tone?: 'ok' | 'wait' | 'bad'; href?: string };
 type Friend = { username?: string | null; since?: string | null; id: number | string; name: string; avatar?: string | null; city?: string | null; mutual?: number };
-type Invite = { id: number | string; kind: 'juri' | 'event' | 'teman'; from: string; title: string; date?: string | null };
+type Invite = { id: number | string; member_id?: number; kind: 'juri' | 'event' | 'teman' | 'lembaga'; from: string; title: string; date?: string | null };
 type Props = { history?: Item[]; friends?: Friend[]; invitations?: Invite[] };
 
 const roles: Record<Role, { label: string; verb: string; icon: LucideIcon; grad: string; soft: string; text: string }> = {
-    peserta: { label: 'Peserta', verb: 'Event yang diikuti', icon: Trophy, grad: 'from-pink-500 to-rose-500', soft: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-600 dark:text-rose-300' },
+    peserta: { label: 'Peserta', verb: 'Event yang diikuti', icon: CalendarCheck, grad: 'from-pink-500 to-rose-500', soft: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-600 dark:text-rose-300' },
     penyelenggara: { label: 'Penyelenggara', verb: 'Event diselenggarakan', icon: CalendarDays, grad: 'from-blue-600 to-violet-600', soft: 'bg-indigo-50 dark:bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300' },
     juri: { label: 'Juri', verb: 'Event yang dinilai', icon: Gavel, grad: 'from-amber-400 to-orange-500', soft: 'bg-amber-50 dark:bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300' },
 };
 type Notif = { id: string; text: string; url?: string | null; read: boolean; at: string };
 const quick = [
-    { label: 'Event', desc: 'Jelajahi semua event', href: '/event', icon: CalendarDays, grad: 'from-blue-600 to-violet-600' },
-    { label: 'Lomba saya', desc: 'Lomba yang Anda ikuti', href: '/lomba-saya', icon: Trophy, grad: 'from-pink-500 to-rose-500' },
+    { label: 'Event', desc: 'Jelajahi semua event', href: '/events', icon: CalendarDays, grad: 'from-blue-600 to-violet-600' },
+    { label: 'Event saya', desc: 'Event yang Anda ikuti', href: '/lomba-saya', icon: CalendarCheck, grad: 'from-pink-500 to-rose-500' },
     { label: 'Tiket saya', desc: 'Tiket yang Anda beli', href: '/tiket', icon: Ticket, grad: 'from-amber-400 to-orange-500' },
     { label: 'Voting', desc: 'Berikan suara favorit', href: '/voting', icon: Vote, grad: 'from-emerald-400 to-teal-600' },
 ];
-const kinds = { juri: 'Undangan menjadi juri', event: 'Undangan event', teman: 'Permintaan pertemanan' };
+const kinds = { juri: 'Undangan menjadi juri', event: 'Undangan event', teman: 'Permintaan pertemanan', lembaga: 'Undangan bergabung ke lembaga' };
 
 const demoHistory: Item[] = [
     { id: 1, role: 'peserta', title: 'Batam Bernyanyi 2026', subtitle: 'Lomba vokal · Ballroom Hotel Pacific', date: '2026-11-17', status: 'Juara 2' },
@@ -98,10 +98,16 @@ function Scanner({ onResult }: { onResult: (t: string) => void }) {
 
 export default function Dashboard({ history = [], friends = [], invitations = [] }: Props) {
     const pg = usePage().props as any;
+    const lembagaReady = Boolean(pg.hasPanel);
     const user = { ...(pg.auth?.user ?? {}), ...(pg.profile ?? {}) };
     const name: string = user.name ?? '';
     const demo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demo');
     const [tab, setTab] = useState<'riwayat' | 'teman' | 'undangan'>('riwayat');
+    const pageUrl = usePage().url;
+    useEffect(() => {
+        const t = new URLSearchParams(pageUrl.split('?')[1] ?? '').get('tab');
+        if (t === 'undangan' || t === 'teman' || t === 'riwayat') setTab(t);
+    }, [pageUrl]);
     const [filter, setFilter] = useState<Role | 'semua'>('semua');
     const [modal, setModal] = useState<null | 'qr' | 'scan'>(null);
     const [scanned, setScanned] = useState<string | null>(null);
@@ -144,7 +150,7 @@ export default function Dashboard({ history = [], friends = [], invitations = []
     const copy = () => { navigator.clipboard?.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); };
     const answer = (i: Invite, ok: boolean) => {
         setGone([...gone, i.id]);
-        if (!demo) router.post(`/undangan/${i.id}/${ok ? 'terima' : 'tolak'}`, {}, { preserveScroll: true });
+        if (!demo) router.post(i.kind === 'juri' ? `/undangan-juri/${i.member_id}/${ok ? 'terima' : 'tolak'}` : i.kind === 'lembaga' ? `/undangan-lembaga/${i.member_id}/${ok ? 'terima' : 'tolak'}` : `/undangan/${i.id}/${ok ? 'terima' : 'tolak'}`, {}, { preserveScroll: true });
     };
     const closeModal = () => { setModal(null); setScanned(null); };
     const openRole = (r: Role) => { setTab('riwayat'); setFilter(filter === r ? 'semua' : r); };
@@ -270,7 +276,7 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                                     <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-white/10"><History className="h-6 w-6 text-indigo-500" /></span>
                                     <p className="text-lg font-extrabold">Belum ada riwayat</p>
                                     <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">Event yang Anda ikuti, selenggarakan, atau nilai akan muncul di sini.</p>
-                                    <Link href="/panel/ajukan" className={`${primary} mt-2`}>Ajukan event</Link>
+                                    <Link href={lembagaReady ? '/panel/ajukan' : '/lembaga/daftar'} className={`${primary} mt-2`}>Ajukan event</Link>
                                 </div>
                             ) : (
                                 years.map((y) => (
@@ -290,7 +296,7 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{fmt(i.date)}</p>
-                                                                {i.status && <span className="mt-1 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">{i.status}</span>}
+                                                                {i.status && <span className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-bold ${i.tone === 'bad' ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300' : i.tone === 'wait' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'}`}>{i.status}</span>}
                                                             </div>
                                                         </div>
                                                     </>
@@ -365,16 +371,17 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                         )
                     )}
                 {tab === 'undangan' && <Pager {...ip} />}
-                <section className={`${card} flex flex-wrap items-center gap-4 p-5`}>
+        </main>
+            </div>
+
+            <section className={`${card} mt-6 flex flex-wrap items-center gap-4 p-5`}>
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white shadow-md"><Sparkles className="h-6 w-6" /></span>
                 <div className="min-w-0 flex-1">
                     <p className="text-lg font-extrabold leading-tight">Punya acara? Buat event sendiri</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Daftarkan lembaga, ajukan event, tayang setelah diperiksa admin.</p>
                 </div>
-                <Link href="/panel/ajukan" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-extrabold text-white shadow transition hover:bg-indigo-700">Ajukan event <ArrowRight className="h-4 w-4" /></Link>
+                <Link href={lembagaReady ? '/panel' : '/lembaga/daftar'} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-extrabold text-white shadow transition hover:bg-indigo-700">{lembagaReady ? 'Buka panel lembaga' : 'Daftar lembaga'} <ArrowRight className="h-4 w-4" /></Link>
             </section>
-        </main>
-            </div>
 
             {modal === 'qr' && (
                 <Modal title="Kartu QR saya" onClose={closeModal}>

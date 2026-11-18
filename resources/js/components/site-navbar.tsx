@@ -14,7 +14,7 @@ const navLinks = [
 ];
 
 // Navbar sama persis dengan beranda; menu mengarah ke section di beranda
-export default function SiteNavbar({ active = 'event' }: { active?: string }) {
+export default function SiteNavbar({ active = 'event', hideMenu = false }: { active?: string; hideMenu?: boolean }) {
     const [scrolled, setScrolled] = useState(false);
     const { dark, toggle } = useTheme();
     const { user, dashboardUrl } = useAuth();
@@ -42,7 +42,7 @@ export default function SiteNavbar({ active = 'event' }: { active?: string }) {
                     <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
                 </Link>
 
-                <nav className="hidden rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur md:flex dark:bg-white/10">
+                <nav className={`${hideMenu ? 'hidden' : 'hidden md:flex'} rounded-full bg-white/60 p-1.5 shadow-sm backdrop-blur dark:bg-white/10`}>
                     {navLinks.map((link) => (
                         <a
                             key={link.id}

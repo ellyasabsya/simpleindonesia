@@ -1,0 +1,68 @@
+<?php
+
+namespace App\Providers;
+
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        \Inertia\Inertia::share('flash', fn () => ['success' => session('success'), 'error' => session('error')]);
+        \Inertia\Inertia::share('unread', fn () => auth()->check() ? auth()->user()->unreadNotifications()->count() : 0);
+        \Inertia\Inertia::share('notifications', fn () => auth()->check()
+            ? auth()->user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                'id' => $n->id, 'text' => $n->data['text'] ?? trim(($n->data['title'] ?? '').' — '.($n->data['message'] ?? ''), ' —'), 'url' => $n->data['url'] ?? null,
+                'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String(),
+            ])->all()
+            : []);
+        \Inertia\Inertia::share('friends', fn () => request()->is('dashboard') && auth()->check()
+            ? \Illuminate\Support\Facades\DB::table('friendships')
+                ->join('users', 'users.id', '=', 'friendships.friend_id')
+                ->where('friendships.user_id', auth()->id())->where('friendships.status', 'accepted')
+                ->orderByDesc('friendships.created_at')
+                ->get(['users.id', 'users.name', 'users.avatar', 'users.city', 'users.username', 'friendships.created_at as since'])
+            : []);
+        \Inertia\Inertia::share('profile', fn () => ($u = auth()->user())
+            ? array_merge($u->only(['username', 'avatar', 'bio', 'city', 'phone', 'birth_date', 'created_at']), ['socials' => json_decode($u->socials ?? '[]', true) ?: (object) []])
+            : null);
+        $this->configureDefaults();
+    }
+
+    /**
+     * Configure default behaviors for production-ready applications.
+     */
+    protected function configureDefaults(): void
+    {
+        Date::use(CarbonImmutable::class);
+
+        DB::prohibitDestructiveCommands(
+            app()->isProduction(),
+        );
+
+        Password::defaults(fn (): ?Password => app()->isProduction()
+            ? Password::min(12)
+                ->mixedCase()
+                ->letters()
+                ->numbers()
+                ->symbols()
+                ->uncompromised()
+            : null,
+        );
+    }
+}

@@ -3,7 +3,7 @@
 // Katalog fitur SIMPLE. Menambah fitur baru = menambah satu baris di 'features'.
 // 'label'  : yang dilihat admin di form paket
 // 'group'  : 'umum' selalu tampil; grup lain tampil bila modulnya dicentang
-// 'menu'   : kunci menu di dashboard event yang dibuka fitur ini
+// 'menu'   : kunci menu di dashboard event yang dibuka fitur ini (null = lewat form pendaftaran event)
 return [
     'payment_types' => [
         'free' => 'Gratis',
@@ -12,7 +12,9 @@ return [
     ],
 
     'modules' => [
-        'iklan' => ['label' => 'Iklan', 'description' => 'Promosi dan penayangan event', 'icon' => '📢'],
+        'iklan' => ['label' => 'Iklan', 'description' => 'Dashboard, registrasi, dan kalender kegiatan', 'icon' => '📢'],
+        'starter' => ['label' => 'Starter', 'description' => 'Sub-event, check-in, dan laporan gabungan', 'icon' => '🚀'],
+        'professional' => ['label' => 'Professional', 'description' => 'Tiket, pembayaran, sertifikat, penilaian, voting, dan tim', 'icon' => '💼'],
         'ticketing' => ['label' => 'Ticketing', 'description' => 'Penjualan dan pengelolaan tiket', 'icon' => '🎟️'],
         'voting' => ['label' => 'Voting', 'description' => 'Pemungutan suara peserta', 'icon' => '🗳️'],
         'lomba' => ['label' => 'Manajemen Lomba', 'description' => 'Peserta, juri, penilaian, dan hasil lomba', 'icon' => '🏆'],
@@ -21,6 +23,8 @@ return [
     'groups' => [
         'umum' => 'Umum',
         'iklan' => 'Iklan',
+        'starter' => 'Starter',
+        'professional' => 'Professional',
         'ticketing' => 'Ticketing',
         'voting' => 'Voting',
         'lomba' => 'Lomba',
@@ -29,8 +33,17 @@ return [
     // Menu dashboard event (dipakai nanti untuk membangun sidebar)
     'menus' => [
         'dashboard' => 'Dashboard',
-        'agenda' => 'Agenda Event',
+        'registrasi' => 'Registrasi',
+        'kalender' => 'Kalender Kegiatan',
+        'checkin' => 'Check-in',
+        'laporan' => 'Laporan',
+        'tiket' => 'Tiket',
         'sertifikat' => 'Sertifikat',
+        'transaksi' => 'Transaksi',
+        'penilaian' => 'Penilaian',
+        'voting' => 'Voting',
+        // menu lama (masih dipakai snapshot event yang sudah ada)
+        'agenda' => 'Agenda Event',
         'statistik' => 'Statistik',
         'pengaturan-tiket' => 'Pengaturan Tiket',
         'checkin-laporan' => 'Check-in & Laporan',
@@ -44,27 +57,32 @@ return [
 
     'features' => [
         // Umum
-        'dashboard_event' => ['label' => 'Dashboard Event', 'group' => 'umum', 'menu' => 'dashboard'],
-        'agenda_event' => ['label' => 'Agenda event', 'group' => 'umum', 'menu' => 'agenda'],
-        'sertifikat' => ['label' => 'Sertifikat digital', 'group' => 'umum', 'menu' => 'sertifikat'],
+        'dashboard_event' => ['label' => 'Dashboard induk', 'group' => 'umum', 'menu' => 'dashboard'],
+        'sertifikat' => ['label' => 'Sertifikat otomatis', 'group' => 'umum', 'menu' => 'sertifikat'],
+        'agenda_event' => ['label' => 'Agenda event (lama)', 'group' => 'umum', 'menu' => 'agenda'],
         'statistik' => ['label' => 'Statistik dan analitik', 'group' => 'umum', 'menu' => 'statistik'],
         'dukungan_prioritas' => ['label' => 'Dukungan prioritas', 'group' => 'umum', 'menu' => null],
 
-        // Ticketing (Check-in dan Laporan tiket membuka satu menu yang sama)
-        'ticket_sales' => ['label' => 'Penjualan tiket', 'group' => 'ticketing', 'menu' => 'pengaturan-tiket'],
-        'ticket_checkin' => ['label' => 'Check-in', 'group' => 'ticketing', 'menu' => 'checkin-laporan'],
-        'ticket_report' => ['label' => 'Laporan tiket', 'group' => 'ticketing', 'menu' => 'checkin-laporan'],
+        // Iklan
+        'registrasi_event' => ['label' => 'Registrasi event', 'group' => 'iklan', 'menu' => 'registrasi'],
+        'kalender_kegiatan' => ['label' => 'Kalender kegiatan', 'group' => 'iklan', 'menu' => 'kalender'],
+        'ad_publication' => ['label' => 'Publikasi event (lama)', 'group' => 'iklan', 'menu' => 'publikasi'],
 
-        // Voting
-        'voting_setup' => ['label' => 'Pengaturan voting', 'group' => 'voting', 'menu' => 'pengaturan-voting'],
-        'voting_report' => ['label' => 'Laporan voting', 'group' => 'voting', 'menu' => 'laporan-voting'],
+        // Starter
+        'sub_event' => ['label' => 'Sub-event', 'group' => 'starter', 'menu' => null],
+        'qr_checkin' => ['label' => 'QR code dan check-in', 'group' => 'starter', 'menu' => 'checkin'],
+        'laporan_gabungan' => ['label' => 'Laporan gabungan', 'group' => 'starter', 'menu' => 'laporan'],
 
+        // Professional (Multi-jenis tiket dan Pembayaran online membuka satu menu yang sama)
+        'tiket_multi' => ['label' => 'Multi-jenis tiket', 'group' => 'ticketing', 'menu' => 'tiket'],
+        'pembayaran_online' => ['label' => 'Pembayaran online', 'group' => 'ticketing', 'menu' => 'tiket'],
+        'laporan_transaksi' => ['label' => 'Laporan transaksi', 'group' => 'professional', 'menu' => 'transaksi'],
+        'penilaian_juri' => ['label' => 'Penilaian juri', 'group' => 'professional', 'menu' => 'penilaian'],
+        'voting_event' => ['label' => 'Voting', 'group' => 'voting', 'menu' => 'voting'],
+        'manajemen_tim' => ['label' => 'Manajemen tim', 'group' => 'professional', 'menu' => null],
         // Lomba
         'lomba_participants' => ['label' => 'Peserta lomba', 'group' => 'lomba', 'menu' => 'peserta'],
         'lomba_judging' => ['label' => 'Juri dan penilaian', 'group' => 'lomba', 'menu' => 'juri-penilaian'],
         'lomba_results' => ['label' => 'Hasil lomba', 'group' => 'lomba', 'menu' => 'hasil-lomba'],
-
-        // Iklan
-        'ad_publication' => ['label' => 'Publikasi event', 'group' => 'iklan', 'menu' => 'publikasi'],
     ],
 ];

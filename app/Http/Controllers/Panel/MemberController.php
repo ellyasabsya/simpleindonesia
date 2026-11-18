@@ -61,9 +61,52 @@ class MemberController extends Controller
         }
 
         $member = InstitutionMember::create(['institution_id' => $institution->id, 'user_id' => $user->id, 'role' => $data['role']]);
-        $member->forceFill(['permissions' => json_encode(array_values($data['permissions'] ?? self::ROLE_PERMS[$data['role']]))])->save();
+        $member->forceFill(['status' => 'menunggu', 'permissions' => json_encode(array_values($data['permissions'] ?? self::ROLE_PERMS[$data['role']]))])->save();
 
-        return back()->with('success', "{$user->name} ditambahkan ke lembaga.");
+        try {
+            $roleLabel = ['admin' => 'Admin', 'manajer' => 'Manajer event', 'keuangan' => 'Keuangan', 'staf' => 'Staf lapangan'][$data['role']] ?? $data['role'];
+            $user->notify(new \App\Notifications\AdminAlert(
+                'Undangan bergabung ke lembaga',
+                "{$institution->name} mengundang Anda sebagai {$roleLabel}. Terima atau tolak undangan ini.",
+                '/dashboard?tab=undangan',
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return back()->with('success', "Undangan dikirim ke {$user->name}. Menunggu persetujuan.");
+    }
+
+    public function lookup(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $institution = $request->attributes->get('institution');
+        abort_unless($request->user()->id === $institution->user_id, 403);
+
+        $email = strtolower(trim((string) $request->query('email', '')));
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['status' => 'invalid']);
+        }
+
+        $user = User::where('email', $email)->first();
+        if (! $user) {
+            return response()->json(['status' => 'not_found']);
+        }
+        if ($user->id === $institution->user_id) {
+            return response()->json(['status' => 'owner']);
+        }
+        if (InstitutionMember::where('institution_id', $institution->id)->where('user_id', $user->id)->exists()) {
+            return response()->json(['status' => 'member']);
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            'user' => [
+                'name' => $user->name,
+                'username' => $user->username ?? null,
+                'city' => $user->city ?? null,
+                'avatar' => $user->avatar ?? null,
+            ],
+        ]);
     }
 
     public function update(Request $request, InstitutionMember $member): RedirectResponse

@@ -1,0 +1,812 @@
+=================== resources/js/pages/panel/events/registrasi-induk.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { ChevronLeft, ChevronRight, Clock, Layers, Search, Users, UserCheck } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+type Sub = { id: number; title: string; method: string | null; fee: number; published: boolean; count: number };
+type Row = { sub_id: number; sub: string; reg_id: string | null; name: string; kind: string; status: string };
+
+const PER_PAGE = 25;
+const box = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const field = 'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+
+const STATUS: Record<string, { label: string; style: string }> = {
+    lunas: { label: 'Terdaftar', style: 'bg-emerald-100 text-emerald-800' },
+    menunggu: { label: 'Menunggu verifikasi', style: 'bg-amber-100 text-amber-800' },
+    menunggu_verifikasi: { label: 'Menunggu verifikasi', style: 'bg-amber-100 text-amber-800' },
+    batal: { label: 'Dibatalkan', style: 'bg-slate-200 text-slate-700' },
+    dibatalkan: { label: 'Dibatalkan', style: 'bg-slate-200 text-slate-700' },
+    kedaluwarsa: { label: 'Kedaluwarsa', style: 'bg-slate-200 text-slate-700' },
+    ditolak: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800' },
+};
+const CLOSED = ['dibatalkan', 'batal', 'kedaluwarsa', 'ditolak'];
+const WAITING = ['menunggu', 'menunggu_verifikasi'];
+
+export default function RegistrasiInduk({ subs, rows }: { subs: Sub[]; rows: Row[] }) {
+    const [q, setQ] = useState('');
+    const [sub, setSub] = useState('');
+    const [status, setStatus] = useState('');
+    const [page, setPage] = useState(1);
+
+    const statuses = useMemo(() => Array.from(new Set(rows.map((r) => r.status))), [rows]);
+    const active = useMemo(() => rows.filter((r) => !CLOSED.includes(r.status)), [rows]);
+    const stats = [
+        { label: 'Total peserta', value: active.length, Icon: Users, tone: 'bg-indigo-100 text-indigo-600' },
+        { label: 'Terdaftar', value: rows.filter((r) => r.status === 'lunas').length, Icon: UserCheck, tone: 'bg-emerald-100 text-emerald-600' },
+        { label: 'Menunggu verifikasi', value: rows.filter((r) => WAITING.includes(r.status)).length, Icon: Clock, tone: 'bg-amber-100 text-amber-600' },
+    ];
+
+    const list = useMemo(() => {
+        const k = q.trim().toLowerCase();
+        return rows.filter((r) =>
+            (!sub || String(r.sub_id) === sub) &&
+            (!status || r.status === status) &&
+            (!k || [r.reg_id ?? '', r.name, r.sub, r.kind].some((v) => v.toLowerCase().includes(k))),
+        );
+    }, [rows, q, sub, status]);
+
+    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    const cur = Math.min(page, pages);
+    const view = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
+    const from = list.length === 0 ? 0 : (cur - 1) * PER_PAGE + 1;
+    const to = Math.min(cur * PER_PAGE, list.length);
+
+    const chip = (on: boolean) =>
+        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+
+    return (
+        <PanelLayout title="Registrasi">
+            <div className="space-y-5">
+                <div className={`${box} flex items-start gap-5 p-6`}>
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
+                        <Layers className="size-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-extrabold">Registrasi gabungan</h2>
+                        <p className="mt-1 text-sm text-slate-500">Data peserta dari semua sub-event. Halaman ini hanya untuk melihat; tiket, harga, dan formulir diatur di menu sub-event pada sidebar.</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                    {stats.map(({ label, value, Icon, tone }) => (
+                        <div key={label} className={`${box} flex items-center gap-4 p-4`}>
+                            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="size-5" /></div>
+                            <div>
+                                <div className="text-2xl font-extrabold leading-none">{value}</div>
+                                <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className={`${box} overflow-hidden`}>
+                    <div className="space-y-4 p-5">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Cari ID, nama, sub-event" className={`${field} w-64 pl-9`} />
+                            </div>
+                            <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={field}>
+                                <option value="">Semua status</option>
+                                {statuses.map((s) => <option key={s} value={s}>{STATUS[s]?.label ?? s}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => { setSub(''); setPage(1); }} className={chip(sub === '')}>Semua sub-event · {active.length}</button>
+                            {subs.map((c) => (
+                                <button key={c.id} type="button" onClick={() => { setSub(String(c.id)); setPage(1); }} className={chip(sub === String(c.id))}>
+                                    {c.title} · {c.count}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {view.length === 0 ? (
+                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{rows.length === 0 ? 'Belum ada pendaftar di sub-event mana pun.' : 'Tidak ada data yang cocok.'}</p>
+                    ) : (
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[820px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        <th className="w-[210px] px-5 py-3">ID registrasi</th>
+                                        <th className="px-3 py-3">Peserta</th>
+                                        <th className="px-3 py-3">Sub-event</th>
+                                        <th className="px-3 py-3">Jenis / kategori</th>
+                                        <th className="w-[190px] px-3 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {view.map((r, i) => {
+                                        const st = STATUS[r.status] ?? { label: r.status || '-', style: 'bg-slate-200 text-slate-700' };
+                                        return (
+                                            <tr key={`${r.sub_id}-${r.reg_id ?? 'x'}-${i}`} className="align-middle">
+                                                <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                                <td className="px-3 py-3 font-extrabold">{r.name}</td>
+                                                <td className="px-3 py-3 font-semibold">{r.sub}</td>
+                                                <td className="px-3 py-3"><span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.kind}</span></td>
+                                                <td className="px-3 py-3"><span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${st.style}`}>{st.label}</span></td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {list.length > PER_PAGE && (
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-xs font-semibold text-slate-500 dark:border-white/10">
+                            <span>{from}-{to} dari {list.length}</span>
+                            <div className="flex items-center gap-2">
+                                <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronLeft className="h-4 w-4" /></button>
+                                <span>Halaman {cur} / {pages}</span>
+                                <button type="button" disabled={cur >= pages} onClick={() => setPage(cur + 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronRight className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </PanelLayout>
+    );
+}
+=================== resources/js/components/panel/panel-layout.tsx
+import { Toast } from '@/lib/toast';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Layers, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import PageBackground from '@/components/page-background';
+import { eventMenuIcons } from '@/data/event-menu-icons';
+import { panelMenu, type PanelMenuGroup } from '@/data/panel-menu';
+import { useTheme } from '@/hooks/use-theme';
+
+type PageProps = {
+    auth?: { user?: { name?: string } };
+    institution?: { name: string };
+};
+
+function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+    const { url } = usePage();
+    const path = url.split('?')[0];
+    const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[]; parent?: { title: string; href: string }; subs?: { label: string; href: string }[] } }>().props;
+    const shared = usePage().props as any;
+    const menuPerms: string[] | null = shared.panelPerms ?? null;
+    const menuOwner: boolean = !!shared.panelOwner;
+    const MENU_NEED: Record<string, string[]> = {
+        '/panel/event': ['events', 'checkin'],
+        '/panel/ajukan': ['events'],
+        '/panel/peserta': ['events', 'checkin'],
+        '/panel/tiket': ['events', 'checkin', 'finance'],
+        '/panel/voting': ['events'],
+        '/panel/penilaian': ['events'],
+        '/panel/pendapatan': ['finance', 'withdraw'],
+    };
+    const menuVisible = (href: string) => {
+        if (menuOwner || menuPerms === null) return true;
+        if (href === '/panel/profil') return false;
+        const need = MENU_NEED[href];
+        return !need || need.some((p) => menuPerms.includes(p));
+    };
+    const groups: PanelMenuGroup[] = eventNav
+        ? [
+              {
+                  title: eventNav.title,
+                  items: eventNav.items.filter((i) => !(eventNav.parent && i.href.endsWith('/kalender'))).map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
+              },
+              ...(eventNav.subs?.length
+                  ? [{ title: 'Sub-event', items: eventNav.subs.map((s) => ({ label: s.label, href: s.href, icon: Layers })) }]
+                  : []),
+          ]
+        : panelMenu;
+
+
+    return (
+        <div className="flex h-full flex-col">
+            <Link href="/" onClick={onNavigate} className="flex items-center gap-3 px-6 pb-5 pt-6">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
+                    S
+                </span>
+                <span>
+                    <span className="block text-lg font-extrabold leading-none tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
+                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-500 dark:text-indigo-300">Panel Lembaga</span>
+                </span>
+            </Link>
+
+            <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none]">
+                {eventNav?.parent && (
+                    <Link href={eventNav.parent.href} onClick={onNavigate} className="flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-100">
+                        <ArrowLeft className="h-4 w-4" /> {eventNav.parent.title}
+                    </Link>
+                )}
+                {groups.map((g0) => ({ ...g0, items: g0.items.filter((it) => menuVisible(it.href)) })).filter((g0) => g0.items.length > 0).map((group) => (
+                    <div key={group.title}>
+                        <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{group.title}</p>
+                        <div className="space-y-1">
+                            {group.items.map(({ label, href, icon: Icon }) => {
+                                const active = href === '/panel' || eventNav ? path === href : path.startsWith(href);
+                                return (
+                                    <Link
+                                        key={href}
+                                        href={href}
+                                        onClick={onNavigate}
+                                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                                            active
+                                                ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-600/25'
+                                                : 'text-slate-600 hover:bg-white/80 hover:text-indigo-800 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <Icon className="h-[18px] w-[18px]" />
+                                        {label}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </nav>
+
+            <div className="border-t border-slate-200/70 p-4 dark:border-white/10">
+                <Link
+                    href="/panel"
+                    onClick={onNavigate}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-white/80 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Panel Lembaga
+                </Link>
+            </div>
+        </div>
+    );
+}
+
+export default function PanelLayout({ title, children }: { title: string; children: ReactNode }) {
+    const { dark, toggle } = useTheme();
+    const [open, setOpen] = useState(false);
+    const { auth, institution } = usePage<PageProps>().props;
+    const name = auth?.user?.name ?? 'Pengguna';
+
+    return (
+        <>
+            <Head title={`${title} - Panel SIMPLE`} />
+            <PageBackground />
+
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/60 bg-white/60 backdrop-blur-xl lg:block dark:border-white/10 dark:bg-indigo-950/40">
+                <Sidebar />
+            </aside>
+
+            {open && (
+                <div className="fixed inset-0 z-40 lg:hidden">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+                    <aside className="absolute inset-y-0 left-0 w-64 bg-white/95 shadow-2xl dark:bg-indigo-950/95">
+                        <button onClick={() => setOpen(false)} aria-label="Tutup menu" className="absolute right-3 top-4 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10">
+                            <X className="h-5 w-5" />
+                        </button>
+                        <Sidebar onNavigate={() => setOpen(false)} />
+                    </aside>
+                </div>
+            )}
+
+            <div className="relative z-10 min-h-screen text-slate-900 lg:pl-64 dark:text-white">
+                <header className="sticky top-0 z-20 border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
+                    <div className="flex h-16 items-center justify-between px-5 lg:px-8">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setOpen(true)} aria-label="Buka menu" className="rounded-lg p-2 text-slate-600 hover:bg-white/80 lg:hidden dark:text-slate-200 dark:hover:bg-white/10">
+                                <Menu className="h-5 w-5" />
+                            </button>
+                            <h1 className="text-lg font-extrabold">{title}</h1>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button onClick={toggle} aria-label="Ganti tema" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20">
+                                {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+                            </button>
+
+                            <div className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pl-1 pr-4 shadow-sm dark:bg-white/10">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-bold text-white">
+                                    {name.charAt(0).toUpperCase()}
+                                </span>
+                                <span className="hidden leading-tight sm:block">
+                                    <span className="block text-sm font-bold">{name}</span>
+                                    <span className="block max-w-40 truncate text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                        {institution?.name ?? 'Lembaga'}
+                                    </span>
+                                </span>
+                            </div>
+
+                            <button onClick={() => router.post('/logout')} className="flex h-10 items-center gap-2 rounded-full bg-rose-50 px-4 text-sm font-bold text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25">
+                                <LogOut className="h-4 w-4" />
+                                <span className="hidden sm:inline">Keluar</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="space-y-6 p-5 lg:p-8"><Toast />
+{children}</main>
+            </div>
+        </>
+    );
+}
+=================== app/Http/Controllers/Panel/RegistrationFormController.php
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Support\RegistrationForm;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class RegistrationFormController extends Controller
+{
+    private function own(Request $request, Event $event): void
+    {
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst && $event->institution_id === $inst->id, 404);
+        abort_if($event->registration_method === 'ticket', 404);
+    }
+
+    public function update(Request $request, Event $event): RedirectResponse
+    {
+        $this->own($request, $event);
+
+        $d = $request->validate([
+            'fields' => ['present', 'array', 'max:200'],
+            'fields.*.key' => ['nullable', 'string', 'max:20'],
+            'fields.*.label' => ['required', 'string', 'max:120'],
+            'fields.*.type' => ['required', Rule::in(RegistrationForm::TYPES)],
+            'fields.*.required' => ['boolean'],
+            'fields.*.stage' => ['nullable', Rule::in(['register', 'after'])],
+            'fields.*.options' => ['nullable', 'array', 'max:50'],
+            'fields.*.options.*' => ['string', 'max:80'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ], [], ['fields.*.label' => 'Label kolom']);
+
+        $existing = collect(\App\Support\FormFields::all($event))->keyBy('key');
+        $taken = $existing->keys()->all();
+        $out = [];
+        $seen = [];
+
+        foreach ($d['fields'] as $i => $f) {
+            $type = $f['type'];
+            $options = [];
+            if (RegistrationForm::needsOptions($type)) {
+                $options = array_values(array_unique(array_filter(
+                    array_map('trim', $f['options'] ?? []),
+                    fn ($o) => $o !== ''
+                )));
+                if (! $options) {
+                    throw ValidationException::withMessages([
+                        "fields.$i.options" => 'Kolom "'.trim($f['label']).'" butuh minimal satu pilihan.',
+                    ]);
+                }
+            }
+
+            $key = $f['key'] ?? null;
+            if (! $key || ! $existing->has($key) || isset($seen[$key])) {
+                do {
+                    $key = 'f_'.Str::lower(Str::random(8));
+                } while (in_array($key, $taken, true) || isset($seen[$key]));
+            }
+            $seen[$key] = true;
+
+            $out[] = [
+                'key' => $key,
+                'label' => trim($f['label']),
+                'type' => $type,
+                'required' => (bool) ($f['required'] ?? false),
+                'stage' => (($f['stage'] ?? 'register') === 'after') ? 'after' : 'register',
+                'options' => $options,
+                'archived' => false,
+            ];
+        }
+
+        // Kolom yang dihapus tapi sudah punya jawaban diarsipkan, supaya jawaban lama tidak hilang.
+        if (DB::table('event_registrations')->where('event_id', $event->id)->where(fn ($q) => $q->whereNotNull('answers')->orWhereNotNull('followup_answers'))->exists()) {
+            foreach ($existing as $key => $f) {
+                if (! isset($seen[$key])) {
+                    $out[] = ['archived' => true] + $f;
+                }
+            }
+        }
+
+        DB::table('events')->where('id', $event->id)->update([
+            'registration_fields' => json_encode($out, JSON_UNESCAPED_UNICODE),
+            'registration_message' => $d['message'] ?? null,
+        ]);
+
+        return back();
+    }
+
+    public function review(Request $request, Event $event, int $reg): RedirectResponse
+    {
+        $this->own($request, $event);
+
+        $d = $request->validate([
+            'status' => ['required', Rule::in(['menunggu', 'terdaftar', 'ditolak'])],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+        if ($d['status'] === 'ditolak' && blank($d['note'] ?? null)) {
+            throw ValidationException::withMessages(['note' => 'Alasan penolakan wajib diisi.']);
+        }
+
+        $n = DB::table('event_registrations')->where('event_id', $event->id)->where('id', $reg)->update([
+            'status' => $d['status'],
+            'review_note' => $d['status'] === 'ditolak' ? trim($d['note']) : null,
+            'reviewed_at' => now(),
+            'updated_at' => now(),
+        ]);
+        abort_unless($n, 404);
+
+        if ($d['status'] !== 'menunggu') {
+            try {
+                $row = DB::table('event_registrations')->where('id', $reg)->first();
+                $to = $row ? \App\Models\User::find($row->user_id) : null;
+                if ($to) {
+                    $ok = $d['status'] === 'terdaftar';
+                    $needMore = $ok && $event->competition_type !== 'team' && count(\App\Support\FormFields::active($event, 'after')) > 0;
+                    $to->notify(new \App\Notifications\AdminAlert(
+                        $ok ? 'Pendaftaran disetujui' : 'Pendaftaran ditolak',
+                        $ok
+                            ? 'Pendaftaran Anda di "'.$event->title.'" disetujui.'.($needMore ? ' Panitia meminta data tambahan, silakan dilengkapi.' : '')
+                            : 'Pendaftaran Anda di "'.$event->title.'" ditolak. Alasan: '.trim($d['note']),
+                        '/events/'.$event->id.'/daftar'
+                    ));
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return back();
+    }
+
+    public function destroy(Request $request, Event $event, int $reg): RedirectResponse
+    {
+        $this->own($request, $event);
+
+        $row = DB::table('event_registrations')->where('event_id', $event->id)->where('id', $reg)->first();
+        if ($row) {
+            $paths = [];
+            foreach (array_merge(json_decode((string) $row->answers, true) ?: [], json_decode((string) $row->followup_answers, true) ?: []) as $v) {
+                if (is_array($v) && isset($v['path'])) {
+                    $paths[] = $v['path'];
+                }
+            }
+            if ($row->payment_proof) {
+                $paths[] = $row->payment_proof;
+            }
+            foreach ($paths as $p) {
+                if (str_starts_with($p, 'form-registrations/'.$event->id.'/')) {
+                    Storage::disk('local')->delete($p);
+                }
+            }
+            DB::table('registration_teams')->where('event_registration_id', $row->id)->delete();
+            DB::table('event_registrations')->where('id', $row->id)->delete();
+        }
+
+        return back();
+    }
+
+    public function export(Request $request, Event $event): StreamedResponse
+    {
+        $this->own($request, $event);
+        $isTeam = $event->competition_type === 'team';
+        $fields = $isTeam ? [] : \App\Support\FormFields::all($event);
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        $cats = DB::table('event_participant_categories')->where('event_id', $event->id)->pluck('name', 'id');
+        // Cegah rumus spreadsheet dari isian pendaftar.
+        $safe = fn ($v) => is_string($v) && $v !== '' && str_contains("=+-@\t\r", $v[0]) ? "'".$v : $v;
+        $name = 'pendaftar-'.Str::slug($event->title ?: 'event').'.csv';
+
+        return response()->streamDownload(function () use ($event, $fields, $tz, $cats, $safe) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, array_merge(
+                ['Nama', 'Email', 'WhatsApp', 'Sekolah / Instansi', 'Kategori', 'Tim', 'Status', 'Total tagihan', 'Waktu daftar'],
+                array_map(fn ($f) => $safe($f['label']), $fields)
+            ), ',', '"', '\\');
+
+            DB::table('event_registrations')->where('event_id', $event->id)->orderBy('id')->chunk(500, function ($chunk) use ($out, $fields, $tz, $cats, $safe) {
+                $users = DB::table('users')->whereIn('id', $chunk->pluck('user_id'))->get(['id', 'name', 'email'])->keyBy('id');
+                $teams = DB::table('registration_teams')->whereIn('event_registration_id', $chunk->pluck('id'))->orderBy('id')->get()->groupBy('event_registration_id');
+                foreach ($chunk as $r) {
+                    $u = $users->get($r->user_id);
+                    $a = array_merge(json_decode((string) $r->answers, true) ?: [], json_decode((string) $r->followup_answers, true) ?: []);
+                    $row = [
+                        $r->contact_name ?: ($u->name ?? ''),
+                        $r->contact_email ?: ($u->email ?? ''),
+                        $r->contact_phone,
+                        $r->school,
+                        $cats->get($r->participant_category_id),
+                        $teams->get($r->id, collect())->map(fn ($t) => $t->name.($cats->get($t->participant_category_id) ? ' ('.$cats->get($t->participant_category_id).')' : ''))->implode('; '),
+                        $r->status,
+                        (int) $r->total_fee,
+                        Carbon::parse($r->created_at)->setTimezone($tz)->format('Y-m-d H:i'),
+                    ];
+                    foreach ($fields as $f) {
+                        $v = $a[$f['key']] ?? '';
+                        if (is_array($v) && isset($v['path'])) {
+                            $v = $v['name'] ?? 'berkas';
+                        }
+                        $row[] = is_array($v) ? implode(', ', $v) : $v;
+                    }
+                    fputcsv($out, array_map($safe, $row), ',', '"', '\\');
+                }
+            });
+            fclose($out);
+        }, $name, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function berkas(Request $request, Event $event, int $reg, string $key)
+    {
+        $this->own($request, $event);
+        $r = DB::table('event_registrations')->where('event_id', $event->id)->where('id', $reg)->first();
+        abort_unless($r, 404);
+
+        $v = array_merge(json_decode((string) $r->answers, true) ?: [], json_decode((string) $r->followup_answers, true) ?: [])[$key] ?? null;
+        abort_unless(is_array($v) && isset($v['path']) && str_starts_with($v['path'], 'form-registrations/'.$event->id.'/'), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($v['path']), 404);
+
+        return $disk->response($v['path'], $v['name'] ?? basename($v['path']), ['X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function bukti(Request $request, Event $event, int $reg)
+    {
+        $this->own($request, $event);
+        $r = DB::table('event_registrations')->where('event_id', $event->id)->where('id', $reg)->first();
+        abort_unless($r && $r->payment_proof && str_starts_with($r->payment_proof, 'form-registrations/'.$event->id.'/'), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($r->payment_proof), 404);
+
+        return $disk->response($r->payment_proof, 'bukti-transfer-'.$r->id.'.'.pathinfo($r->payment_proof, PATHINFO_EXTENSION), ['X-Content-Type-Options' => 'nosniff']);
+    }
+}
+=================== app/Models/Event.php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+
+class Event extends Model
+{
+    public const PENDING = 'pending';
+    public const PUBLISHED = 'published';
+    public const REJECTED = 'rejected';
+
+    protected $fillable = [ 'team_per_row', 'team_leaders',  'team_slots', 'competition_type', 'team_size',  'bank_name', 'bank_account_number', 'bank_account_name', 'parent_id', 'sub_order', 'participant_quota', 'registration_method', 'registration_fee', 'contact_name', 'contact_phone', 'contact_email', 'contact_position', 
+        'institution_id', 'package_id', 'title', 'slug', 'category', 'description', 'location',
+        'starts_at', 'ends_at', 'poster_path', 'juknis_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot', 'payment_status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'starts_at' => 'date',
+            'ends_at' => 'date',
+            'reviewed_at' => 'datetime',
+            'package_snapshot' => 'array',
+        ];
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
+    }
+
+    public function package(): BelongsTo
+    {
+        return $this->belongsTo(Package::class);
+    }
+
+    public function posterUrl(): ?string
+    {
+        return $this->poster_path ? Storage::disk('public')->url($this->poster_path) : null;
+    }
+
+    public function juknisUrl(): ?string
+    {
+        return $this->juknis_path ? Storage::disk('public')->url($this->juknis_path) : null;
+    }
+
+    public function hasFeature(string $key): bool
+    {
+        return in_array($key, $this->effectiveFeatures(), true);
+    }
+
+    /** Fitur paket ditambah fitur add-on yang dibeli dan sudah lunas. Dihitung saat dibaca, tidak disimpan, jadi paket tidak berubah. */
+    public function effectiveFeatures(): array
+    {
+        $snap = (array) ($this->package_snapshot ?? []);
+        $features = (array) ($snap['features'] ?? []);
+        // Sub-event mewarisi add-on yang dibeli di event induk.
+        $src = $this->parent_id ? (self::find($this->parent_id) ?? $this) : $this;
+        $opt = (array) (((array) ($src->package_snapshot ?? []))['options'] ?? []);
+        if ($src->payment_status === 'lunas' && (! empty($opt['assessment_addon']) || ! empty($opt['judge_addon']))) {
+            $features[] = 'penilaian_juri';
+        }
+
+        return array_values(array_unique($features));
+    }
+
+    /** Menu dashboard event, dari snapshot (bukan dari paket yang mungkin sudah berubah). */
+    public function menus(): array
+    {
+        return Package::menusFor($this->effectiveFeatures());
+    }
+
+    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sub_order');
+    }
+
+    public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EventComment::class);
+    }
+
+    public function ticketTypes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TicketType::class);
+    }
+
+    public function scopeMain($query)
+    {
+        return $query->whereNull('parent_id');
+    }
+}
+=================== routes/web.php (baris event/panel)
+7:Route::get('/events', \App\Http\Controllers\EventController::class)->name('events.semua');
+10:Route::get('/events/{event}/tiket', function (\App\Models\Event $event) {
+11:    if ($event->status !== \App\Models\Event::PUBLISHED) {
+14:    if ($event->registration_method === 'ticket' && $event->ticket_sales_open) {
+15:        return redirect('/tickets?beli='.$event->id);
+17:    return redirect('/events/'.$event->slug);
+18:})->whereNumber('event');
+20:Route::get('/events/{event}/beli-data', [\App\Http\Controllers\TicketPurchaseController::class, 'data'])->whereNumber('event');
+21:Route::get('/events/{event}/beli', [\App\Http\Controllers\TicketPurchaseController::class, 'show'])->whereNumber('event')->name('tiket.beli');
+22:Route::post('/events/{event}/beli', [\App\Http\Controllers\TicketPurchaseController::class, 'store'])->whereNumber('event')->middleware('throttle:10,1');
+24:Route::get('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'show'])->whereNumber('event')->middleware('auth')->name('daftar.show');
+25:Route::post('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'store'])->whereNumber('event')->middleware(['auth', 'throttle:10,1'])->name('daftar.store');
+26:Route::post('events/{event}/daftar/lengkapi', [\App\Http\Controllers\EventRegistrationFormController::class, 'complete'])->whereNumber('event')->middleware(['auth', 'throttle:10,1'])->name('daftar.complete');
+27:Route::get('/events/{key}', \App\Http\Controllers\EventDetailController::class)->name('events.show');
+28:Route::middleware(['auth', 'throttle:10,1'])->post('/events/{event}/komentar', [\App\Http\Controllers\EventCommentController::class, 'store'])->name('events.komentar.store');
+29:Route::middleware('auth')->delete('/komentar/{comment}', [\App\Http\Controllers\EventCommentController::class, 'destroy'])->name('events.komentar.destroy');
+30:Route::middleware(['auth', 'throttle:10,1'])->post('/komentar/{comment}/lapor', [\App\Http\Controllers\EventCommentController::class, 'report'])->name('events.komentar.report');
+31:Route::get('/edit-event/{token}', [\App\Http\Controllers\EventEditLinkController::class, 'show'])->middleware('throttle:30,1')->name('edit-link.show');
+32:Route::get('/events/{event}/masuk', function (\Illuminate\Http\Request $request, \App\Models\Event $event) {
+33:    // Ganti ke '/events/'.$event->id.'/daftar' setelah form pendaftaran dibuat.
+34:    $to = $event->registration_method === 'ticket'
+35:        ? url('/events/'.($event->slug ?: $event->id))
+36:        : url('/events/'.$event->id.'/daftar');
+43:})->whereNumber('event')->name('events.masuk');
+44:Route::post('/edit-event/{token}', [\App\Http\Controllers\EventEditLinkController::class, 'update'])->middleware('throttle:10,1')->name('edit-link.update');
+89:        Route::get('verifikasi-paket/{event}/bukti', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'proof'])->name('verifikasi-paket.bukti');
+90:        Route::patch('verifikasi-paket/{event}/setujui', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'approve'])->name('verifikasi-paket.setujui');
+91:        Route::patch('verifikasi-paket/{event}/tolak', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'reject'])->name('verifikasi-paket.tolak');
+107:        Route::get('event', [\App\Http\Controllers\Panel\EventController::class, 'index'])->name('event');
+116:        Route::get('events', [\App\Http\Controllers\Admin\EventController::class, 'index'])->name('events');
+118:        Route::patch('events/{event}/approve', [\App\Http\Controllers\Admin\EventController::class, 'approve'])->name('events.approve');
+119:        Route::patch('events/{event}/reject', [\App\Http\Controllers\Admin\EventController::class, 'reject'])->name('events.reject');
+120:        Route::patch('events/{event}', [\App\Http\Controllers\Admin\EventController::class, 'update'])->name('events.update');
+121:        Route::delete('events/{event}', [\App\Http\Controllers\Admin\EventController::class, 'destroy'])->name('events.destroy');
+122:        Route::get('events/{event}/edit', [\App\Http\Controllers\Admin\EventController::class, 'edit'])->name('events.edit');
+123:        Route::post('events/{event}/detail', [\App\Http\Controllers\Admin\EventController::class, 'updateFull'])->name('events.detail');
+124:        Route::post('events/{event}/edit-links', [\App\Http\Controllers\Admin\EditLinkController::class, 'store'])->name('events.edit-links.store');
+125:        Route::patch('events/{event}/edit-links/{link}/revoke', [\App\Http\Controllers\Admin\EditLinkController::class, 'revoke'])->whereNumber('link')->name('events.edit-links.revoke');
+166:        Route::get('event/{event}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'show'])->name('event.show');
+167:        Route::get('event/{event}/voting', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'index'])->whereNumber('event')->name('event.voting.index');
+168:        Route::post('event/{event}/voting/aktif', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggle'])->whereNumber('event')->name('event.voting.toggle');
+169:        Route::put('event/{event}/voting/pengaturan', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'settingsUpdate'])->whereNumber('event')->name('event.voting.settingsUpdate');
+170:        Route::post('event/{event}/voting/kategori', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'storeCategory'])->whereNumber('event')->name('event.voting.storeCategory');
+171:        Route::delete('event/{event}/voting/kategori/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyCategory'])->whereNumber(['event', 'item'])->name('event.voting.destroyCategory');
+172:        Route::post('event/{event}/voting/peserta', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'storeParticipant'])->whereNumber('event')->name('event.voting.storeParticipant');
+173:        Route::put('event/{event}/voting/peserta/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'updateParticipant'])->whereNumber(['event', 'item'])->name('event.voting.updateParticipant');
+174:        Route::delete('event/{event}/voting/peserta/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyParticipant'])->whereNumber(['event', 'item'])->name('event.voting.destroyParticipant');
+175:        Route::post('event/{event}/voting/gift', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'storeGift'])->whereNumber('event')->name('event.voting.storeGift');
+176:        Route::put('event/{event}/voting/gift/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'updateGift'])->whereNumber(['event', 'item'])->name('event.voting.updateGift');
+177:        Route::post('event/{event}/voting/gift/{item}/toggle', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggleGift'])->whereNumber(['event', 'item'])->name('event.voting.toggleGift');
+178:        Route::delete('event/{event}/voting/gift/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyGift'])->whereNumber(['event', 'item'])->name('event.voting.destroyGift');
+179:        Route::post('event/{event}/voting/peserta/{item}/link', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.voting.resetLink');
+180:        Route::get('event/{event}/kalender', [\App\Http\Controllers\Panel\CalendarController::class, 'index'])->whereNumber('event')->name('event.kalender');
+181:        Route::put('event/{event}/kalender/tahapan', [\App\Http\Controllers\Panel\CalendarController::class, 'updatePhases'])->whereNumber('event')->name('event.kalender.tahapan');
+182:        Route::post('event/{event}/kalender/agenda', [\App\Http\Controllers\Panel\CalendarController::class, 'store'])->whereNumber('event')->name('event.kalender.store');
+183:        Route::put('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'update'])->whereNumber(['event', 'item'])->name('event.kalender.update');
+184:        Route::delete('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'destroy'])->whereNumber(['event', 'item'])->name('event.kalender.destroy');
+185:        Route::post('event/{event}/registrasi/checkin', [\App\Http\Controllers\Panel\TicketScanController::class, 'store'])->name('event.scan');
+186:        Route::put('event/{event}/registrasi/form', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'update'])->name('event.form');
+187:        Route::get('event/{event}/registrasi/export', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'export'])->name('event.form.export');
+188:        Route::delete('event/{event}/registrasi/pendaftar/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'destroy'])->whereNumber('reg')->name('event.form.destroy');
+189:        Route::get('event/{event}/registrasi/berkas/{reg}/{key}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'berkas'])->whereNumber('reg')->where('key', 'f_[a-z0-9]+')->name('event.form.file');
+190:        Route::patch('event/{event}/registrasi/pendaftar/{reg}/status', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'review'])->whereNumber('reg')->name('event.form.review');
+191:        Route::get('event/{event}/registrasi/bukti/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'bukti'])->whereNumber('reg')->name('event.form.proof');
+192:        Route::get('event/{event}/penilaian', [\App\Http\Controllers\Panel\JudgingController::class, 'index'])->whereNumber('event')->name('event.judging.index');
+193:        Route::post('event/{event}/penilaian/aktif', [\App\Http\Controllers\Panel\JudgingController::class, 'toggle'])->whereNumber('event')->name('event.judging.toggle');
+194:        Route::put('event/{event}/penilaian/kriteria', [\App\Http\Controllers\Panel\JudgingController::class, 'saveCriteria'])->whereNumber('event')->name('event.judging.criteria');
+195:        Route::post('event/{event}/penilaian/juri', [\App\Http\Controllers\Panel\JudgingController::class, 'storeJudge'])->whereNumber('event')->name('event.judging.storeJudge');
+196:        Route::put('event/{event}/penilaian/juri/{item}', [\App\Http\Controllers\Panel\JudgingController::class, 'updateJudge'])->whereNumber(['event', 'item'])->name('event.judging.updateJudge');
+197:        Route::delete('event/{event}/penilaian/juri/{item}', [\App\Http\Controllers\Panel\JudgingController::class, 'destroyJudge'])->whereNumber(['event', 'item'])->name('event.judging.destroyJudge');
+198:        Route::post('event/{event}/penilaian/juri/{item}/link', [\App\Http\Controllers\Panel\JudgingController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.judging.resetLink');
+199:        Route::post('event/{event}/penilaian/juri/{item}/tugas', [\App\Http\Controllers\Panel\JudgingController::class, 'assignJudge'])->whereNumber(['event', 'item'])->name('event.judging.assignJudge');
+200:        Route::get('event/{event}/penilaian/juri-undangan/cari', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteLookup'])->whereNumber('event')->name('event.judging.inviteLookup');
+201:        Route::post('event/{event}/penilaian/juri-undangan', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteStore'])->whereNumber('event')->name('event.judging.inviteStore');
+202:        Route::delete('event/{event}/penilaian/juri-undangan/{inv}', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteCancel'])->whereNumber(['event', 'inv'])->name('event.judging.inviteCancel');
+203:        Route::post('event/{event}/penilaian/publikasi', [\App\Http\Controllers\Panel\JudgingController::class, 'publish'])->whereNumber('event')->name('event.judging.publish');
+204:        Route::put('event/{event}/penilaian/publikasi/pengaturan', [\App\Http\Controllers\Panel\JudgingController::class, 'savePublication'])->whereNumber('event')->name('event.judging.savePublication');
+205:        Route::post('event/{event}/penilaian/penalti', [\App\Http\Controllers\Panel\JudgingController::class, 'storePenalty'])->whereNumber('event')->name('event.judging.storePenalty');
+206:        Route::post('event/{event}/penilaian/tetapkan', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeResult'])->whereNumber('event')->name('event.judging.finalize');
+207:        Route::post('event/{event}/penilaian/simpan', [\App\Http\Controllers\Panel\JudgingController::class, 'saveResult'])->whereNumber('event')->name('event.judging.saveResult');
+208:        Route::post('event/{event}/penilaian/buka-kembali', [\App\Http\Controllers\Panel\JudgingController::class, 'reopenResult'])->whereNumber('event')->name('event.judging.reopenResult');
+209:        Route::post('event/{event}/penilaian/seri', [\App\Http\Controllers\Panel\JudgingController::class, 'storeTie'])->whereNumber('event')->name('event.judging.storeTie');
+210:        Route::post('event/{event}/penilaian/sistem', [\App\Http\Controllers\Panel\JudgingController::class, 'setSystem'])->whereNumber('event')->name('event.judging.setSystem');
+211:        Route::post('event/{event}/penilaian/sk/tetapkan-lomba', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeSkLomba'])->whereNumber('event')->name('event.judging.finalizeSkLomba');
+212:        Route::put('event/{event}/penilaian/juara-umum', [\App\Http\Controllers\Panel\JudgingController::class, 'saveOverall'])->whereNumber('event')->name('event.judging.saveOverall');
+213:        Route::post('event/{event}/penilaian/juara-umum/tetapkan', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeOverall'])->whereNumber('event')->name('event.judging.finalizeOverall');
+214:        Route::put('event/{event}/penilaian/penalti/{pen}', [\App\Http\Controllers\Panel\JudgingController::class, 'decidePenalty'])->whereNumber(['event', 'pen'])->name('event.judging.decidePenalty');
+215:        Route::get('event/{event}/penilaian/rekap/excel', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapExcel'])->whereNumber('event')->name('event.judging.rekapExcel');
+216:        Route::get('event/{event}/penilaian/rekap/lembar', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembar'])->whereNumber('event')->name('event.judging.rekapLembar');
+217:        Route::get('event/{event}/penilaian/rekap/lembar-kosong', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembarKosong'])->whereNumber('event')->name('event.judging.rekapLembarKosong');
+218:        Route::get('event/{event}/{menu}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'menu'])->name('event.menu');
+219:        Route::post('event/{event}/tiket/jual', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'toggle'])->whereNumber('event')->name('event.tiket.jual');
+220:        Route::post('event/{event}/tiket/jenis', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'store'])->whereNumber('event')->name('event.tiket.tambah');
+221:        Route::put('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'update'])->whereNumber(['event', 'type'])->name('event.tiket.ubah');
+222:        Route::delete('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'destroy'])->whereNumber(['event', 'type'])->name('event.tiket.hapus');
+280:Route::get('/voting/{event}', [\App\Http\Controllers\VotingPublicController::class, 'show'])->whereNumber('event');
+281:Route::get('/voting/{event}/data', [\App\Http\Controllers\VotingPublicController::class, 'data'])->whereNumber('event')->middleware('throttle:120,1');
+282:Route::post('/voting/{event}/beli', [\App\Http\Controllers\VotingPublicController::class, 'buy'])->whereNumber('event')->middleware('throttle:10,1');
+291:    $events = \App\Models\Event::where('status', \App\Models\Event::PUBLISHED)
+302:                'href' => '/events/'.$e->id.'/beli',
+317:    return response()->json($events);
+=================== halaman registrasi sub-event
+=================== migrasi terkait
+2026_11_15_110000_create_events_table.php
+2026_11_16_130000_create_registrations_and_tickets.php
+2026_11_16_190000_add_registration_and_contact_to_events_table.php
+2026_11_16_200000_add_quota_to_event_participant_categories.php
+2026_11_16_210000_add_bank_to_events.php
+2026_11_16_210000_create_event_comments_table.php
+2026_11_16_220000_add_competition_to_events.php
+2026_11_16_230000_add_team_slots_to_events.php
+2026_11_16_240000_add_team_layout_to_events.php
+2026_11_16_270000_add_parent_to_events_table.php
+2026_11_16_280000_add_juknis_to_events_table.php
+2026_11_16_290000_add_category_to_event_registrations.php
+2026_11_17_060000_add_registration_fee_to_events_table.php
+2026_11_17_070000_add_competition_fields_to_event_participant_categories.php
+2026_11_17_080000_rename_registrasi_event_feature.php
+2026_11_17_090000_create_ticket_types_table.php
+2026_11_17_100000_add_ticket_sales_open_to_events.php
+2026_11_17_110000_create_ticket_orders_table.php
+2026_11_17_120000_add_expires_at_to_ticket_orders.php
+2026_11_17_130000_add_fee_percent_to_ticket_orders.php
+2026_11_17_140000_add_payment_to_ticket_orders.php
+2026_11_17_150000_create_ticket_holders.php
+2026_11_17_160000_add_payment_status_to_events.php
+2026_11_17_160000_ticket_type_options.php
+2026_11_17_170000_ticket_support_options.php
+2026_11_17_180000_create_event_edit_links_table.php
+2026_11_17_180000_ticket_support_inline.php
+2026_11_17_220000_event_calendar.php
+2026_11_17_230000_event_registration_form.php
+2026_11_17_240000_registration_flow.php
+2026_11_17_250000_registration_followup.php
+2026_11_17_290000_add_registration_codes.php
+2026_11_18_220000_judging_event_publication.php

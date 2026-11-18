@@ -53,13 +53,13 @@ class InstitutionController extends Controller
     {
         $institution->update(['status' => Institution::APPROVED]);
 
-        return back();
+        return back()->with('success', 'Lembaga disetujui.');
     }
 
     public function revoke(Institution $institution): RedirectResponse
     {
         $institution->update(['status' => Institution::PENDING]);
 
-        return back();
+        return back()->with('success', 'Verifikasi lembaga dicabut. Statusnya kembali menunggu.');
     }
 }

@@ -1,0 +1,404 @@
+import PanelLayout from '@/components/panel/panel-layout';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { Camera, Check, Eye, Gift, Layers, Link2, MessageSquare, Pencil, Plus, Trash2, Trophy, Users, Wallet, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+type Settings = {
+    enabled: boolean; price_per_vote: number; min_votes: number; message_enabled: boolean; message_max: number;
+    sound_min_votes: number; show_sender: boolean; show_ranking: boolean; show_votes: boolean; vote_start: string | null; vote_end: string | null;
+};
+type Cat = { id: number; name: string };
+type Part = { id: number; category_id: number | null; name: string; description: string | null; active: boolean; photo: string | null; upload_url: string };
+type GiftT = { id: number; emoji: string; name: string; votes: number; price: number; active: boolean };
+type Props = { eventId: number; settings: Settings; categories: Cat[]; participants: Part[]; gifts: GiftT[] };
+
+const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const lbl = 'text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300';
+const inp = 'mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:bg-slate-100 dark:border-white/10 dark:bg-white/5';
+const btn = 'rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
+const EMOJIS = ['🔥', '🐻', '🚀', '🦁', '💎', '👑', '⭐', '❤️', '🎉', '🏆', '⚡', '🌟'];
+
+function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+    return (
+        <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-white/20'}`}>
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`} />
+        </button>
+    );
+}
+
+function SettingRow({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between gap-4 p-4">
+            <div className="min-w-0"><div className="font-extrabold">{title}</div><p className="text-xs text-slate-500">{desc}</p></div>
+            {children}
+        </div>
+    );
+}
+
+function Modal({ title, sub, onClose, onSubmit, footer, children }: { title: string; sub: string; onClose: () => void; onSubmit: (e: React.FormEvent) => void; footer: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 p-4" onClick={onClose}>
+            <form onSubmit={onSubmit} className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/10">
+                    <div><h3 className="text-xl font-extrabold">{title}</h3><p className="text-sm text-slate-500">{sub}</p></div>
+                    <button type="button" aria-label="Tutup" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+                </div>
+                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">{children}</div>
+                <div className="flex gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/10">{footer}</div>
+            </form>
+        </div>
+    );
+}
+
+function Preview({ s, names }: { s: { show_sender: boolean; show_ranking: boolean; show_votes: boolean; message_enabled: boolean }; names: string[] }) {
+    const base = names.length >= 3 ? names.slice(0, 3) : ['Tim Garuda', 'Tim Elang', 'Tim Rajawali'];
+    const votes = [1240, 980, 655];
+    return (
+        <div className="rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-800 p-5 text-white">
+            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-indigo-200"><Eye className="h-4 w-4" /> Pratinjau halaman penonton</div>
+            <div className="mt-4 space-y-2">
+                {s.show_ranking ? base.map((n, i) => (
+                    <div key={n} className="flex items-center gap-3 rounded-2xl bg-white/10 px-3 py-2.5">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-extrabold">{i + 1}</span>
+                        <span className="flex-1 truncate text-sm font-bold">{n}</span>
+                        {s.show_votes && <span className="text-sm font-extrabold text-amber-300">{new Intl.NumberFormat('id-ID').format(votes[i])}</span>}
+                    </div>
+                )) : <div className="rounded-2xl bg-white/10 px-4 py-5 text-center text-sm text-indigo-100">Peringkat disembunyikan dari penonton.</div>}
+            </div>
+            <div className="mt-4 text-xs font-extrabold uppercase tracking-wider text-indigo-200">Dukungan langsung</div>
+            <div className="mt-2 rounded-2xl bg-white/10 px-3 py-2.5 text-sm">
+                <span className="font-extrabold">{s.show_sender ? 'Rina S.' : 'Anonim'}</span> mengirim 🔥 untuk {base[0]}
+                {s.message_enabled && <div className="mt-1 text-xs text-indigo-100">“Semangat terus!”</div>}
+            </div>
+        </div>
+    );
+}
+
+function PhotoPicker({ current, file, removed, onFile, onRemove }: { current: string | null; file: File | null; removed: boolean; onFile: (f: File | null) => void; onRemove: () => void }) {
+    const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+    const shown = preview ?? (removed ? null : current);
+    return (
+        <div>
+            <span className={lbl}>Foto peserta</span>
+            <div className="mt-2 flex items-center gap-4">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                    {shown ? <img src={shown} alt="" className="h-full w-full object-cover" /> : <Camera className="h-8 w-8 text-slate-300" />}
+                </div>
+                <div className="space-y-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-extrabold hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/10">
+                        <Camera className="h-4 w-4" /> {shown ? 'Ganti foto' : 'Pilih foto'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            if (f.size > 3 * 1024 * 1024) { alert('Ukuran foto maksimal 3 MB.'); return; }
+                            onFile(f);
+                        }} />
+                    </label>
+                    {shown && <button type="button" onClick={onRemove} className="block text-xs font-extrabold text-rose-600 hover:underline">Hapus foto</button>}
+                    <p className="text-xs text-slate-500">JPG, PNG, atau WebP, maksimal 3 MB. Boleh dikosongkan, peserta bisa unggah sendiri lewat link.</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function Voting({ eventId, settings, categories, participants, gifts }: Props) {
+    const base = `/panel/event/${eventId}/voting`;
+    const [tab, setTab] = useState<'peserta' | 'harga' | 'pesan' | 'tampilan'>('peserta');
+    const [filter, setFilter] = useState<'all' | 'none' | number>('all');
+    const [catDraft, setCatDraft] = useState('');
+    const [catErr, setCatErr] = useState('');
+
+    const sf = useForm({
+        price_per_vote: String(settings.price_per_vote), min_votes: String(settings.min_votes),
+        message_enabled: settings.message_enabled, message_max: String(settings.message_max), sound_min_votes: String(settings.sound_min_votes),
+        show_sender: settings.show_sender, show_ranking: settings.show_ranking, show_votes: settings.show_votes, vote_start: settings.vote_start ?? '', vote_end: settings.vote_end ?? '',
+    });
+    const d = sf.data;
+    const se = sf.errors as Record<string, string | undefined>;
+    const sValid = Number(d.price_per_vote) >= 1 && Number(d.min_votes) >= 1 && Number(d.message_max) >= 1 && Number(d.message_max) <= 200 && d.sound_min_votes !== '';
+    const saveSettings = () => sf.put(`${base}/pengaturan`, { preserveScroll: true, onSuccess: () => sf.setDefaults() });
+
+    const activeParts = participants.filter((p) => p.active).length;
+    const noPhoto = participants.filter((p) => p.active && !p.photo).length;
+    const [copied, setCopied] = useState('');
+    const copy = (text: string, key: string) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1600); }); };
+    const copyAll = () => copy(participants.filter((p) => p.active).map((p) => `${p.name}: ${p.upload_url}`).join('\n'), 'all');
+    const resetLink = (p: Part) => { if (confirm(`Buat link baru untuk "${p.name}"? Link lama tidak akan berlaku lagi.`)) router.post(`${base}/peserta/${p.id}/link`, {}, { preserveScroll: true }); };
+    const toggle = () => router.post(`${base}/aktif`, { open: !settings.enabled }, { preserveScroll: true });
+
+    const addCat = () => {
+        if (catDraft.trim() === '') return;
+        router.post(`${base}/kategori`, { name: catDraft }, { preserveScroll: true, onSuccess: () => { setCatDraft(''); setCatErr(''); }, onError: (e) => setCatErr(e.name ?? 'Gagal menambah kategori.') });
+    };
+    const delCat = (c: Cat) => { if (confirm(`Hapus kategori "${c.name}"? Pesertanya pindah ke Tanpa kategori.`)) router.delete(`${base}/kategori/${c.id}`, { preserveScroll: true }); };
+
+    // Peserta
+    const [pm, setPm] = useState<Part | 'new' | null>(null);
+    const pf = useForm({ name: '', description: '', category_id: '', active: true, photo: null as File | null, remove_photo: false });
+    const pe = pf.errors as Record<string, string | undefined>;
+    const openNewP = () => { pf.clearErrors(); pf.setData({ name: '', description: '', category_id: typeof filter === 'number' ? String(filter) : '', active: true, photo: null, remove_photo: false }); setPm('new'); };
+    const openEditP = (p: Part) => { pf.clearErrors(); pf.setData({ name: p.name, description: p.description ?? '', category_id: p.category_id ? String(p.category_id) : '', active: p.active, photo: null, remove_photo: false }); setPm(p); };
+    const submitP = (e: React.FormEvent) => {
+        e.preventDefault();
+        pf.transform((x) => ({ ...x, category_id: x.category_id === '' ? null : Number(x.category_id) }) as any);
+        const o = { preserveScroll: true, forceFormData: true, onSuccess: () => setPm(null) };
+        if (pm === 'new') pf.post(`${base}/peserta`, o); else if (pm) pf.put(`${base}/peserta/${pm.id}`, o);
+    };
+    const delP = (p: Part) => { if (confirm(`Hapus peserta "${p.name}"?`)) router.delete(`${base}/peserta/${p.id}`, { preserveScroll: true }); };
+
+    // Gift
+    const [gm, setGm] = useState<GiftT | 'new' | null>(null);
+    const [priceTouched, setPriceTouched] = useState(false);
+    const gf = useForm({ emoji: '🔥', name: '', votes: '', price: '', active: true });
+    const ge = gf.errors as Record<string, string | undefined>;
+    const openNewG = () => { gf.clearErrors(); gf.setData({ emoji: '🔥', name: '', votes: '', price: '', active: true }); setPriceTouched(false); setGm('new'); };
+    const openEditG = (g: GiftT) => { gf.clearErrors(); gf.setData({ emoji: g.emoji, name: g.name, votes: String(g.votes), price: String(g.price), active: g.active }); setPriceTouched(true); setGm(g); };
+    const setVotes = (v: string) => gf.setData((x) => ({ ...x, votes: v, price: priceTouched ? x.price : v === '' ? '' : String(Number(v) * settings.price_per_vote) }));
+    const gValid = gf.data.emoji !== '' && gf.data.name.trim() !== '' && Number(gf.data.votes) >= 1 && gf.data.price !== '';
+    const submitG = (e: React.FormEvent) => {
+        e.preventDefault();
+        const o = { preserveScroll: true, onSuccess: () => setGm(null) };
+        if (gm === 'new') gf.post(`${base}/gift`, o); else if (gm) gf.put(`${base}/gift/${gm.id}`, o);
+    };
+    const delG = (g: GiftT) => { if (confirm(`Hapus gift "${g.name}"?`)) router.delete(`${base}/gift/${g.id}`, { preserveScroll: true }); };
+
+    const shown = participants.filter((p) => filter === 'all' ? true : filter === 'none' ? p.category_id === null : p.category_id === filter);
+    const catName = (id: number | null) => categories.find((c) => c.id === id)?.name;
+    const tabs = [
+        { k: 'peserta', t: 'Kategori & Peserta', i: Users },
+        { k: 'harga', t: 'Harga & Gift', i: Wallet },
+        { k: 'pesan', t: 'Pesan & Efek', i: MessageSquare },
+        { k: 'tampilan', t: 'Tampilan', i: Eye },
+    ] as const;
+    const chip = (on: boolean) => `rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${on ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200'}`;
+
+    return (
+        <PanelLayout title="Voting">
+            <div className="space-y-5">
+
+                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
+                    <div>
+                        <h2 className="text-xl font-extrabold">Voting {settings.enabled ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Penonton bisa memberi vote sekarang. Tutup kapan saja untuk menghentikan vote baru.' : 'Penonton belum bisa memberi vote. Lengkapi peserta dan harga, lalu buka voting.'}</p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                            <span className={`rounded-full px-2.5 py-1 ${activeParts >= 2 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts >= 2 ? '✓' : '•'} Minimal 2 peserta aktif ({activeParts})</span>
+                            <span className={`rounded-full px-2.5 py-1 ${activeParts > 0 && noPhoto === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts > 0 && noPhoto === 0 ? '✓ Semua peserta punya foto' : `• ${noPhoto} peserta belum punya foto`}</span>
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800">✓ Harga per vote {rp(settings.price_per_vote)}</span>
+                        </div>
+                    </div>
+                    <button type="button" role="switch" aria-checked={settings.enabled} onClick={toggle} className={`relative h-8 w-14 rounded-full transition ${settings.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20'}`}>
+                        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${settings.enabled ? 'left-7' : 'left-1'}`} />
+                    </button>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-4">
+                    <div className={`${card} p-5`}><div className={lbl}>Kategori</div><div className="mt-2 text-3xl font-extrabold">{categories.length}</div></div>
+                    <div className={`${card} p-5`}><div className={lbl}>Peserta aktif</div><div className="mt-2 text-3xl font-extrabold">{activeParts}</div></div>
+                    <div className={`${card} p-5`}><div className={lbl}>Gift aktif</div><div className="mt-2 text-3xl font-extrabold">{gifts.filter((g) => g.active).length}</div></div>
+                    <div className={`${card} p-5`}><div className={lbl}>Harga per vote</div><div className="mt-2 text-3xl font-extrabold text-indigo-700">{rp(settings.price_per_vote)}</div></div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    {tabs.map(({ k, t, i: Icon }) => (
+                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                    ))}
+                </div>
+
+                {tab === 'peserta' && (
+                    <>
+                        <div className={`${card} p-6`}>
+                            <h3 className="flex items-center gap-2 text-xl font-extrabold"><Layers className="h-5 w-5 text-indigo-600" /> Kategori voting</h3>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Kategori bersifat opsional.</p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {categories.length === 0 && <span className="text-sm text-slate-500">Belum ada kategori.</span>}
+                                {categories.map((c) => (
+                                    <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 py-1.5 pl-3.5 pr-1.5 text-sm font-bold text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-200">
+                                        {c.name}
+                                        <button type="button" aria-label={`Hapus ${c.name}`} onClick={() => delCat(c)} className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-indigo-200/70"><X className="h-3.5 w-3.5" /></button>
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex gap-2">
+                                <input value={catDraft} maxLength={60} onChange={(e) => setCatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCat(); } }} placeholder="Nama kategori, lalu Enter" className={`${inp} !mt-0 flex-1`} />
+                                <button type="button" onClick={addCat} disabled={catDraft.trim() === ''} className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-700 px-4 text-sm font-extrabold text-white hover:bg-indigo-600 disabled:opacity-40"><Plus className="h-4 w-4" /> Tambah</button>
+                            </div>
+                            {catErr && <p className="mt-1 text-xs text-rose-600">{catErr}</p>}
+                        </div>
+
+                        <div className={`${card} p-6`}>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h3 className="flex items-center gap-2 text-xl font-extrabold"><Trophy className="h-5 w-5 text-indigo-600" /> Peserta voting</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={copyAll} disabled={participants.length === 0} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:bg-white/5">{copied === 'all' ? <Check className="h-4 w-4 text-emerald-600" /> : <Link2 className="h-4 w-4" />} {copied === 'all' ? 'Tersalin' : 'Salin semua link foto'}</button>
+                                    <button type="button" onClick={openNewP} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah peserta</button>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <button type="button" onClick={() => setFilter('all')} className={chip(filter === 'all')}>Semua ({participants.length})</button>
+                                {categories.map((c) => <button key={c.id} type="button" onClick={() => setFilter(c.id)} className={chip(filter === c.id)}>{c.name} ({participants.filter((p) => p.category_id === c.id).length})</button>)}
+                                <button type="button" onClick={() => setFilter('none')} className={chip(filter === 'none')}>Tanpa kategori ({participants.filter((p) => p.category_id === null).length})</button>
+                            </div>
+                            {shown.length === 0 ? (
+                                <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/10">Belum ada peserta di sini. Klik “Tambah peserta”.</div>
+                            ) : (
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                    {shown.map((p) => (
+                                        <div key={p.id} className={`flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5 ${p.active ? '' : 'opacity-60'}`}>
+                                            {p.photo ? <img src={p.photo} alt={p.name} className="h-14 w-14 shrink-0 rounded-2xl object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-300 dark:bg-white/10"><Camera className="h-6 w-6" /></span>}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate font-extrabold">{p.name}</div>
+                                                <div className="truncate text-xs text-slate-500">{p.description || 'Tanpa deskripsi'}</div>
+                                                <div className="mt-1 flex gap-1.5 text-[11px] font-bold">
+                                                    {catName(p.category_id) && <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-800">{catName(p.category_id)}</span>}
+                                                    {!p.active && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Nonaktif</span>}
+                                                    {!p.photo && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">Belum ada foto</span>}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button type="button" aria-label="Salin link foto" title="Salin link unggah foto" onClick={() => copy(p.upload_url, `p${p.id}`)} onDoubleClick={() => resetLink(p)} className="flex h-9 w-9 items-center justify-center rounded-xl text-indigo-600 hover:bg-indigo-50 dark:hover:bg-white/10">{copied === `p${p.id}` ? <Check className="h-4 w-4 text-emerald-600" /> : <Link2 className="h-4 w-4" />}</button>
+                                                <button type="button" aria-label="Ubah" onClick={() => openEditP(p)} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
+                                                <button type="button" aria-label="Hapus" onClick={() => delP(p)} className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {tab === 'harga' && (
+                    <>
+                        <div className={`${card} p-6`}>
+                            <h3 className="text-xl font-extrabold">Periode voting</h3>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kosongkan tanggal akhir agar voting berakhir saat event berakhir.</p>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                <label className="block"><span className={lbl}>Mulai</span><input type="date" value={d.vote_start} onChange={(e) => sf.setData('vote_start', e.target.value)} className={inp} /></label>
+                                <label className="block"><span className={lbl}>Berakhir</span><input type="date" value={d.vote_end} onChange={(e) => sf.setData('vote_end', e.target.value)} className={inp} />{se.vote_end && <span className="text-xs text-rose-600">{se.vote_end}</span>}</label>
+                            </div>
+                            <h3 className="mt-8 text-xl font-extrabold">Harga vote</h3>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                <label className="block"><span className={lbl}>Harga per 1 vote (Rp)</span>
+                                    <input type="number" inputMode="numeric" min={1} value={d.price_per_vote} onChange={(e) => sf.setData('price_per_vote', e.target.value)} className={inp} />
+                                    <span className="mt-1 block text-xs text-slate-500">{Number(d.price_per_vote) >= 1 ? `10 vote = ${rp(Number(d.price_per_vote) * 10)}` : 'Isi minimal Rp1.'}</span>{se.price_per_vote && <span className="text-xs text-rose-600">{se.price_per_vote}</span>}
+                                </label>
+                                <label className="block"><span className={lbl}>Minimal vote per transaksi</span>
+                                    <input type="number" inputMode="numeric" min={1} value={d.min_votes} onChange={(e) => sf.setData('min_votes', e.target.value)} className={inp} />
+                                    <span className="mt-1 block text-xs text-slate-500">Pembeli tidak bisa membeli di bawah jumlah ini.</span>{se.min_votes && <span className="text-xs text-rose-600">{se.min_votes}</span>}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className={`${card} p-6`}>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="flex items-center gap-2 text-xl font-extrabold"><Gift className="h-5 w-5 text-indigo-600" /> Gift power-up</h3>
+                                    <p className="mt-1 max-w-xl text-sm text-slate-600 dark:text-slate-300">Paket vote siap pilih. Pembeli cukup tap gift untuk mengisi jumlah otomatis. Gift tersimpan langsung, tanpa tombol Simpan pengaturan.</p>
+                                </div>
+                                <button type="button" onClick={openNewG} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah gift</button>
+                            </div>
+                            {gifts.length === 0 ? (
+                                <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10">Belum ada gift. Tambahkan paket seperti +10, +50, atau +100 vote.</div>
+                            ) : (
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                    {gifts.map((g) => (
+                                        <div key={g.id} className={`flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5 ${g.active ? '' : 'opacity-60'}`}>
+                                            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-3xl dark:bg-white/10">{g.emoji}</span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate font-extrabold">{g.name}</div>
+                                                <div className="text-xs text-slate-500">+{g.votes} vote · {rp(g.price)}</div>
+                                                <div className="mt-1 flex gap-3 text-xs font-extrabold">
+                                                    <button type="button" onClick={() => router.post(`${base}/gift/${g.id}/toggle`, {}, { preserveScroll: true })} className="text-slate-600 hover:underline">{g.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                                                    <button type="button" onClick={() => openEditG(g)} className="text-indigo-600 hover:underline">Ubah</button>
+                                                    <button type="button" onClick={() => delG(g)} className="text-rose-600 hover:underline">Hapus</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {tab === 'pesan' && (
+                    <div className={`${card} p-6`}>
+                        <h3 className="text-xl font-extrabold">Pesan dukungan dan efek suara</h3>
+                        <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
+                            <SettingRow title="Aktifkan pesan dukungan" desc="Pembeli boleh menulis pesan singkat yang tampil di daftar dukungan langsung."><Switch on={d.message_enabled} onChange={(v) => sf.setData('message_enabled', v)} /></SettingRow>
+                            <SettingRow title="Batas karakter pesan" desc="Antara 1 sampai 200 karakter."><input type="number" inputMode="numeric" min={1} max={200} disabled={!d.message_enabled} value={d.message_max} onChange={(e) => sf.setData('message_max', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
+                            <SettingRow title="Minimal vote untuk memilih efek suara" desc="Isi 0 untuk mematikan efek suara."><input type="number" inputMode="numeric" min={0} value={d.sound_min_votes} onChange={(e) => sf.setData('sound_min_votes', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
+                        </div>
+                        {(se.message_max || se.sound_min_votes) && <p className="mt-2 text-xs text-rose-600">{se.message_max ?? se.sound_min_votes}</p>}
+                    </div>
+                )}
+
+                {tab === 'tampilan' && (
+                    <div className="grid gap-5 lg:grid-cols-2">
+                        <div className={`${card} p-6`}>
+                            <h3 className="text-xl font-extrabold">Tampilan publik</h3>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Apa yang boleh dilihat penonton di halaman voting.</p>
+                            <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
+                                <SettingRow title="Tampilkan nama pengirim" desc="Jika dimatikan: pengirim tampil sebagai Anonim."><Switch on={d.show_sender} onChange={(v) => sf.setData('show_sender', v)} /></SettingRow>
+                                <SettingRow title="Tampilkan peringkat" desc="Penonton bisa melihat urutan peserta."><Switch on={d.show_ranking} onChange={(v) => sf.setData('show_ranking', v)} /></SettingRow>
+                                <SettingRow title="Tampilkan jumlah vote" desc="Jika dimatikan: hanya peringkat yang terlihat."><Switch on={d.show_votes} onChange={(v) => sf.setData('show_votes', v)} /></SettingRow>
+                            </div>
+                        </div>
+                        <Preview s={d} names={participants.filter((p) => p.active).map((p) => p.name)} />
+                    </div>
+                )}
+
+                {tab !== 'peserta' && (
+                    <div className={`${card} flex flex-wrap items-center justify-between gap-3 p-4`}>
+                        <p className={`text-sm font-semibold ${sf.isDirty ? 'text-amber-700' : 'text-slate-500'}`}>{sf.isDirty ? 'Ada perubahan yang belum disimpan.' : 'Semua pengaturan tersimpan.'}</p>
+                        <button type="button" onClick={saveSettings} disabled={!sf.isDirty || !sValid || sf.processing} className={btn}>{sf.processing ? 'Menyimpan…' : 'Simpan pengaturan'}</button>
+                    </div>
+                )}
+            </div>
+
+            {pm && (
+                <Modal title={pm === 'new' ? 'Tambah peserta' : `Ubah ${pm.name}`} sub="Peserta yang bisa didukung penonton." onClose={() => setPm(null)} onSubmit={submitP}
+                    footer={<><button type="submit" disabled={pf.data.name.trim() === '' || pf.processing} className={btn}>{pf.processing ? 'Menyimpan…' : pm === 'new' ? 'Tambahkan peserta' : 'Simpan perubahan'}</button><button type="button" onClick={() => setPm(null)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold dark:border-white/10">Batal</button></>}>
+                    <PhotoPicker current={pm !== 'new' ? pm.photo : null} file={pf.data.photo} removed={pf.data.remove_photo} onFile={(f) => pf.setData((x) => ({ ...x, photo: f, remove_photo: false }))} onRemove={() => pf.setData((x) => ({ ...x, photo: null, remove_photo: true }))} />
+                    {pe.photo && <span className="block text-xs text-rose-600">{pe.photo}</span>}
+                    {pm !== 'new' && (
+                        <div className="rounded-2xl bg-indigo-50 p-3 text-xs text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-200">
+                            <div className="font-extrabold">Link unggah foto untuk peserta ini</div>
+                            <div className="mt-1 break-all">{pm.upload_url}</div>
+                            <div className="mt-2 flex gap-3 font-extrabold">
+                                <button type="button" onClick={() => copy(pm.upload_url, 'modal')} className="hover:underline">{copied === 'modal' ? 'Tersalin ✓' : 'Salin link'}</button>
+                                <button type="button" onClick={() => resetLink(pm)} className="text-rose-600 hover:underline">Buat link baru</button>
+                            </div>
+                        </div>
+                    )}
+                    <label className="block"><span className={lbl}>Nama peserta atau regu</span><input value={pf.data.name} maxLength={80} onChange={(e) => pf.setData('name', e.target.value)} placeholder="Tim Garuda" className={inp} />{pe.name && <span className="text-xs text-rose-600">{pe.name}</span>}</label>
+                    <label className="block"><span className={lbl}>Deskripsi singkat (opsional)</span><input value={pf.data.description} maxLength={160} onChange={(e) => pf.setData('description', e.target.value)} placeholder="Asal sekolah atau slogan" className={inp} />{pe.description && <span className="text-xs text-rose-600">{pe.description}</span>}</label>
+                    <label className="block"><span className={lbl}>Kategori</span>
+                        <select value={pf.data.category_id} onChange={(e) => pf.setData('category_id', e.target.value)} className={inp}><option value="">Tanpa kategori</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{pe.category_id && <span className="text-xs text-rose-600">{pe.category_id}</span>}
+                    </label>
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4 dark:border-white/10"><div><div className="font-extrabold">Peserta aktif</div><p className="text-xs text-slate-500">Peserta nonaktif tidak tampil di halaman voting.</p></div><Switch on={pf.data.active} onChange={(v) => pf.setData('active', v)} /></div>
+                </Modal>
+            )}
+
+            {gm && (
+                <Modal title={gm === 'new' ? 'Tambah gift' : `Ubah ${gm.name}`} sub="Paket vote yang tinggal di-tap pembeli." onClose={() => setGm(null)} onSubmit={submitG}
+                    footer={<><button type="submit" disabled={!gValid || gf.processing} className={btn}>{gf.processing ? 'Menyimpan…' : gm === 'new' ? 'Tambahkan gift' : 'Simpan perubahan'}</button><button type="button" onClick={() => setGm(null)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold dark:border-white/10">Batal</button></>}>
+                    <div><span className={lbl}>Emoji</span>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {EMOJIS.map((e) => <button key={e} type="button" onClick={() => gf.setData('emoji', e)} className={`flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition ${gf.data.emoji === e ? 'bg-indigo-100 ring-2 ring-indigo-500' : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10'}`}>{e}</button>)}
+                        </div>{ge.emoji && <span className="text-xs text-rose-600">{ge.emoji}</span>}
+                    </div>
+                    <label className="block"><span className={lbl}>Nama gift</span><input value={gf.data.name} maxLength={40} onChange={(e) => gf.setData('name', e.target.value)} placeholder="Api, Roket, Singa" className={inp} />{ge.name && <span className="text-xs text-rose-600">{ge.name}</span>}</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <label className="block"><span className={lbl}>Jumlah vote</span><input type="number" inputMode="numeric" min={1} value={gf.data.votes} onChange={(e) => setVotes(e.target.value)} placeholder="10" className={inp} />{ge.votes && <span className="text-xs text-rose-600">{ge.votes}</span>}</label>
+                        <label className="block"><span className={lbl}>Harga (Rp)</span><input type="number" inputMode="numeric" min={0} value={gf.data.price} onChange={(e) => { setPriceTouched(true); gf.setData('price', e.target.value); }} placeholder="10000" className={inp} />{ge.price && <span className="text-xs text-rose-600">{ge.price}</span>}</label>
+                    </div>
+                    <p className="text-xs text-slate-500">Harga terisi otomatis dari jumlah vote × {rp(settings.price_per_vote)}. Ubah kalau gift ini punya harga paket khusus.</p>
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4 dark:border-white/10"><div><div className="font-extrabold">Gift aktif</div><p className="text-xs text-slate-500">Gift nonaktif tidak tampil untuk pembeli.</p></div><Switch on={gf.data.active} onChange={(v) => gf.setData('active', v)} /></div>
+                </Modal>
+            )}
+        </PanelLayout>
+    );
+}

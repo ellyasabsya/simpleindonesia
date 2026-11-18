@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { ChevronDown, Package as PackageIcon, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Package as PackageIcon, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import AdminLayout from '@/components/admin/admin-layout';
 
@@ -25,7 +25,6 @@ type Pkg = {
 };
 
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
-const card = 'rounded-2xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
 const input =
     'h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-indigo-500/20';
 const label = 'mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300';
@@ -47,30 +46,15 @@ function priceParts(p: Pkg): { main: string; note: string } {
     return { main: 'Gratis', note: '' };
 }
 
-const LIMIT = 4;
-
 export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; catalog: Catalog }) {
     const [editing, setEditing] = useState<Pkg | null>(null);
     const [open, setOpen] = useState(false);
-    const [expanded, setExpanded] = useState<number[]>([]);
+    const [search, setSearch] = useState('');
     const form = useForm(empty);
     const { data, setData, errors, processing } = form;
 
-    // Paket bagi hasil berdiri sendiri: tidak punya induk dan tidak jadi induk paket lain.
-    const rank = (q: Pkg) => q.features.length * 10 + (q.slug === 'starter' ? 1 : 0);
-    const parentOf = (p: Pkg) =>
-        p.payment_type === 'revenue_share'
-            ? undefined
-            : packages
-                  .filter(
-                      (q) =>
-                          q.id !== p.id &&
-                          q.is_active &&
-                          q.payment_type !== 'revenue_share' &&
-                          q.features.length < p.features.length &&
-                          q.features.every((f) => p.features.includes(f)),
-                  )
-                  .sort((a, b) => rank(b) - rank(a))[0];
+    const q = search.trim().toLowerCase();
+    const list = packages.filter((p) => !q || `${p.name} ${p.description ?? ''}`.toLowerCase().includes(q));
 
     const openCreate = () => {
         setEditing(null);
@@ -137,114 +121,106 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
 
     return (
         <AdminLayout title="Manajemen Paket">
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-900/20">
-                <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
-                <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
-                <div className="relative flex flex-wrap items-end justify-between gap-5">
-                    <div>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em]">
-                            Package Configuration
-                        </span>
-                        <h2 className="mt-3 text-2xl font-extrabold">Manajemen Paket</h2>
-                        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-blue-50/90">
-                            Atur paket penyelenggara: harga, modul layanan, dan fitur yang muncul di dashboard event.
-                        </p>
-                    </div>
-                    <button
-                        onClick={openCreate}
-                        className="flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-indigo-800 shadow-md transition hover:shadow-lg"
-                    >
-                        <Plus className="h-5 w-5" /> Paket baru
-                    </button>
-                </div>
-            </section>
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {packages.length === 0 && (
-                    <div className={`${card} col-span-full flex flex-col items-center py-14 text-slate-500`}>
-                        <PackageIcon className="h-8 w-8" />
-                        <p className="mt-3 font-semibold">Belum ada paket</p>
-                    </div>
-                )}
-
-                {packages.map((p) => {
-                    const prev = parentOf(p);
-                    const own = prev ? p.features.filter((f) => !prev.features.includes(f)) : p.features;
-                    const isOpen = expanded.includes(p.id);
-                    const showAll = isOpen || p.payment_type === 'revenue_share';
-                    const shown = showAll ? own : own.slice(0, LIMIT);
-                    const hidden = p.payment_type === 'revenue_share' ? 0 : own.length - LIMIT;
-                    const price = priceParts(p);
-                    const topModule = p.modules[p.modules.length - 1];
-
-                    return (
-                        <article key={p.id} className={`${card} flex flex-col p-5 ${p.is_active ? '' : 'opacity-60'}`}>
-                            <div className="flex items-center justify-between gap-3">
-                                <h3 className="text-lg font-extrabold">{p.name}</h3>
-                                <span
-                                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                                        p.is_active
-                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
-                                            : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'
-                                    }`}
-                                >
-                                    {p.is_active ? 'Aktif' : 'Nonaktif'}
-                                </span>
-                            </div>
-
-                            <p className="mt-1 flex items-baseline gap-2">
-                                <span className="title-gradient text-xl font-extrabold">{price.main}</span>
-                                {price.note && <span className="text-xs text-slate-500 dark:text-slate-400">{price.note}</span>}
+            <div className="w-full space-y-5">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
+                    <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
+                    <div className="relative flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Package Configuration
+                            </span>
+                            <h2 className="mt-3 text-2xl font-extrabold">Manajemen Paket</h2>
+                            <p className="mt-1 max-w-2xl text-sm text-white/80">
+                                Atur paket penyelenggara: harga, modul layanan, dan fitur yang muncul di dashboard event.
                             </p>
+                        </div>
+                        <button type="button" onClick={openCreate}
+                            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-800 shadow-md transition hover:shadow-lg">
+                            <Plus className="h-4 w-4" /> Paket baru
+                        </button>
+                    </div>
+                </div>
 
-                            {p.description && <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{p.description}</p>}
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/60">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                            {list.length} paket
+                        </span>
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama paket"
+                                className="w-64 rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5" />
+                        </div>
+                    </div>
 
-                            {topModule && (
-                                <div className="mt-3">
-                                    <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-100">
-                                        {catalog.modules[topModule]?.icon} {catalog.modules[topModule]?.label ?? topModule}
-                                    </span>
-                                </div>
-                            )}
-
-                            <ul className="mt-3 space-y-1 text-sm text-slate-700 dark:text-slate-200">
-                                {prev && <li className="pb-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Semua fitur {prev.name}, ditambah:</li>}
-                                {shown.map((f) => (
-                                    <li key={f} className="flex items-center gap-2">
-                                        <span className="text-emerald-500">✓</span>
-                                        {catalog.features[f]?.label ?? f}
-                                    </li>
-                                ))}
-                            </ul>
-                            {hidden > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setExpanded((cur) => (isOpen ? cur.filter((id) => id !== p.id) : [...cur, p.id]))}
-                                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-indigo-200 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-400/30 dark:text-indigo-200 dark:hover:bg-indigo-500/10"
-                                >
-                                    {isOpen ? 'Sembunyikan' : `Lihat ${hidden} fitur lainnya`}
-                                    <ChevronDown className={`h-3.5 w-3.5 transition ${isOpen ? 'rotate-180' : ''}`} />
-                                </button>
-                            )}
-
-                            <div className="mt-auto flex gap-2 pt-4">
-                                <button
-                                    onClick={() => openEdit(p)}
-                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 py-2 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-white"
-                                >
-                                    <Pencil className="h-4 w-4" /> Edit
-                                </button>
-                                <button
-                                    onClick={() => remove(p)}
-                                    aria-label="Hapus paket"
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+                    {list.length === 0 ? (
+                        <div className="flex flex-col items-center px-4 py-16 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-white/10">
+                                <PackageIcon className="h-7 w-7" />
                             </div>
-                        </article>
-                    );
-                })}
+                            <p className="mt-4 font-semibold text-slate-700 dark:text-slate-200">
+                                {packages.length === 0 ? 'Belum ada paket.' : 'Tidak ada paket yang cocok.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[860px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr>
+                                        {['Paket', 'Harga', 'Modul', 'Fitur', 'Status', 'Aksi'].map((h) => (
+                                            <th key={h} className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 ${h === 'Aksi' ? 'text-right' : ''}`}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                                    {list.map((p) => {
+                                        const price = priceParts(p);
+                                        const topModule = p.modules[p.modules.length - 1];
+                                        return (
+                                            <tr key={p.id} className={p.is_active ? '' : 'opacity-60'}>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</p>
+                                                    {p.description && <p className="line-clamp-1 text-xs text-slate-500">{p.description}</p>}
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <span className="font-extrabold tabular-nums text-indigo-700 dark:text-indigo-300">{price.main}</span>
+                                                    {price.note && <span className="ml-2 text-xs text-slate-500">{price.note}</span>}
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    {topModule ? (
+                                                        <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-100">
+                                                            {catalog.modules[topModule]?.icon} {catalog.modules[topModule]?.label ?? topModule}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle text-slate-600 dark:text-slate-300">{p.features.length} fitur</td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${p.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
+                                                        {p.is_active ? 'Aktif' : 'Nonaktif'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <div className="flex justify-end gap-2">
+                                                        <button type="button" onClick={() => openEdit(p)}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-white">
+                                                            <Pencil className="h-4 w-4" /> Edit
+                                                        </button>
+                                                        <button type="button" onClick={() => remove(p)} aria-label="Hapus paket"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {open && (
@@ -257,7 +233,7 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                         <div className="flex items-start justify-between rounded-t-3xl border-b border-slate-200/70 bg-gradient-to-r from-indigo-50 via-blue-50 to-violet-50 p-6 dark:border-white/10 dark:from-indigo-500/10 dark:via-transparent dark:to-violet-500/10">
                             <div>
                                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">Package Configuration</p>
-                                <h3 className="mt-1 text-2xl font-extrabold">{editing ? 'Edit Paket' : 'Paket Baru'}</h3>
+                                <h3 className="mt-1 text-lg font-extrabold">{editing ? 'Edit Paket' : 'Paket Baru'}</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">Atur identitas, harga paket, dan modul layanan.</p>
                             </div>
                             <button type="button" onClick={() => setOpen(false)} aria-label="Tutup" className="rounded-xl p-2 hover:bg-slate-100 dark:hover:bg-white/10">

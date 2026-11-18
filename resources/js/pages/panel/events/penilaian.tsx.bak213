@@ -1,0 +1,885 @@
+import JuriTambah, { JuriHeader, JuriKosong } from './juri-undangan';
+import Publikasi from './publikasi';
+import Rekap from './rekap';
+import PanelLayout from '@/components/panel/panel-layout';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Check, ClipboardList, Copy, Lock, MinusCircle, Plus, RefreshCw, Trash2, Users, Megaphone, BarChart3, Trophy, Gavel } from 'lucide-react';
+import { Fragment, useState } from 'react';
+
+type SubRow = { id: number | null; name: string; description: string; weight: number | string };
+type Row = { id: number | null; name: string; description: string; weight: number | string; subs?: SubRow[] };
+type Ded = { name: string; points: number | string };
+type Judge = { id: number; name: string; contact: string | null; active: boolean; url: string; done: number };
+type Rank = { id: number; name: string; judges: number; final: number | null };
+type Sub = { id: number; title: string; categories: number; approved: number; criteria: number; judges: number; participants: number; system?: string | null };
+type Cat = { id: number; name: string; approved: boolean; participants: number };
+type Cfg = { enabled: boolean; scale: number; judge_count: number; avg_decimals: number; rounding: 'nearest' | 'up' | 'down'; deduction_enabled: boolean };
+type Props = {
+    event: { id: number; title: string };
+    isParent: boolean;
+    subs?: Sub[];
+    settings?: Cfg;
+    criteria?: Row[];
+    deductions?: Ded[];
+    judges?: Judge[];
+    siblings?: { id: number; title: string; approved: boolean }[];
+    participants?: number;
+    ranking?: Rank[];
+    hasScores?: boolean;
+    categories?: Cat[];
+    category?: { id: number; name: string };
+    system?: string | null;
+    systemLock?: string | null;
+    overall?: Overall;
+};
+
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const lbl = 'text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300';
+const inp = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
+const inpSm = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
+const btn = 'rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
+const num = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
+
+function Badge({ n }: { n: number }) {
+    return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-lg font-extrabold text-white shadow-lg shadow-indigo-500/30">{n}</span>;
+}
+
+function Option({ on, label, approved, href }: { on: boolean; label: string; approved: boolean; href?: string }) {
+    const cls = `flex items-center gap-2.5 rounded-xl border px-3 py-2 transition ${on ? 'border-indigo-500 bg-white shadow-sm dark:bg-white/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'}`;
+    const inner = (
+        <>
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-indigo-600' : 'border-slate-300'}`}>{on && <span className="h-2 w-2 rounded-full bg-indigo-600" />}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold">{label}</span>
+            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${approved ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{approved ? 'Disahkan' : 'Belum'}</span>
+        </>
+    );
+    return href && !on ? <Link href={href} className={cls}>{inner}</Link> : <div className={cls}>{inner}</div>;
+}
+
+function Stepper({ steps }: { steps: { label: string; done: boolean }[] }) {
+    return (
+        <ol className="grid grid-cols-4">
+            {steps.map((s, i) => (
+                <li key={s.label} className="relative flex flex-col items-center text-center">
+                    {i > 0 && <span className={`absolute right-1/2 top-[18px] h-0.5 w-full ${steps[i - 1].done && s.done ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-white/10'}`} />}
+                    <span className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${s.done ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 bg-white text-slate-400 dark:bg-slate-900'}`}>{s.done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}</span>
+                    <span className="mt-2 text-xs font-bold sm:text-sm">{s.label}</span>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+    return (
+        <button type="button" role="switch" aria-checked={on} disabled={disabled} onClick={() => onChange(!on)} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${on ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-white/20'}`}>
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`} />
+        </button>
+    );
+}
+
+/** Sama dengan Judging::allocate di server: sisa terbesar, jumlah poin selalu = skala. */
+const allocate = (scale: number, weights: number[]): number[] => {
+    const total = weights.reduce((a, b) => a + b, 0);
+    if (total <= 0) return weights.map(() => 0);
+    const ideal = weights.map((w) => (scale * w) / total);
+    const base = ideal.map((v) => Math.floor(v + 1e-9));
+    let rest = scale - base.reduce((a, b) => a + b, 0);
+    const order = ideal.map((_, i) => i).sort((a, b) => Math.round((ideal[b] - base[b]) * 1e6) - Math.round((ideal[a] - base[a]) * 1e6) || a - b);
+    for (const i of order) {
+        if (rest <= 0) break;
+        base[i]++;
+        rest--;
+    }
+    return base;
+};
+
+/** Bagi 100% rata ke n sub kriteria (bilangan bulat, sisa ke sub paling atas). */
+const autoSub = (subs: SubRow[]): SubRow[] => {
+    const n = subs.length;
+    if (n === 0) return subs;
+    const base = Math.floor(100 / n);
+    const rest = 100 - base * n;
+    return subs.map((x, k) => ({ ...x, weight: base + (k < rest ? 1 : 0) }));
+};
+
+const SYSTEMS = [
+    { key: 'weighted', name: 'Penilaian Berbasis Bobot Nilai', desc: 'Nilai akhir dari jumlah (nilai × bobot) tiap kriteria, dinilai beberapa juri. Cocok untuk lomba seni, vokal, tari, dan sejenisnya.', tag: 'Weighted · Versi 1', soon: false },
+    { key: 'match', name: 'Penilaian Pertandingan', desc: 'Untuk event olahraga: skor, babak, dan klasemen.', tag: 'Olahraga', soon: true },
+];
+
+function SistemPicker({ base, title, system, lockReason, onChosen }: { base: string; title: string; system: string | null; lockReason: string | null; onChosen: () => void }) {
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState('');
+    const canChange = !lockReason;
+    const chosen = SYSTEMS.find((s) => s.key === system);
+
+    const pick = (key: string | null) => {
+        setBusy(true);
+        setErr('');
+        router.post(`${base}/sistem`, { system: key } as any, {
+            preserveScroll: true,
+            onSuccess: () => { if (key) onChosen(); },
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan.')),
+            onFinish: () => setBusy(false),
+        });
+    };
+    const cancel = () => {
+        if (confirm('Batalkan pilihan sistem? Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai akan disembunyikan. Data yang sudah ada tidak dihapus.')) pick(null);
+    };
+
+    return (
+        <div className={`${card} space-y-5 p-6`}>
+            <div>
+                <h2 className="text-xl font-extrabold">Sistem penilaian</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pilih sistem penilaian untuk seluruh event ini. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai muncul setelah sistem dipilih. Pengaturan per kategori dilakukan di dalam sistem.</p>
+                <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-extrabold text-indigo-700"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Event: {title}</span>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+                {SYSTEMS.map((s) => {
+                    const on = system === s.key;
+                    const can = !s.soon && !busy && !on && canChange;
+                    return (
+                        <button key={s.key} type="button" disabled={!can} onClick={() => pick(s.key)} className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-default ${on ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'} ${s.soon || (!on && !canChange) ? 'opacity-60' : ''}`}>
+                            <div className="flex items-center gap-2.5">
+                                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-indigo-600' : 'border-slate-300'}`}>{on && <span className="h-2 w-2 rounded-full bg-indigo-600" />}</span>
+                                <span className="flex-1 text-sm font-extrabold">{s.name}</span>
+                                {s.soon && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">Segera hadir</span>}
+                            </div>
+                            <p className="mt-1.5 pl-6 text-xs text-slate-600 dark:text-slate-300">{s.desc}</p>
+                            <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{s.tag}</p>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {err && <p className="text-sm font-semibold text-rose-700">{err}</p>}
+
+            {chosen ? (
+                <div className="space-y-3">
+                    <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800"><Check className="h-4 w-4" strokeWidth={3} /> Sistem dipilih: {chosen.name}. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai sudah tersedia.</p>
+                    {!canChange && <p className="text-xs font-bold text-slate-500">Sistem tidak bisa diganti karena {lockReason}.</p>}
+                    <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={onChosen} className={btn}>Lanjut ke Pengaturan penilaian</button>
+                        {canChange && <button type="button" disabled={busy} onClick={cancel} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">Batalkan pilihan</button>}
+                    </div>
+                </div>
+            ) : (
+                <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Belum ada sistem dipilih. Pilih salah satu sistem di atas untuk melanjutkan.</p>
+            )}
+        </div>
+    );
+}
+
+type OverallRow = { rank: number; shared: boolean; school: string; points: number; counts: number[]; categories: number };
+type OverallCat = { sub: string; sub_id: number; category: string; category_id: number; participants: number; locked: boolean; winners: { rank: number; code: string; school: string }[] };
+type OverallCheck = { ok: boolean; title: string; detail: string };
+type Overall = { points: number[]; winner_count: number; locked: boolean; finalized_at: string | null; finalized_by: string | null; provisional: boolean; standings: OverallRow[]; categories: OverallCat[]; checks: OverallCheck[]; ties: boolean };
+
+type PTab = 'sistem' | 'pengaturan' | 'penetapan';
+
+function ParentPenilaian({ event, subs = [], overall }: Props) {
+    const base = `/panel/event/${event.id}/penilaian`;
+    const anySystem = subs.some((s) => s.system);
+    const [tabRaw, setTab] = useState<PTab>('sistem');
+    const tab: PTab = anySystem ? tabRaw : 'sistem';
+    const ov: Overall = overall ?? { points: [5, 3, 1], winner_count: 3, locked: false, finalized_at: null, finalized_by: null, provisional: true, standings: [], categories: [], checks: [], ties: false };
+    const [points, setPoints] = useState<string[]>(ov.points.map(String));
+    const [winnerCount, setWinnerCount] = useState<string>(String(ov.winner_count));
+    const [err, setErr] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    const okPts = points.length >= 1 && points.every((p) => p !== '' && Number.isInteger(Number(p)) && Number(p) >= 0 && Number(p) <= 1000);
+    const okWin = Number.isInteger(Number(winnerCount)) && Number(winnerCount) >= 1 && Number(winnerCount) <= 10;
+    const dirty = JSON.stringify(points.map(Number)) !== JSON.stringify(ov.points) || Number(winnerCount) !== ov.winner_count;
+    const allOk = ov.checks.length > 0 && ov.checks.every((c) => c.ok);
+
+    const save = () => {
+        setErr('');
+        setBusy(true);
+        router.put(`${base}/juara-umum`, { points: points.map(Number), winner_count: Number(winnerCount) } as any, {
+            preserveScroll: true,
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan.')),
+            onFinish: () => setBusy(false),
+        });
+    };
+    const finalize = () => {
+        if (!confirm('Tetapkan juara umum? Setelah ditetapkan, klasemen dan pengaturan juara umum tidak bisa diubah lagi.')) return;
+        setBusy(true);
+        router.post(`${base}/juara-umum/tetapkan`, {}, { preserveScroll: true, onFinish: () => setBusy(false) });
+    };
+
+    const tabs: { k: PTab; t: string; i: typeof Trophy }[] = [
+        { k: 'sistem', t: 'Sistem penilaian', i: Trophy },
+        ...(anySystem ? [{ k: 'pengaturan' as PTab, t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'penetapan' as PTab, t: 'Penetapan & SK', i: Gavel }] : []),
+    ];
+    const used = SYSTEMS.filter((x) => subs.some((s) => s.system === x.key));
+    const sysName = (k?: string | null) => SYSTEMS.find((x) => x.key === k)?.name ?? null;
+
+    return (
+        <PanelLayout title="Penilaian">
+            <div className="space-y-5">
+                <div className="flex flex-wrap gap-2">
+                    {tabs.map(({ k, t, i: Icon }) => (
+                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                    ))}
+                </div>
+
+                {tab === 'sistem' && (
+                    <>
+                        <div className={`${card} space-y-4 p-6`}>
+                            <div>
+                                <h2 className="text-xl font-extrabold">Sistem penilaian</h2>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Sistem dipilih di tiap sub-event. Di sini tampil sistem yang dipakai sub-event. Setelah ada yang memilih, tab Pengaturan penilaian dan Penetapan & SK muncul.</p>
+                            </div>
+                            {used.length === 0 ? (
+                                <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Belum ada sub-event yang memilih sistem penilaian. Buka menu Penilaian di sub-event, lalu pilih sistemnya.</p>
+                            ) : (
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {used.map((x) => (
+                                        <div key={x.key} className="rounded-2xl border-2 border-indigo-500 bg-indigo-50/60 p-4 dark:bg-indigo-500/10">
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /></span>
+                                                <span className="flex-1 text-sm font-extrabold">{x.name}</span>
+                                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Dipakai</span>
+                                            </div>
+                                            <p className="mt-1.5 pl-6 text-xs text-slate-600 dark:text-slate-300">{x.desc}</p>
+                                            <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{x.tag}</p>
+                                            <p className="mt-2 pl-6 text-xs font-bold text-slate-700 dark:text-slate-200">Dipakai oleh: {subs.filter((s) => s.system === x.key).map((s) => s.title).join(', ')}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            {subs.map((s) => (
+                                <div key={s.id} className={`${card} flex flex-col gap-3 p-6`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <h3 className="text-lg font-extrabold">{s.title}</h3>
+                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
+                                    </div>
+                                    <p className={`text-sm font-bold ${s.system ? 'text-indigo-700' : 'text-amber-700'}`}>{s.system ? sysName(s.system) : 'Belum memilih sistem penilaian'}</p>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        {[['Kategori', s.categories], ['Juri', s.judges], ['Peserta', s.participants]].map(([l, v]) => (
+                                            <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-xl font-extrabold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
+                                        ))}
+                                    </div>
+                                    <Link href={`/panel/event/${s.id}/penilaian`} className="mt-auto inline-flex items-center justify-center rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-indigo-800">Kelola</Link>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                {tab === 'pengaturan' && (
+                    <div className={`${card} space-y-5 p-6`}>
+                        <div>
+                            <h2 className="text-xl font-extrabold">Pengaturan juara umum</h2>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Juara umum dihitung per sekolah/lembaga asal peserta. Setiap peringkat di tiap kategori menyumbang poin untuk sekolah/lembaganya. Kalau poin sama, dilihat jumlah juara 1, lalu juara 2, dan seterusnya. Kalau masih sama, ditetapkan sebagai juara umum bersama.</p>
+                        </div>
+                        <div>
+                            <div className="text-sm font-extrabold">Poin per peringkat</div>
+                            <div className="mt-2 space-y-2">
+                                {points.map((p, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <span className="w-24 text-sm font-extrabold">Juara {i + 1}</span>
+                                        <input className={`${inp} w-28 text-right`} type="number" min={0} max={1000} disabled={ov.locked} value={p} onChange={(e) => setPoints(points.map((x, k) => (k === i ? e.target.value : x)))} />
+                                        <span className="text-sm font-bold text-slate-500">poin</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button type="button" disabled={ov.locked || points.length >= 10} onClick={() => setPoints([...points, '0'])} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah peringkat</button>
+                                <button type="button" disabled={ov.locked || points.length <= 1} onClick={() => setPoints(points.slice(0, -1))} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-extrabold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5"><Trash2 className="h-4 w-4" /> Hapus peringkat terakhir</button>
+                            </div>
+                        </div>
+                        <label className="block max-w-xs">
+                            <span className={lbl}>Jumlah juara umum yang ditetapkan</span>
+                            <input className={`${inp} mt-1.5`} type="number" min={1} max={10} disabled={ov.locked} value={winnerCount} onChange={(e) => setWinnerCount(e.target.value)} />
+                        </label>
+                        {err && <p className="text-sm font-semibold text-rose-700">{err}</p>}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button type="button" disabled={ov.locked || busy || !okPts || !okWin || !dirty} onClick={save} className={btn}>Simpan pengaturan</button>
+                            {ov.locked && <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500"><Lock className="h-4 w-4" /> Terkunci karena juara umum sudah ditetapkan.</span>}
+                            {!ov.locked && (!okPts || !okWin) && <span className="text-sm font-bold text-amber-700">Poin harus bilangan bulat 0 sampai 1.000, dan jumlah juara 1 sampai 10.</span>}
+                        </div>
+                    </div>
+                )}
+
+                {tab === 'penetapan' && (
+                    <>
+                        <div className={`${card} space-y-4 p-6`}>
+                            <div>
+                                <h2 className="text-xl font-extrabold">Status penetapan per kategori</h2>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil tiap kategori ditetapkan di sub-event (menu Rekap nilai). Juara umum baru bisa ditetapkan setelah semuanya ditetapkan.</p>
+                            </div>
+                            {ov.categories.length === 0 ? (
+                                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada kategori dengan peserta.</p>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {ov.categories.map((c, i) => (
+                                        <li key={i} className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <span className="font-extrabold">{c.sub}{c.category ? ` · ${c.category}` : ''} <span className="text-xs font-bold text-slate-500">({c.participants} peserta)</span></span>
+                                                <span className="flex items-center gap-2">
+                                                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${c.locked ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>{c.locked ? 'Ditetapkan' : 'Belum ditetapkan'}</span>
+                                                    <Link href={`/panel/event/${c.sub_id}/penilaian${c.category_id > 0 ? `?kategori=${c.category_id}` : ''}`} className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-slate-200">Buka</Link>
+                                                </span>
+                                            </div>
+                                            {c.winners.length > 0 && <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">{c.winners.map((w) => `${w.rank}. ${w.code} (${w.school})`).join('  ·  ')}</p>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        <div className={`${card} space-y-4 p-6`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
+                                {ov.provisional && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span>}
+                            </div>
+                            {ov.standings.length === 0 ? (
+                                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada peringkat yang bisa dihitung.</p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[560px] text-left text-sm">
+                                        <thead>
+                                            <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
+                                                <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Sekolah / lembaga</th><th className="py-3 pr-3 text-right">Poin</th>
+                                                {ov.points.map((_, i) => <th key={i} className="py-3 pr-3 text-right">Juara {i + 1}</th>)}
+                                                <th className="py-3">Keterangan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {ov.standings.map((s, i) => (
+                                                <tr key={i} className={s.rank <= ov.winner_count ? 'bg-emerald-50/60 dark:bg-emerald-500/10' : ''}>
+                                                    <td className="py-3 pr-3 pl-1 font-black">{s.rank}{s.shared ? ' =' : ''}</td>
+                                                    <td className="py-3 pr-3 font-extrabold">{s.school}</td>
+                                                    <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
+                                                    {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
+                                                    <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                            {ov.ties && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Ada seri yang tidak terpecahkan di posisi juara umum. Sekolah/lembaga yang seri ditetapkan sebagai juara bersama.</p>}
+                        </div>
+
+                        <div className={`${card} space-y-4 p-6`}>
+                            <h2 className="text-xl font-extrabold">Penetapan juara umum</h2>
+                            {ov.locked ? (
+                                <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800"><Check className="h-4 w-4" strokeWidth={3} /> Juara umum sudah ditetapkan{ov.finalized_at ? ` pada ${ov.finalized_at}` : ''}{ov.finalized_by ? ` oleh ${ov.finalized_by}` : ''}. Tidak bisa diubah lagi.</p>
+                            ) : (
+                                <>
+                                    <ol className="space-y-2">
+                                        {ov.checks.map((c, i) => (
+                                            <li key={i} className={`rounded-2xl border px-4 py-3 ${c.ok ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-500/10' : 'border-rose-300 bg-rose-50 dark:bg-rose-500/10'}`}>
+                                                <p className="text-sm font-extrabold">{i + 1}. {c.title}</p>
+                                                <p className="mt-0.5 text-xs text-slate-700 dark:text-slate-300">{c.detail}</p>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                    {dirty && <p className="text-sm font-bold text-amber-700">Ada perubahan pengaturan yang belum disimpan. Simpan dulu di tab Pengaturan penilaian.</p>}
+                                    <button type="button" disabled={!allOk || dirty || busy} onClick={finalize} className={`${btn} inline-flex items-center gap-2`}><Lock className="h-4 w-4" /> Tetapkan juara umum</button>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        </PanelLayout>
+    );
+}
+
+type SkRow = { rank: number | null; rank_shared?: boolean; code: string; name?: string; school?: string | null; score: number | null; provisional: boolean };
+type SkCat = { category: { id: number; name: string }; locked: boolean; finalized_at: string | null; finalized_by: string | null; rows: SkRow[] };
+
+const nf = (v: number | null | undefined) => (v === null || v === undefined ? '-' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(v));
+const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function PenetapanSK({ eventTitle }: { eventTitle: string }) {
+    const page = usePage().props as any;
+    const cats: SkCat[] = page.recap ?? [];
+    const [nomor, setNomor] = useState('');
+    const [tanggal, setTanggal] = useState('');
+    const [kota, setKota] = useState('');
+    const [nama, setNama] = useState('');
+    const [jabatan, setJabatan] = useState('');
+
+    const scored = (c: SkCat) => c.rows.filter((r) => r.score !== null);
+    const ready = cats.filter((c) => c.locked && scored(c).length > 0);
+
+    const print = (list: SkCat[]) => {
+        const w = window.open('', '_blank');
+        if (!w) { alert('Pop-up diblokir browser. Izinkan pop-up lalu coba lagi.'); return; }
+        const tgl = tanggal ? new Date(`${tanggal}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        const body = list.map((c) => {
+            const rows = scored(c).map((r) => `<tr><td class="c">${r.rank ?? '-'}${r.rank_shared ? ' =' : ''}</td><td>${esc(r.code)}</td><td>${esc(r.name)}</td><td>${esc(r.school)}</td><td class="r">${nf(r.score)}</td></tr>`).join('');
+            const head = c.category.id > 0 ? `<h3>Kategori ${esc(c.category.name)}</h3>` : '';
+            return `${head}<table><thead><tr><th>Peringkat</th><th>Kode</th><th>Nama</th><th>Sekolah / lembaga</th><th>Nilai bersih</th></tr></thead><tbody>${rows}</tbody></table>`;
+        }).join('');
+        const css = 'body{font-family:"Times New Roman",serif;font-size:12pt;color:#000;margin:2cm}h1{text-align:center;font-size:14pt;margin:0}h2{text-align:center;font-size:12pt;font-weight:normal;margin:4px 0 18px}h3{font-size:12pt;margin:16px 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:8px}th,td{border:1px solid #000;padding:4px 8px;font-size:11pt;text-align:left}th{background:#eee}.c{text-align:center}.r{text-align:right}.ttd{margin-top:36px;margin-left:55%;text-align:center}@media print{body{margin:1.5cm}}';
+        const html = `<!doctype html><html><head><meta charset="utf-8"><title>Surat Keterangan</title><style>${css}</style></head><body>`
+            + `<h1>SURAT KETERANGAN HASIL PENILAIAN</h1><h2>${nomor ? `Nomor: ${esc(nomor)}` : 'Nomor: ........................'}</h2>`
+            + `<p>Yang bertanda tangan di bawah ini menerangkan bahwa hasil penilaian ${esc(eventTitle)} dengan nilai bersih (nilai akhir setelah pengurangan dan penalti) adalah sebagai berikut:</p>`
+            + `${body}<p>Demikian surat keterangan ini dibuat untuk dipergunakan sebagaimana mestinya.</p>`
+            + `<div class="ttd">${esc(kota)}${kota && tgl ? ', ' : ''}${esc(tgl)}<br/>${esc(jabatan)}<br/><br/><br/><br/><b><u>${esc(nama) || '........................'}</u></b></div>`
+            + `</body></html>`;
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 400);
+    };
+
+    return (
+        <div className="space-y-5">
+            <div className={`${card} space-y-4 p-6`}>
+                <div>
+                    <h2 className="text-xl font-extrabold">Penetapan & SK</h2>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Nilai bersih tiap kategori yang akan dimuat dalam Surat Keterangan. Nilai bersih adalah nilai akhir setelah pengurangan dan penalti. SK hanya bisa dicetak untuk kategori yang hasilnya sudah ditetapkan di Rekap nilai.</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                    <label><span className={lbl}>Nomor SK</span><input className={`${inp} mt-1.5`} value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="Contoh: 001/SK/2026" /></label>
+                    <label><span className={lbl}>Tanggal</span><input className={`${inp} mt-1.5`} type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} /></label>
+                    <label><span className={lbl}>Kota</span><input className={`${inp} mt-1.5`} value={kota} onChange={(e) => setKota(e.target.value)} placeholder="Contoh: Batam" /></label>
+                    <label><span className={lbl}>Nama penandatangan</span><input className={`${inp} mt-1.5`} value={nama} onChange={(e) => setNama(e.target.value)} /></label>
+                    <label><span className={lbl}>Jabatan</span><input className={`${inp} mt-1.5`} value={jabatan} onChange={(e) => setJabatan(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button type="button" disabled={ready.length === 0} onClick={() => print(ready)} className={btn}>Cetak SK semua kategori yang ditetapkan</button>
+                    {ready.length === 0 && <span className="text-sm font-bold text-amber-700">Belum ada kategori yang ditetapkan. Tetapkan hasil di tab Rekap nilai dulu.</span>}
+                </div>
+            </div>
+
+            {cats.map((c) => {
+                const rows = scored(c);
+                return (
+                    <div key={c.category.id} className={`${card} space-y-3 p-6`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-lg font-extrabold">{c.category.id > 0 ? `Kategori ${c.category.name}` : 'Semua peserta'}</h3>
+                            <div className="flex items-center gap-2">
+                                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${c.locked ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>{c.locked ? `Ditetapkan${c.finalized_at ? ` · ${c.finalized_at}` : ''}` : 'Belum ditetapkan'}</span>
+                                <button type="button" disabled={!c.locked || rows.length === 0} onClick={() => print([c])} className="rounded-xl bg-indigo-900 px-3 py-2 text-xs font-extrabold text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-40">Cetak SK</button>
+                            </div>
+                        </div>
+                        {rows.length === 0 ? (
+                            <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada nilai bersih untuk kategori ini.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[560px] text-left text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
+                                            <th className="py-3 pr-3">Peringkat</th><th className="py-3 pr-3">Kode</th><th className="py-3 pr-3">Nama</th><th className="py-3 pr-3">Sekolah / lembaga</th><th className="py-3 text-right">Nilai bersih</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.map((r, i) => (
+                                            <tr key={i} className={i % 2 ? 'bg-slate-50/70 dark:bg-white/[0.03]' : ''}>
+                                                <td className="py-3 pr-3 font-black">{r.rank ?? '-'}{r.rank_shared ? ' =' : ''}</td>
+                                                <td className="py-3 pr-3 font-mono text-xs font-bold">{r.code}</td>
+                                                <td className="py-3 pr-3 font-semibold">{r.name || '-'}</td>
+                                                <td className="py-3 pr-3">{r.school || '-'}</td>
+                                                <td className="py-3 text-right text-base font-black">{nf(r.score)}{!c.locked && <span className="ml-1 block text-[10px] font-bold uppercase text-amber-700">sementara</span>}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+export default function Penilaian(props: Props) {
+    if (props.isParent) return <ParentPenilaian key={`p${props.event.id}`} {...props} />;
+    return <PenilaianInner key={`${props.event.id}-${props.category?.id ?? 0}`} {...props} />;
+}
+
+function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null }: Props) {
+    const base = `/panel/event/${event.id}/penilaian`;
+    const cfg: Cfg = settings ?? { enabled: false, scale: 100, judge_count: 3, avg_decimals: 2, rounding: 'nearest', deduction_enabled: false };
+    const locked = cfg.enabled;
+    const cid = category.id;
+    const multiCat = categories.length > 1 || cid > 0;
+
+    type TabKey = 'sistem' | 'nilai' | 'juri' | 'publikasi' | 'rekap' | 'sk';
+    const hasSystem = system !== null;
+    const [tabRaw, setTabState] = useState<TabKey>(() => {
+        if (!hasSystem) return 'sistem';
+        try {
+            const v = sessionStorage.getItem('penilaian-tab');
+            return v === 'sistem' || v === 'nilai' || v === 'juri' || v === 'publikasi' || v === 'rekap' || v === 'sk' ? v : 'juri';
+        } catch {
+            return 'juri';
+        }
+    });
+    const setTab = (t: TabKey) => {
+        setTabState(t);
+        try { sessionStorage.setItem('penilaian-tab', t); } catch { /* abaikan */ }
+    };
+    const tab: TabKey = hasSystem ? tabRaw : 'sistem';
+    const [scale, setScale] = useState<number>(cfg.scale);
+    const [judgeCount, setJudgeCount] = useState<string>(String(cfg.judge_count));
+    const [decimals, setDecimals] = useState<string>(String(cfg.avg_decimals));
+    const [rounding, setRounding] = useState<Cfg['rounding']>(cfg.rounding);
+    const [dedOn, setDedOn] = useState<boolean>(cfg.deduction_enabled);
+    const [rows, setRows] = useState<Row[]>(criteria.length ? criteria.map((r) => ({ ...r, subs: autoSub(r.subs ?? []) })) : [{ id: null, name: '', description: '', weight: 100 }]);
+    const [deds, setDeds] = useState<Ded[]>(deductions);
+    const [err, setErr] = useState('');
+    const [jName, setJName] = useState('');
+    const [jContact, setJContact] = useState('');
+    const [jErr, setJErr] = useState('');
+    const [copied, setCopied] = useState('');
+
+    const subSum = (r: Row) => (r.subs ?? []).reduce((a, x) => a + (Number(x.weight) || 0), 0);
+    const leafW: number[] = [];
+    rows.forEach((r) => {
+        if ((r.subs ?? []).length) (r.subs ?? []).forEach((x) => leafW.push(((Number(r.weight) || 0) * (Number(x.weight) || 0)) / 100));
+        else leafW.push(Number(r.weight) || 0);
+    });
+    const leafP = allocate(scale, leafW);
+    const ptsOf = (i: number, k: number | null) => {
+        let n = 0;
+        for (let a = 0; a < i; a++) n += (rows[a].subs ?? []).length || 1;
+        return leafP[n + (k ?? 0)] ?? 0;
+    };
+    const total = rows.reduce((a, r) => a + (Number(r.weight) || 0), 0);
+    const valid = total === 100 && rows.every((r) => r.name.trim() !== '' && Number(r.weight) >= 1 && (r.subs ?? []).every((x) => x.name.trim() !== '' && Number(x.weight) >= 1) && ((r.subs ?? []).length === 0 || subSum(r) === 100)) && Number(judgeCount) >= 1 && deds.every((d) => d.name.trim() !== '');
+    const setRow = (i: number, patch: Partial<Row>) => setRows(rows.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+    const setSub = (i: number, k: number, patch: Partial<SubRow>) => setRows(rows.map((r, n) => (n === i ? { ...r, subs: (r.subs ?? []).map((x, m) => (m === k ? { ...x, ...patch } : x)) } : r)));
+    const addSub = (i: number) => setRows(rows.map((r, n) => (n === i ? { ...r, subs: autoSub([...(r.subs ?? []), { id: null, name: '', description: '', weight: 0 }]) } : r)));
+    const delSub = (i: number, k: number) => setRows(rows.map((r, n) => (n === i ? { ...r, subs: autoSub((r.subs ?? []).filter((_, m) => m !== k)) } : r)));
+    const setDed = (i: number, patch: Partial<Ded>) => setDeds(deds.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+
+    const save = () => {
+        if (hasScores && !confirm('Nilai juri yang sudah masuk akan dihapus karena skala atau bobot bisa berubah. Lanjutkan?')) return;
+        setErr('');
+        router.put(`${base}/kriteria`, {
+            category_id: cid, scale, judge_count: Number(judgeCount), avg_decimals: Number(decimals), rounding, deduction_enabled: dedOn,
+            criteria: rows.map((r) => ({ id: r.id, name: r.name, description: r.description, weight: Number(r.weight), subs: (r.subs ?? []).map((x) => ({ id: x.id, name: x.name, description: '', weight: Number(x.weight) })) })),
+            deductions: deds.map((d) => ({ name: d.name, points: Number(d.points) || 0 })),
+        } as any, { preserveScroll: true, onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan.')) });
+    };
+    const toggle = () => {
+        if (locked && !confirm('Tutup penilaian? Juri tidak bisa mengisi nilai sampai Anda mengesahkannya lagi.')) return;
+        router.post(`${base}/aktif`, { open: !locked, category_id: cid }, { preserveScroll: true });
+    };
+    const addJudge = () => {
+        if (jName.trim() === '') return;
+        router.post(`${base}/juri`, { name: jName, contact: jContact, category_id: cid }, {
+            preserveScroll: true,
+            onSuccess: () => { setJName(''); setJContact(''); setJErr(''); },
+            onError: (e) => setJErr(String(Object.values(e)[0] ?? 'Gagal menambah juri.')),
+        });
+    };
+    const copy = (text: string, key: string) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1600); }); };
+    const resetLink = (j: Judge) => { if (confirm(`Buat link baru untuk "${j.name}"? Link lama tidak akan berlaku lagi.`)) router.post(`${base}/juri/${j.id}/link`, {}, { preserveScroll: true }); };
+    const toggleJudge = (j: Judge) => router.put(`${base}/juri/${j.id}`, { name: j.name, contact: j.contact ?? '', active: !j.active }, { preserveScroll: true });
+    const delJudge = (j: Judge) => { if (confirm(`Hapus juri "${j.name}"? Semua nilainya ikut terhapus.`)) router.delete(`${base}/juri/${j.id}`, { preserveScroll: true }); };
+
+
+    if (isParent) {
+        return (
+            <PanelLayout title="Penilaian">
+                <div className="space-y-5">
+                    <div className={`${card} p-6`}>
+                        <h2 className="text-xl font-extrabold">Penilaian per lomba</h2>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pengaturan nilai dan juri diatur di tiap sub-event, karena peserta ada di sana. Halaman ini hanya ringkasan.</p>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {subs.map((s) => (
+                            <div key={s.id} className={`${card} flex flex-col gap-3 p-6`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <h3 className="text-lg font-extrabold">{s.title}</h3>
+                                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-center">
+                                    {[['Kategori', s.categories], ['Juri', s.judges], ['Peserta', s.participants]].map(([l, v]) => (
+                                        <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-xl font-extrabold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
+                                    ))}
+                                </div>
+                                
+                                <Link href={`/panel/event/${s.id}/penilaian`} className="mt-auto inline-flex items-center justify-center rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-indigo-800">Kelola</Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </PanelLayout>
+        );
+    }
+
+    const activeJudges = judges.filter((j) => j.active).length;
+    const savedTotal = criteria.reduce((a, c) => a + Number(c.weight), 0);
+    const rawSteps = [
+        { label: 'Sistem', done: true },
+        { label: 'Skala, kriteria, bobot', done: criteria.length > 0 && savedTotal === 100 },
+        { label: 'Pengurangan nilai', done: !cfg.deduction_enabled || deductions.length > 0 },
+        { label: 'Pengesahan', done: cfg.enabled },
+    ];
+    const steps = rawSteps.map((st, n) => ({ ...st, done: rawSteps.slice(0, n + 1).every((x) => x.done) }));
+    const allTabs = [{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const;
+    const tabs = allTabs.filter((x) => x.k === 'sistem' || hasSystem);
+    const choice = (w: number, k: number) => (w / 100) * scale * (k / 5);
+
+    return (
+        <PanelLayout title="Penilaian">
+            <div className="space-y-5">
+
+                <div className="flex flex-wrap gap-2">
+                    {tabs.map(({ k, t, i: Icon }) => (
+                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                    ))}
+                </div>
+
+                {tab === 'sistem' && <SistemPicker base={base} title={event.title} system={system} lockReason={systemLock} onChosen={() => setTab('nilai')} />}
+
+                <div className={`${card} space-y-5 p-6 ${tab === 'nilai' ? '' : 'hidden'}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-extrabold">Penilaian</h2>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Atur sistem nilai, kriteria, dan juri untuk lomba ini.</p>
+                            <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-extrabold text-indigo-700"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Mengatur: {event.title}{multiCat && category.name ? ` · ${category.name}` : ''}</span>
+                        </div>
+                        <button type="button" onClick={toggle} disabled={!locked && !steps[1].done} className={locked ? 'inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200' : btn}>
+                            {locked ? <><Lock className="h-4 w-4" /> Buka kunci kategori ini</> : multiCat ? `Sahkan kategori ${category.name}` : 'Sahkan & buka penilaian'}
+                        </button>
+                    </div>
+
+                    <div className={`grid gap-3 ${tab === 'nilai' ? 'md:grid-cols-2' : ''}`}>
+                        <div className="rounded-2xl border border-slate-200/80 bg-white/50 p-4 dark:border-white/10 dark:bg-white/5">
+                            <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">1</span><h3 className="text-base font-extrabold">Kategori</h3></div>
+                            <div className="mt-3 space-y-2">
+                                {categories.map((c) => <Option key={c.id} on={c.id === cid} label={c.name} approved={c.approved} href={`${base}?kategori=${c.id}`} />)}
+                            </div>
+                        </div>
+                        <div className={`rounded-2xl border border-slate-200/80 bg-white/50 p-4 dark:border-white/10 dark:bg-white/5 ${tab === 'nilai' ? '' : 'hidden'}`}>
+                            <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">2</span><h3 className="text-base font-extrabold">Sistem perlombaan</h3></div>
+                            <p className={`mt-3 text-xs font-bold ${locked ? 'text-emerald-700' : 'text-slate-600 dark:text-slate-300'}`}>{locked ? 'Kategori ini sudah disahkan, sistemnya tidak bisa diganti.' : 'Sistem yang dipakai untuk menghitung nilai akhir.'}</p>
+                            <div className={`mt-2 rounded-xl border border-indigo-300 bg-white p-3 dark:bg-white/5 ${locked ? 'opacity-60' : ''}`}>
+                                <div className="flex items-center gap-2.5"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /></span><span className="text-sm font-extrabold">Penilaian Berbasis Bobot Nilai</span></div>
+                                <p className="mt-1 pl-6 text-xs text-slate-600 dark:text-slate-300">Nilai akhir dari jumlah (nilai × bobot) tiap kriteria.</p>
+                                <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Weighted · Versi 1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-200/70 dark:border-white/10" />
+
+                    {tab === 'nilai' && <Stepper steps={steps} />}
+
+                    {locked ? (
+                        <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800"><Check className="h-4 w-4" strokeWidth={3} /> Disahkan{multiCat && category.name ? ` untuk kategori ${category.name}` : ''}: Penilaian Berbasis Bobot Nilai. Konfigurasi terkunci dan juri sudah bisa menilai.</p>
+                    ) : (
+                        <div className={`flex flex-wrap gap-2 text-xs font-bold justify-center ${tab === 'nilai' ? '' : 'hidden'}`}>
+                            <span className={`rounded-full px-2.5 py-1 ${steps[1].done ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{steps[1].done ? '✓ Bobot kriteria 100%' : '• Bobot kriteria belum 100%'}</span>
+                            <span className={`rounded-full px-2.5 py-1 ${activeJudges >= cfg.judge_count ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeJudges >= cfg.judge_count ? `✓ ${activeJudges} juri aktif` : `• Juri aktif ${activeJudges} dari ${cfg.judge_count}`}</span>
+                            <span className={`rounded-full px-2.5 py-1 ${participants > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{participants > 0 ? `✓ ${participants} peserta dinilai` : '• Belum ada peserta terdaftar'}</span>
+                        </div>
+                    )}
+                </div>
+
+                {tab === 'rekap' && <Rekap />}
+
+                {tab === 'sk' && <PenetapanSK eventTitle={event.title} />}
+
+                {tab === 'publikasi' && <Publikasi btn={btn} onGoSettings={(id: number) => { if (id === category.id) setTab('nilai'); else router.get(base, { kategori: id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('nilai') }); }} />}
+
+                {tab === 'nilai' && (
+                    <>
+                        {/* 2. Skala, kriteria, bobot */}
+                        <div className={`${card} space-y-4 p-4`}>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">3</span><div><h3 className="text-base font-extrabold">Skala, kriteria, dan bobot</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pilih skala nilai akhir, lalu susun kriteria dan bobotnya. Total bobot harus 100%.</p></div></div>
+                                <div className="w-full sm:w-72">
+                                    <div className="flex justify-between text-xs font-extrabold"><span>Total bobot</span><span className={total === 100 ? 'text-emerald-600' : 'text-amber-600'}>{total}% {total === 100 && '✓'}</span></div>
+                                    <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className={`h-full rounded-full transition-all ${total === 100 ? 'bg-emerald-500' : total > 100 ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${Math.min(total, 100)}%` }} /></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm font-extrabold">Skala nilai akhir</div>
+                                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                                    {[[100, 'Ratusan'], [1000, 'Ribuan']].map(([v, name]) => (
+                                        <button key={v} type="button" disabled={locked} onClick={() => setScale(Number(v))} className={`relative rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed ${scale === v ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/60 hover:border-slate-300 dark:border-white/10'} ${locked && scale !== v ? 'opacity-50' : ''}`}>
+                                            <div className="text-xl font-extrabold">{num(Number(v))}</div>
+                                            <div className="text-sm font-extrabold">{name}</div>
+                                            <div className="text-sm text-slate-500">Nilai akhir maksimal {num(Number(v))}</div>
+                                            {scale === v && <span className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white"><Check className="h-4 w-4" strokeWidth={3} /></span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="text-sm font-extrabold">Kriteria dan bobot</div>
+                                <div className="mt-2 space-y-2">
+                                    {rows.map((r, i) => (
+                                        <div key={i} className="rounded-xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="flex h-9 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 font-extrabold text-white">{i + 1}</span>
+                                                <input className={`${inp} min-w-[160px] flex-1`} placeholder="Nama kriteria, contoh: Suara" maxLength={60} disabled={locked} value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} />
+                                                <div className="flex w-28 items-center gap-1.5"><input className={`${inp} text-right`} type="number" min={1} max={100} disabled={locked} value={r.weight} onChange={(e) => setRow(i, { weight: e.target.value })} /><span className="font-bold text-slate-500">%</span></div>
+                                                <span className="w-28 text-sm font-bold text-slate-500">maks {num((Number(r.weight) || 0) / 100 * scale)} poin</span>
+                                                <button type="button" disabled={locked || rows.length === 1} onClick={() => setRows(rows.filter((_, k) => k !== i))} className="flex h-10 w-10 items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50 disabled:opacity-30" aria-label="Hapus kriteria"><Trash2 className="h-4 w-4" /></button>
+                                            </div>
+                                            <input className={`${inp} mt-2`} placeholder="Indikator atau penjelasan untuk juri (opsional)" maxLength={200} disabled={locked} value={r.description} onChange={(e) => setRow(i, { description: e.target.value })} />
+                                            {(r.subs ?? []).length > 0 && (
+                                                <div className="mt-2 space-y-2 border-l-2 border-indigo-200 pl-3 dark:border-indigo-400/30">
+                                                    {(r.subs ?? []).map((x, k) => (
+                                                        <div key={k} className="space-y-1.5">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <span className="flex h-7 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-xs font-extrabold text-indigo-700">{i + 1}.{k + 1}</span>
+                                                                <input className={`${inpSm} min-w-[140px] flex-1`} placeholder="Nama sub kriteria, contoh: Intonasi" maxLength={60} disabled={locked} value={x.name} onChange={(e) => setSub(i, k, { name: e.target.value })} />
+                                                                <div className="flex w-24 items-center justify-end gap-1 rounded-xl bg-slate-100 px-3 py-1.5 text-sm font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200" title="Dihitung otomatis oleh sistem">{x.weight}<span className="font-bold text-slate-500">%</span></div>
+                                                                <span className="w-28 text-xs font-bold text-slate-500">maks {num(ptsOf(i, k))} poin</span>
+                                                                <button type="button" disabled={locked} onClick={() => delSub(i, k)} className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30" aria-label="Hapus sub kriteria"><Trash2 className="h-3.5 w-3.5" /></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div className={`text-xs font-extrabold ${subSum(r) === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>Bobot sub kriteria dibagi rata otomatis, total {subSum(r)}% {subSum(r) === 100 ? '✓' : '(harus 100%)'}</div>
+                                                </div>
+                                            )}
+                                            <button type="button" disabled={locked || (r.subs ?? []).length >= 15} onClick={() => addSub(i)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 px-2.5 py-1.5 text-xs font-extrabold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> Sub kriteria</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" disabled={locked || rows.length >= 15} onClick={() => setRows([...rows, { id: null, name: '', description: '', weight: 0 }])} className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah kriteria</button>
+                                {err && <p className="mt-3 text-sm font-semibold text-rose-700">{err}</p>}
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 p-3 dark:border-white/10">
+                                <h4 className="font-extrabold">Pratinjau pilihan nilai juri</h4>
+                                <p className="text-sm text-slate-600 dark:text-slate-300">Ini angka yang akan diklik juri. Dihitung otomatis dari bobot dan skala, tidak perlu diisi manual.</p>
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="w-full min-w-[560px] text-sm">
+                                        <thead><tr className="text-left font-bold text-slate-500"><th className="py-2 pr-3">Kriteria</th><th className="py-2 pr-3 text-right">Bobot</th>{[1, 2, 3, 4, 5].map((k) => <th key={k} className="py-2 pl-3 text-right">Pilihan {k}</th>)}</tr></thead>
+                                        <tbody>
+                                            {rows.map((r, i) => (
+                                                <Fragment key={i}>
+                                                    <tr className="border-t border-slate-100 dark:border-white/10"><td className="py-2.5 pr-3 font-extrabold">{r.name || `Kriteria ${i + 1}`}</td><td className="py-2.5 pr-3 text-right text-slate-500">{Number(r.weight) || 0}%</td>{(r.subs ?? []).length > 0 ? <td colSpan={5} className="py-2.5 pl-3 text-right text-xs text-slate-400">dinilai per sub kriteria</td> : [1, 2, 3, 4, 5].map((k) => <td key={k} className="py-2.5 pl-3 text-right font-extrabold">{num((ptsOf(i, null) * k) / 5)}</td>)}</tr>
+                                                    {(r.subs ?? []).map((x, m) => {
+                                                        const w = ((Number(r.weight) || 0) * (Number(x.weight) || 0)) / 100;
+                                                        return <tr key={m} className="border-t border-slate-50 dark:border-white/5"><td className="py-2 pl-5 pr-3 text-slate-700 dark:text-slate-200">{x.name || `Sub ${i + 1}.${m + 1}`}</td><td className="py-2 pr-3 text-right text-slate-500">{num(w)}%</td>{[1, 2, 3, 4, 5].map((k) => <td key={k} className="py-2 pl-3 text-right font-bold">{num((ptsOf(i, m) * k) / 5)}</td>)}</tr>;
+                                                    })}
+                                                </Fragment>
+                                            ))}
+                                            <tr className="border-t-2 border-slate-200 bg-indigo-50/60 font-extrabold dark:bg-indigo-500/10"><td className="rounded-l-xl py-2.5 pl-3 pr-3">Total</td><td className="py-2.5 pr-3 text-right">{total}%</td>{[1, 2, 3, 4, 5].map((k) => <td key={k} className="py-2.5 pl-3 text-right last:rounded-r-xl last:pr-3">{num(choice(total, k))}</td>)}</tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p className="mt-3 text-xs text-slate-500">Rumus: pilihan = bobot% × skala × (1 sampai 5) ÷ 5. Nilai maksimal juri sama dengan skala hanya jika total bobot 100%.</p>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 p-3 dark:border-white/10">
+                                <h4 className="font-extrabold">Juri dan pembulatan</h4>
+                                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                                    <label><span className={lbl}>Jumlah juri</span><input className={`${inp} mt-1.5`} type="number" min={1} max={15} disabled={locked} value={judgeCount} onChange={(e) => setJudgeCount(e.target.value)} /></label>
+                                    <label><span className={lbl}>Desimal rata-rata</span><input className={`${inp} mt-1.5`} type="number" min={0} max={4} disabled={locked} value={decimals} onChange={(e) => setDecimals(e.target.value)} /></label>
+                                    <label><span className={lbl}>Pembulatan</span>
+                                        <select className={`${inp} mt-1.5`} disabled={locked} value={rounding} onChange={(e) => setRounding(e.target.value as Cfg['rounding'])}>
+                                            <option value="nearest">Terdekat</option><option value="up">Ke atas</option><option value="down">Ke bawah</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <p className="mt-3 text-xs text-slate-500">Nilai akhir = rata-rata juri yang sudah selesai menilai.</p>
+                            </div>
+                        </div>
+
+                        {/* 3. Pengurangan nilai */}
+                        <div className={`${card} p-4`}>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">4</span><div><h3 className="text-base font-extrabold">Pengurangan nilai</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pelanggaran ringan yang mengurangi nilai. Terpisah dari penalti.</p></div></div>
+                                <label className="flex items-center gap-3 text-sm font-extrabold">Aktifkan untuk lomba ini <Toggle on={dedOn} onChange={setDedOn} disabled={locked} /></label>
+                            </div>
+                            {!dedOn ? (
+                                <div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300"><MinusCircle className="h-5 w-5 shrink-0 text-slate-400" /> Pengurangan nilai tidak dipakai pada lomba ini. Aktifkan lewat saklar di kanan atas.</div>
+                            ) : (
+                                <div className="mt-4 space-y-3">
+                                    {deds.map((d, i) => (
+                                        <div key={i} className="flex flex-wrap items-center gap-3">
+                                            <input className={`${inp} min-w-[180px] flex-1`} placeholder="Contoh: Terlambat naik panggung" maxLength={60} disabled={locked} value={d.name} onChange={(e) => setDed(i, { name: e.target.value })} />
+                                            <div className="flex w-36 items-center gap-1.5"><span className="text-sm font-bold text-slate-500">−</span><input className={`${inp} text-right`} type="number" min={0} step="0.5" disabled={locked} value={d.points} onChange={(e) => setDed(i, { points: e.target.value })} /><span className="text-sm font-bold text-slate-500">poin</span></div>
+                                            <button type="button" disabled={locked} onClick={() => setDeds(deds.filter((_, k) => k !== i))} className="flex h-10 w-10 items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50 disabled:opacity-30" aria-label="Hapus"><Trash2 className="h-4 w-4" /></button>
+                                        </div>
+                                    ))}
+                                    <button type="button" disabled={locked || deds.length >= 20} onClick={() => setDeds([...deds, { name: '', points: 0 }])} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah jenis pengurangan</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button type="button" disabled={locked || !valid} onClick={save} className={btn}>Simpan pengaturan</button>
+                            {locked && <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500"><Lock className="h-4 w-4" /> Terkunci. Tutup penilaian untuk mengubah.</span>}
+                            {!locked && !valid && (() => {
+                                const msgs: string[] = [];
+                                const tot = rows.reduce((a, r) => a + (Number(r.weight) || 0), 0);
+                                if (tot !== 100) msgs.push(`Total bobot kriteria ${tot}%, ${tot < 100 ? 'kurang ' + (100 - tot) : 'lebih ' + (tot - 100)}%. Harus tepat 100%.`);
+                                rows.forEach((r, i) => {
+                                    const nm = r.name.trim() || `Kriteria ${i + 1}`;
+                                    if (r.name.trim() === '') msgs.push(`Kriteria ${i + 1}: nama belum diisi.`);
+                                    if ((r.subs ?? []).length && subSum(r) !== 100) msgs.push(`Sub kriteria "${nm}" total ${subSum(r)}%, harus 100%.`);
+                                    (r.subs ?? []).forEach((x, k) => {
+                                        if (x.name.trim() === '') msgs.push(`"${nm}": sub kriteria ${k + 1} belum diberi nama.`);
+                                    });
+                                });
+                                const jc = Number(judgeCount);
+                                if (!(jc >= 1 && jc <= 15)) msgs.push('Jumlah juri harus antara 1 sampai 15.');
+                                const dc = Number(decimals);
+                                if (!(dc >= 0 && dc <= 4)) msgs.push('Desimal rata-rata harus antara 0 sampai 4.');
+                                if (dedOn) deds.forEach((d, i) => { if (d.name.trim() === '') msgs.push(`Jenis pengurangan ke-${i + 1} belum diberi nama.`); });
+                                if (msgs.length === 0) msgs.push('Ada isian yang belum valid. Periksa semua kolom di atas.');
+                                return <ul className="min-w-[240px] flex-1 space-y-0.5 text-sm font-bold text-amber-700">{msgs.map((m, i) => <li key={i}>{m}</li>)}</ul>;
+                            })()}
+                        </div>
+
+                    </>
+                )}
+
+                {tab === 'juri' && (
+                    <>
+<JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
+<JuriTambah card={card} inp={inpSm} btn={btn} />
+
+                        <div className={`${card} p-4`}>
+                            <h3 className="text-base font-extrabold">Juri terdaftar <span className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">{judges.length}</span></h3>
+                            {judges.length === 0 ? (
+                                <JuriKosong />
+                            ) : (
+                                <ul className="mt-4 space-y-3">
+                                    {judges.map((j) => {
+                                        const pct = participants ? Math.round((j.done / participants) * 100) : 0;
+                                        return (
+                                            <li key={j.id} className={`rounded-2xl border border-slate-100 p-4 dark:border-white/10 ${j.active ? '' : 'opacity-60'}`}>
+                                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="font-extrabold">{j.name} {!j.active && <span className="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">Nonaktif</span>}</div>
+                                                        {j.contact && <div className="text-xs text-slate-500">{j.contact}</div>}
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button type="button" onClick={() => copy(j.url, `j${j.id}`)} className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-extrabold text-indigo-800 hover:bg-indigo-100">{copied === `j${j.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === `j${j.id}` ? 'Tersalin' : 'Salin link'}</button>
+                                                        <button type="button" onClick={() => resetLink(j)} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200"><RefreshCw className="h-3.5 w-3.5" /> Reset link</button>
+                                                        <button type="button" onClick={() => toggleJudge(j)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200">{j.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                                                        <button type="button" onClick={() => delJudge(j)} className="rounded-xl p-2 text-rose-600 hover:bg-rose-50" aria-label="Hapus juri"><Trash2 className="h-4 w-4" /></button>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-violet-600'}`} style={{ width: `${pct}%` }} /></div>
+                                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{j.done} dari {participants} peserta dinilai</span>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        </PanelLayout>
+    );
+}

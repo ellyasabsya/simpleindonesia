@@ -1,0 +1,2240 @@
+=================== app/Http/Controllers/EventDetailController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Event;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EventDetailController extends Controller
+{
+    public function __invoke(Request $request, string $key, HomeController $home): Response
+    {
+        $event = Event::query()
+            ->where(fn ($q) => $q->where('status', Event::PUBLISHED)
+                ->orWhereIn('parent_id', Event::where('status', Event::PUBLISHED)->select('id')))
+            ->where(fn ($q) => $q->where('slug', $key)
+                ->when(ctype_digit($key), fn ($w) => $w->orWhere('id', (int) $key)))
+            ->with(['institution', 'children' => fn ($q) => $q->orderBy('sub_order')->orderBy('id')])
+            ->firstOrFail();
+
+        $parent = $event->parent_id ? Event::find($event->parent_id) : null;
+
+        $labelsConst = '\App\Http\Controllers\Panel\EventController::CATEGORIES';
+        $labels = defined($labelsConst) ? constant($labelsConst) : [];
+
+        $contact = array_filter([
+            'name' => $event->contact_name,
+            'position' => $event->contact_position,
+            'phone' => $event->contact_phone,
+            'email' => $event->contact_email,
+        ]);
+
+        $userId = $request->user()?->id;
+
+        $all = collect([$event])->concat($event->children);
+        $eventIds = $all->pluck('id')->all();
+        $cats = \Illuminate\Support\Facades\DB::table('event_participant_categories')->whereIn('event_id', $eventIds)->get()->groupBy('event_id');
+        $regs = \App\Models\EventRegistration::query()->with('user:id,name')->whereIn('event_id', $eventIds)->get();
+
+        $branches = collect();
+        foreach ($all as $ev) {
+            $isChild = $ev->id !== $event->id;
+            $evCats = $cats->get($ev->id, collect());
+            $evRegs = $regs->where('event_id', $ev->id);
+
+            $push = function ($key, $title, $subtitle, $quota, $mine, $extra = []) use (&$branches) {
+                $ok = $mine->where('status', 'disetujui');
+                $branches->push([
+                    'id' => $key,
+                    'title' => $title,
+                    'subtitle' => $subtitle,
+                    'quota' => $quota,
+                    'registered' => $mine->count(),
+                    'approved' => $ok->count(),
+                    'info' => $extra,
+                    'names' => $ok->map(fn ($r) => ['name' => $r->user?->name ?? 'Peserta', 'school' => $r->school])->values(),
+                ]);
+            };
+
+            if ($evCats->isNotEmpty()) {
+                foreach ($evCats as $cat) {
+                    $prizes = json_decode($cat->prizes ?? '[]', true) ?: [];
+                    $push('c'.$cat->id,
+                        $cat->competition_name ?: ($isChild ? $ev->title : $cat->name),
+                        $cat->competition_name ? $cat->name : ($isChild ? $cat->name : null),
+                        (int) ($cat->quota ?? 0),
+                        $evRegs->where('participant_category_id', $cat->id),
+                        ['min_age' => $cat->min_age, 'max_age' => $cat->max_age, 'requirements' => $cat->requirements, 'prizes' => $prizes]);
+                }
+            } elseif ((int) $ev->participant_quota > 0) {
+                $push('e'.$ev->id, $isChild ? $ev->title : 'Kuota peserta', null, (int) $ev->participant_quota, $evRegs);
+            }
+        }
+
+        $participants = [
+            'registered' => $regs->count(),
+            'approved' => $regs->where('status', 'disetujui')->count(),
+            'branches' => $branches->values(),
+        ];
+
+        return Inertia::render('event-detail', [
+            'event' => array_merge($home->card($event), [
+                'description' => $event->description,
+                'contact' => $contact ?: null,
+                'juknis' => $event->juknisUrl(),
+                'participants' => $participants,
+                'has_competition' => $all->contains(fn (Event $ev) => in_array($ev->category, ['perlombaan', 'olahraga'], true)),
+                'parent' => $parent ? ['title' => $parent->title, 'slug' => $parent->slug] : null,
+                'siblings' => $parent ? $parent->children()->orderBy('sub_order')->orderBy('id')->get()
+                    ->map(fn (Event $x) => ['id' => $x->id, 'title' => $x->title, 'slug' => $x->slug])->values() : [],
+                'registration_fee' => (int) ($event->registration_fee ?: ($event->children->pluck('registration_fee')->filter()->min() ?? 0)),
+                'registration_method' => $event->registration_method
+                    ?: (($m = $event->children->pluck('registration_method')->filter()->unique())->count() === 1 ? $m->first() : null),
+                'children' => $event->children->map(fn (Event $c) => [
+                    'id' => $c->id,
+                    'title' => $c->title,
+                    'category' => $c->category ? ($labels[$c->category] ?? ucfirst($c->category)) : null,
+                    'location' => $c->location,
+                    'starts_at' => $c->starts_at?->toDateString(),
+                    'ends_at' => $c->ends_at?->toDateString(),
+                    'juknis' => $c->juknisUrl(),
+                    'registration_fee' => (int) $c->registration_fee,
+                    'slug' => $c->slug,
+                    'poster' => $c->posterUrl() ?: $event->posterUrl(),
+                    'quota' => (int) \Illuminate\Support\Facades\DB::table('event_participant_categories')->where('event_id', $c->id)->sum('quota'),
+                    'registered' => \App\Models\EventRegistration::where('event_id', $c->id)->count(),
+                ])->values(),
+                'comments' => $event->comments()
+                    ->with('user:id,name')
+                    ->latest()
+                    ->limit(50)
+                    ->get()
+                    ->map(fn ($c) => [
+                        'id' => $c->id,
+                        'body' => $c->body,
+                        'author' => $c->user?->name ?? 'Pengguna',
+                        'created_at' => $c->created_at->toIso8601String(),
+                        'mine' => $userId !== null && $userId === $c->user_id,
+                        'reported' => $c->reported_at !== null,
+                    ])->values(),
+            ]),
+        ]);
+    }
+}
+=================== resources/js/pages/event-detail.tsx
+import { Trophy } from 'lucide-react';
+import { Users } from 'lucide-react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    Building2,
+    CalendarCheck,
+    CalendarDays,
+    Check,
+    ClipboardList,
+    Clock,
+    FileText,
+    Flag,
+    Info,
+    Layers,
+    Mail,
+    MapPin,
+    MessageCircle,
+    Navigation,
+    Phone,
+    Share2,
+    Tag,
+    Ticket,
+    Trash2,
+} from 'lucide-react';
+import type { ComponentType } from 'react';
+import { useState } from 'react';
+import Footer from '@/components/landing/footer';
+import PageBackground from '@/components/page-background';
+import SiteNavbar from '@/components/site-navbar';
+import { useAuth } from '@/lib/auth';
+
+type StatusKey = 'selesai' | 'segera' | 'berlangsung';
+
+type Child = {
+    id: number;
+    title: string;
+    category: string | null;
+    location: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    juknis: string | null;
+    registration_fee: number;
+    slug: string;
+    poster: string | null;
+    quota: number;
+    registered: number;
+};
+
+type CommentItem = { id: number; body: string; author: string; created_at: string; mine: boolean; reported: boolean };
+
+type Detail = {
+    id: number;
+    title: string;
+    poster: string | null;
+    category: string | null;
+    organizer: string | null;
+    location: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    status: { key: StatusKey; label: string };
+    description: string | null;
+    registration_fee: number;
+    registration_method: 'ticket' | 'transfer_manual' | null;
+    juknis: string | null;
+    contact: { name?: string; position?: string; phone?: string; email?: string } | null;
+    children: Child[];
+    comments: CommentItem[];
+    fee_from?: boolean;
+    parent?: { title: string; slug: string } | null;
+    siblings?: { id: number; title: string; slug: string }[];
+};
+
+type Icon = ComponentType<{ className?: string }>;
+
+const card =
+    'rounded-3xl border border-white/70 bg-white/70 p-6 shadow-sm backdrop-blur md:p-8 dark:border-white/10 dark:bg-slate-900/50';
+const infoBox = 'rounded-2xl bg-white/80 p-5 shadow-sm dark:bg-white/5';
+const eyebrow = 'flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400';
+
+const longDate = (s: string) =>
+    new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${s}T00:00:00`));
+const shortDate = (s: string) =>
+    new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${s}T00:00:00`));
+const stamp = (iso: string) => new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+
+const STATUS: Record<StatusKey, { text: (l: string) => string; dot: string; cls: string }> = {
+    segera: { text: (l) => `Dimulai ${l}`, dot: 'bg-blue-600', cls: 'text-blue-700 dark:text-blue-300' },
+    berlangsung: { text: () => 'Sedang berlangsung', dot: 'bg-emerald-500', cls: 'text-emerald-700 dark:text-emerald-300' },
+    selesai: { text: () => 'Sudah selesai', dot: 'bg-slate-400', cls: 'text-slate-600 dark:text-slate-300' },
+};
+
+function waLink(phone: string) {
+    const d = phone.replace(/\D/g, '');
+    return `https://wa.me/${d.startsWith('0') ? `62${d.slice(1)}` : d}`;
+}
+
+function initials(name: string) {
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+}
+
+function dayCount(start: string | null, end: string | null) {
+    if (!start) return null;
+    if (!end) return 1;
+    const diff = Math.round((new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000);
+    return Math.max(diff, 0) + 1;
+}
+
+const mapUrl = (loc: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
+
+function SectionTitle({ icon: Icon, children }: { icon: Icon; children: string }) {
+    return (
+        <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-800 dark:bg-white/10 dark:text-white">
+                <Icon className="h-5 w-5" />
+            </span>
+            <h2 className="text-xl font-bold">{children}</h2>
+        </div>
+    );
+}
+
+function Fact({ icon: Icon, label, value, tone, action }: { icon: Icon; label: string; value: string; tone: string; action?: React.ReactNode }) {
+    return (
+        <div className="flex items-start gap-4 rounded-2xl bg-white/80 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-white/5">
+            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}>
+                <Icon className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="mt-1.5 break-words text-base font-bold">{value}</p>
+                {action}
+            </div>
+        </div>
+    );
+}
+
+function Comments({ event }: { event: Detail }) {
+    const { user } = useAuth();
+    const { data, setData, post, processing, errors, reset } = useForm({ body: '' });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(`/events/${event.id}/komentar`, { preserveScroll: true, onSuccess: () => reset() });
+    };
+
+    const remove = (id: number) => {
+        if (confirm('Hapus komentar ini?')) router.delete(`/komentar/${id}`, { preserveScroll: true });
+    };
+
+    const report = (id: number) => {
+        if (confirm('Laporkan komentar ini ke admin?')) router.post(`/komentar/${id}/lapor`, {}, { preserveScroll: true });
+    };
+
+    return (
+        <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm md:p-8 dark:border-white/10 dark:bg-slate-900">
+            <h2 className="text-xl font-bold">Komentar</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Ada pertanyaan soal event ini? Tanyakan di sini.</p>
+
+            {user ? (
+                <form onSubmit={submit} className="mt-5">
+                    <textarea
+                        value={data.body}
+                        onChange={(e) => setData('body', e.target.value)}
+                        maxLength={1000}
+                        rows={4}
+                        placeholder="Tulis komentar..."
+                        className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-950/60 dark:text-white"
+                    />
+                    {errors.body && <p className="mt-2 text-sm font-medium text-red-600">{errors.body}</p>}
+                    <div className="mt-3 flex items-center justify-between">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{data.body.length}/1000</span>
+                        <button
+                            type="submit"
+                            disabled={processing || data.body.trim() === ''}
+                            className="rounded-xl bg-indigo-900 px-6 py-2.5 text-sm font-bold text-white shadow transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                        >
+                            Kirim
+                        </button>
+                    </div>
+                </form>
+            ) : (
+                <div className="mt-5 flex flex-col items-start gap-3 rounded-2xl bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between dark:bg-white/5">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Masuk terlebih dahulu untuk menulis komentar.</p>
+                    <Link href="/login" className="rounded-xl bg-indigo-900 px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-indigo-800">
+                        Masuk
+                    </Link>
+                </div>
+            )}
+
+            <div className="mt-8">
+                {event.comments.length === 0 ? (
+                    <p className="text-sm text-slate-600 dark:text-slate-300">Belum ada komentar. Jadilah yang pertama.</p>
+                ) : (
+                    <ul className="space-y-5">
+                        {event.comments.map((c) => (
+                            <li key={c.id} className="flex gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-900 text-xs font-bold text-white">
+                                    {initials(c.author)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold">{c.author}</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">{stamp(c.created_at)}</span>
+                                        {!c.mine && user && (
+                                            <button
+                                                onClick={() => report(c.id)}
+                                                disabled={c.reported}
+                                                className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-slate-400 transition hover:bg-amber-50 hover:text-amber-600 disabled:cursor-default disabled:text-amber-600 disabled:hover:bg-transparent"
+                                            >
+                                                <Flag className="h-3.5 w-3.5" />
+                                                {c.reported ? 'Dilaporkan' : 'Lapor'}
+                                            </button>
+                                        )}
+                                        {c.mine && (
+                                            <button
+                                                onClick={() => remove(c.id)}
+                                                aria-label="Hapus komentar"
+                                                className="ml-auto rounded-full p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed text-slate-700 dark:text-slate-200">{c.body}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </section>
+    );
+}
+
+type Participants = {
+    registered: number;
+    approved: number;
+    branches: {
+        id: string;
+        title: string;
+        subtitle: string | null;
+        quota: number;
+        registered: number;
+        approved: number;
+        names: { name: string; school: string | null }[];
+        info?: { min_age: number | null; max_age: number | null; requirements: string | null; prizes: { rank: string; prize: string }[] };
+    }[];
+};
+
+function PesertaTab({ data }: { data?: Participants }) {
+    const branches = data?.branches ?? [];
+    return (
+        <section className={card}>
+            <SectionTitle icon={Users}>Peserta</SectionTitle>
+
+            {branches.length === 0 ? (
+                <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Kuota peserta belum diatur untuk event ini.</p>
+            ) : (
+                <div className="mt-8 space-y-4">
+                    <p className={eyebrow}>Progres per cabang</p>
+                    {branches.map((b) => {
+                        const pct = b.quota > 0 ? Math.min(100, Math.round((b.registered / b.quota) * 100)) : 0;
+                        return (
+                            <div key={b.id} className={infoBox}>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-lg font-bold">{b.title}</p>
+                                        {b.subtitle && <p className="text-sm text-slate-500 dark:text-slate-400">{b.subtitle}</p>}
+                                    </div>
+                                    <p className="shrink-0 text-sm font-bold">
+                                        {b.registered}{b.quota > 0 ? ` / ${b.quota}` : ''}{' '}
+                                        <span className="font-semibold text-slate-500 dark:text-slate-400">peserta</span>
+                                    </p>
+                                </div>
+                                {b.quota > 0 && (
+                                    <>
+                                        <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                                            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500" style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                            {pct}% terisi · {b.approved} disetujui · sisa {Math.max(0, b.quota - b.registered)} slot
+                                        </p>
+                                    </>
+                                )}
+                                {b.names.length > 0 && (
+                                    <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                                        {b.names.map((p, i) => (
+                                            <li key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-900 text-[11px] font-bold text-white">
+                                                    {initials(p.name)}
+                                                </span>
+                                                <span className="min-w-0">
+                                                    <span className="block truncate text-sm font-bold">{p.name}</span>
+                                                    {p.school && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{p.school}</span>}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        );
+                    })}
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Hanya nama dan asal sekolah peserta yang disetujui yang ditampilkan.</p>
+                </div>
+            )}
+        </section>
+    );
+}
+
+function HadiahTab({ data }: { data?: Participants }) {
+    const rows = (data?.branches ?? []).filter((b) => b.info);
+    const age = (a: number | null, b: number | null) =>
+        a != null && b != null ? `${a}–${b} tahun` : a != null ? `Minimal ${a} tahun` : b != null ? `Maksimal ${b} tahun` : null;
+    return (
+        <section className={card}>
+            <SectionTitle icon={Trophy}>Hadiah</SectionTitle>
+            <div className="mt-6 space-y-4">
+                {rows.map((b) => {
+                    const i = b.info!;
+                    const ageText = age(i.min_age, i.max_age);
+                    const showSub = b.subtitle && !b.title.toLowerCase().endsWith(b.subtitle.toLowerCase());
+                    return (
+                        <div key={b.id} className={infoBox}>
+                            <p className="text-lg font-bold">{b.title}</p>
+                            {showSub && <p className="text-sm text-slate-500 dark:text-slate-400">{b.subtitle}</p>}
+                            {i.prizes.length > 0 ? (
+                                <ul className="mt-4 divide-y divide-slate-200/70 dark:divide-white/10">
+                                    {i.prizes.map((p, k) => (
+                                        <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                                            <span className="flex items-center gap-2 font-bold"><Trophy className="h-4 w-4 text-amber-500" />{p.rank}</span>
+                                            {p.prize && <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{p.prize}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200"><Trophy className="h-4 w-4 text-amber-500" />Memperebutkan Juara 1, 2, dan 3</p>
+                            )}
+                            {(ageText || i.requirements) && (
+                                <div className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-sm dark:border-white/10">
+                                    {ageText && <p><span className="font-semibold text-slate-500 dark:text-slate-400">Usia: </span><span className="font-bold">{ageText}</span></p>}
+                                    {i.requirements && <p className="whitespace-pre-line text-slate-700 dark:text-slate-200">{i.requirements}</p>}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function EventDetailSingle() {
+    const { event } = usePage<{ event: Detail }>().props;
+    const [tabRaw, setTab] = useState<'info' | 'hadiah' | 'peserta' | 'kontak'>('info');
+    const [copied, setCopied] = useState(false);
+    const st = STATUS[event.status.key];
+    const single = !event.ends_at || event.ends_at === event.starts_at;
+    const days = dayCount(event.starts_at, event.ends_at);
+    const parts = (event as unknown as { participants?: Participants }).participants;
+    const hasHadiah = !!(event as unknown as { has_competition?: boolean }).has_competition && (parts?.branches ?? []).some((b) => b.info);
+    const tab = tabRaw === 'hadiah' && !hasHadiah ? 'info' : tabRaw;
+    const { user } = useAuth();
+
+    // Tujuan sementara: ganti dua href ini setelah form pembelian tiket / pendaftaran dibuat.
+    const cta =
+        event.children.length > 0
+            ? { label: 'Pilih kegiatan', Icon: Layers, href: '#kegiatan' }
+            : event.registration_method === 'transfer_manual'
+            ? { label: 'Daftar', Icon: ClipboardList, href: user ? `/events/${event.id}/daftar` : `/events/${event.id}/masuk` }
+            : { label: 'Beli Tiket', Icon: Ticket, href: `/events/${event.id}/tiket` };
+
+    const share = async () => {
+        const url = window.location.href;
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: event.title, url });
+            } else {
+                await navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }
+        } catch {
+            /* dibatalkan pengguna */
+        }
+    };
+
+    const tabBtn = (active: boolean) =>
+        `rounded-xl px-6 py-3 text-sm font-bold transition ${
+            active
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md'
+                : 'text-slate-600 hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white'
+        }`;
+
+    return (
+        <>
+            <Head title={`${event.title} - SIMPLE`} />
+            <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+                <PageBackground />
+                <SiteNavbar />
+
+                <div className="relative z-10">
+                    {/* Lebar & padding sama dengan navbar (max-w-7xl, px-6) */}
+                    <main className="mx-auto max-w-7xl px-6 pb-24 pt-32">
+                        <Link
+                            href="/events"
+                            className="group inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white"
+                        >
+                            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                            Semua Event
+                        </Link>
+                        {event.parent && (
+                            <div className="mt-4 rounded-2xl border border-white/70 bg-white/60 p-4 text-sm shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
+                                <p className="text-slate-600 dark:text-slate-300">Bagian dari rangkaian <Link href={`/events/${event.parent.slug}`} className="font-bold text-indigo-700 hover:underline dark:text-indigo-300">{event.parent.title}</Link></p>
+                                {(event.siblings?.length ?? 0) > 1 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {event.siblings!.map((x) => (
+                                            <Link key={x.id} href={`/events/${x.slug}`} className={`rounded-full px-4 py-1.5 text-xs font-bold ${x.id === event.id ? 'bg-indigo-900 text-white' : 'bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:bg-white/10 dark:text-slate-200'}`}>{x.title}</Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Kartu utama */}
+                        <section className="mt-6 rounded-[2rem] border border-white/70 bg-white/60 p-6 shadow-sm backdrop-blur md:p-10 dark:border-white/10 dark:bg-slate-900/40">
+                            <div className="grid gap-8 md:grid-cols-[22rem_minmax(0,1fr)] md:gap-10">
+                                {/* Poster: rasio tetap 4:5, foto menyesuaikan bingkai */}
+                                <div className="mx-auto w-full max-w-sm md:max-w-none">
+                                    <div className="aspect-[4/5] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-xl dark:bg-slate-800">
+                                        {event.poster ? (
+                                            <img src={event.poster} alt={event.title} className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500">
+                                                <span className="text-6xl font-bold text-white/90">{initials(event.title)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-bold dark:border-white/10 dark:bg-white/10 ${st.cls}`}>
+                                            <span className={`h-2 w-2 rounded-full ${st.dot}`} />
+                                            {st.text(event.status.label)}
+                                        </span>
+                                        {event.category && (
+                                            <span className="rounded-full bg-blue-100 px-4 py-1.5 text-sm font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
+                                                {event.category}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h1 className="mt-4 break-words text-3xl font-black leading-tight tracking-tight md:text-5xl">{event.title}</h1>
+                                    {event.organizer && (
+                                        <p className="mt-3 text-base text-slate-600 dark:text-slate-300">
+                                            diselenggarakan oleh <span className="font-bold text-slate-900 dark:text-white">{event.organizer}</span>
+                                        </p>
+                                    )}
+
+                                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                                        {event.starts_at && (
+                                            <div className={infoBox}>
+                                                <p className={eyebrow}><CalendarDays className="h-4 w-4 text-indigo-700" />Tanggal Mulai</p>
+                                                <p className="mt-3 text-lg font-bold">{longDate(event.starts_at)}</p>
+                                                {!single && event.ends_at && (
+                                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">s.d. {longDate(event.ends_at)}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                        {event.location && (
+                                            <div className={infoBox}>
+                                                <p className={eyebrow}><MapPin className="h-4 w-4 text-indigo-700" />Lokasi</p>
+                                                <p className="mt-3 text-lg font-bold">{event.location}</p>
+                                            </div>
+                                        )}
+                                        {event.organizer && (
+                                            <div className={infoBox}>
+                                                <p className={eyebrow}><Building2 className="h-4 w-4 text-indigo-700" />Penyelenggara</p>
+                                                <p className="mt-3 text-lg font-bold">{event.organizer}</p>
+                                            </div>
+                                        )}
+                                        <div className={infoBox}>
+                                            <p className={eyebrow}><Ticket className="h-4 w-4 text-indigo-700" />Biaya Pendaftaran</p>
+                                            <p className="mt-3 text-lg font-bold">
+                                                {event.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(event.registration_fee)}` : 'Gratis'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-white/70 p-4 sm:flex-row dark:bg-white/5">
+                                        {event.status.key === 'selesai' ? (
+                                            <span className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-200 py-4 text-sm font-bold text-slate-500 dark:bg-white/10 dark:text-slate-400">
+                                                <Ticket className="h-5 w-5" />
+                                                Event Sudah Selesai
+                                            </span>
+                                        ) : (
+                                            <a
+                                                href={cta.href}
+                                                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition hover:-translate-y-0.5">
+                                                <cta.Icon className="h-5 w-5" />
+                                                {cta.label}
+                                            </a>
+                                        )}
+                                        <button
+                                            onClick={share}
+                                            className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white"
+                                        >
+                                            {copied ? <Check className="h-5 w-5 text-emerald-600" /> : <Share2 className="h-5 w-5" />}
+                                            {copied ? 'Tertaut' : 'Bagikan'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {event.children.length > 0 && (
+                            <section id="kegiatan" className="mt-6 scroll-mt-28">
+                                <h2 className="text-2xl font-black">Pilih Kegiatan</h2>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Event ini terdiri dari beberapa kegiatan. Pilih salah satu untuk melihat detail dan mendaftar.</p>
+                                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                                    {event.children.map((c) => {
+                                        const left = Math.max(0, c.quota - c.registered);
+                                        return (
+                                            <Link key={c.id} href={`/events/${c.slug}`} className="group overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900/50">
+                                                {c.poster ? (
+                                                    <img src={c.poster} alt={c.title} className="aspect-[16/9] w-full object-cover object-top" />
+                                                ) : (
+                                                    <div className="aspect-[16/9] w-full bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500" />
+                                                )}
+                                                <div className="space-y-3 p-5">
+                                                    {c.category && <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{c.category}</span>}
+                                                    <h3 className="text-xl font-bold">{c.title}</h3>
+                                                    <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                                                        {c.starts_at && (
+                                                            <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{shortDate(c.starts_at)}{c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}</p>
+                                                        )}
+                                                        {c.location && <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{c.location}</p>}
+                                                        <p className="flex items-center gap-2"><Ticket className="h-4 w-4" />{c.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(c.registration_fee)}` : 'Gratis'}{c.quota > 0 ? ` · sisa ${left} slot` : ''}</p>
+                                                    </div>
+                                                    <span className="inline-flex rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg">Lihat detail</span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Tab */}
+                        <div className="mt-6 flex gap-1 rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
+                            <button onClick={() => setTab('info')} className={tabBtn(tab === 'info')}>Informasi</button>
+                            {hasHadiah && <button onClick={() => setTab('hadiah')} className={tabBtn(tab === 'hadiah')}>Hadiah</button>}
+                            <button onClick={() => setTab('peserta')} className={tabBtn(tab === 'peserta')}>Peserta</button>
+                            <button onClick={() => setTab('kontak')} className={tabBtn(tab === 'kontak')}>Kontak Panitia</button>
+                        </div>
+
+                        <div className="mt-6 space-y-6">
+                            {tab === 'hadiah' ? (
+                                <HadiahTab data={parts} />
+                            ) : tab === 'peserta' ? (
+                                <PesertaTab data={(event as unknown as { participants?: Participants }).participants} />
+                            ) : tab === 'info' ? (
+                                <>
+                                    <section className={card}>
+                                        <SectionTitle icon={Info}>Tentang Event</SectionTitle>
+                                        {event.description ? (
+                                            <p className="mt-6 whitespace-pre-line break-words text-base leading-8 text-slate-700 dark:text-slate-200">{event.description}</p>
+                                        ) : (
+                                            <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Deskripsi belum tersedia.</p>
+                                        )}
+                                    </section>
+                                    {event.juknis && (
+                                        <section id="juknis" className={card}>
+                                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                                <SectionTitle icon={FileText}>Juknis</SectionTitle>
+                                                <a
+                                                    href={event.juknis}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10"
+                                                >
+                                                    <FileText className="h-4 w-4 text-indigo-700" />
+                                                    Buka / Unduh PDF
+                                                </a>
+                                            </div>
+                                            <iframe
+                                                src={event.juknis}
+                                                title="Juknis"
+                                                className="mt-6 h-[640px] w-full rounded-2xl border border-slate-200 bg-white dark:border-white/10"
+                                            />
+                                        </section>
+                                    )}
+
+
+
+
+                                    <section className={card}>
+                                        <SectionTitle icon={CalendarDays}>Waktu & Tempat</SectionTitle>
+                                        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                            {event.starts_at && (
+                                                <Fact icon={CalendarDays} label="Mulai" value={longDate(event.starts_at)} tone="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200" />
+                                            )}
+                                            {event.ends_at && (
+                                                <Fact icon={CalendarCheck} label="Selesai" value={longDate(event.ends_at)} tone="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200" />
+                                            )}
+                                            {days && (
+                                                <Fact icon={Clock} label="Durasi" value={days === 1 ? '1 hari' : `${days} hari`} tone="bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200" />
+                                            )}
+                                            {event.location && (
+                                                <Fact
+                                                    icon={MapPin}
+                                                    label="Lokasi"
+                                                    value={event.location}
+                                                    tone="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200"
+                                                    action={
+                                                        <a href={mapUrl(event.location)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:underline dark:text-indigo-300">
+                                                            <Navigation className="h-4 w-4" /> Buka di Peta
+                                                        </a>
+                                                    }
+                                                />
+                                            )}
+                                            {event.organizer && (
+                                                <Fact icon={Building2} label="Penyelenggara" value={event.organizer} tone="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200" />
+                                            )}
+                                            {event.category && (
+                                                <Fact icon={Tag} label="Kategori" value={event.category} tone="bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200" />
+                                            )}
+                                        </div>
+                                    </section>
+                                </>
+                            ) : (
+                                <section className={card}>
+                                    <SectionTitle icon={Phone}>Kontak Panitia</SectionTitle>
+                                    {event.contact ? (
+                                        <div className="mt-6 space-y-5">
+                                            {(event.contact.name || event.contact.position) && (
+                                                <div>
+                                                    {event.contact.name && <p className="text-lg font-bold">{event.contact.name}</p>}
+                                                    {event.contact.position && <p className="text-sm text-slate-500 dark:text-slate-400">{event.contact.position}</p>}
+                                                </div>
+                                            )}
+                                            <div className="flex flex-wrap gap-3">
+                                                {event.contact.phone && (
+                                                    <>
+                                                        <a href={`tel:${event.contact.phone}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10">
+                                                            <Phone className="h-4 w-4 text-indigo-700" />
+                                                            {event.contact.phone}
+                                                        </a>
+                                                        <a href={waLink(event.contact.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white shadow transition hover:bg-emerald-600">
+                                                            <MessageCircle className="h-4 w-4" />
+                                                            WhatsApp
+                                                        </a>
+                                                    </>
+                                                )}
+                                                {event.contact.email && (
+                                                    <a href={`mailto:${event.contact.email}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10">
+                                                        <Mail className="h-4 w-4 text-indigo-700" />
+                                                        {event.contact.email}
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Kontak panitia belum tersedia.</p>
+                                    )}
+                                </section>
+                            )}
+
+                            <Comments event={event} />
+                        </div>
+                    </main>
+                    <Footer />
+                </div>
+            </div>
+        </>
+    );
+}
+
+
+function SeriesView({ event }: { event: Detail }) {
+    const st = STATUS[event.status.key];
+    const range = event.starts_at
+        ? `${shortDate(event.starts_at)}${event.ends_at && event.ends_at !== event.starts_at ? ` – ${shortDate(event.ends_at)}` : ''}`
+        : null;
+
+    return (
+        <>
+            <Head title={`${event.title} - SIMPLE`} />
+            <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+                <PageBackground />
+                <SiteNavbar />
+
+                <div className="relative z-10">
+                    <main className="mx-auto max-w-7xl px-6 pb-24 pt-32">
+                        <Link
+                            href="/events"
+                            className="group inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white"
+                        >
+                            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                            Semua Event
+                        </Link>
+
+                        <section className="mt-6 flex items-center gap-5 rounded-3xl border border-white/70 bg-white/60 p-5 shadow-sm backdrop-blur md:gap-6 md:p-6 dark:border-white/10 dark:bg-slate-900/40">
+                            <div className="h-28 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg md:h-36 md:w-28">
+                                {event.poster && <img src={event.poster} alt={event.title} className="h-full w-full object-cover object-top" />}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold dark:border-white/10 dark:bg-white/10 ${st.cls}`}>
+                                        <span className={`h-2 w-2 rounded-full ${st.dot}`} />
+                                        {st.text(event.status.label)}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800 dark:bg-violet-500/20 dark:text-violet-200">
+                                        <Layers className="h-3 w-3" /> Rangkaian · {event.children.length} kegiatan
+                                    </span>
+                                </div>
+                                <h1 className="mt-2 text-2xl font-black leading-tight md:text-4xl">{event.title}</h1>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                    {event.organizer && <>oleh <span className="font-bold text-slate-900 dark:text-white">{event.organizer}</span></>}
+                                    {event.organizer && range ? ' · ' : ''}
+                                    {range}
+                                </p>
+                            </div>
+                        </section>
+
+                        <h2 className="mt-8 text-xl font-black">Pilih Kegiatan</h2>
+                        <div className="mt-4 space-y-3">
+                            {event.children.map((c) => {
+                                const left = Math.max(0, c.quota - c.registered);
+                                return (
+                                    <Link
+                                        key={c.id}
+                                        href={`/events/${c.slug}`}
+                                        className="group flex items-center gap-4 rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg md:gap-5 md:p-4 dark:border-white/10 dark:bg-slate-900/50"
+                                    >
+                                        <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 md:h-28 md:w-24">
+                                            {c.poster && <img src={c.poster} alt={c.title} className="h-full w-full object-cover object-top" />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            {c.category && (
+                                                <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
+                                                    {c.category}
+                                                </span>
+                                            )}
+                                            <h3 className="mt-1 truncate text-lg font-bold">{c.title}</h3>
+                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600 dark:text-slate-300">
+                                                {c.starts_at && (
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <CalendarDays className="h-3.5 w-3.5" />
+                                                        {shortDate(c.starts_at)}
+                                                        {c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}
+                                                    </span>
+                                                )}
+                                                {c.location && (
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <MapPin className="h-3.5 w-3.5" />
+                                                        {c.location}
+                                                    </span>
+                                                )}
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <Ticket className="h-3.5 w-3.5" />
+                                                    {c.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(c.registration_fee)}` : 'Gratis'}
+                                                    {c.quota > 0 ? ` · sisa ${left} slot` : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="hidden shrink-0 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg sm:inline-flex">
+                                            Lihat detail
+                                        </span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </main>
+                    <Footer />
+                </div>
+            </div>
+        </>
+    );
+}
+
+export default function EventDetail() {
+    const { event } = usePage<{ event: Detail }>().props;
+    return event.children.length > 0 ? <SeriesView event={event} /> : <EventDetailSingle />;
+}
+=================== resources/js/pages/panel/events/laporan.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { Link } from '@inertiajs/react';
+import { Banknote, ChevronRight, Clock, Layers, ScanLine, UserCheck, UserX, Users } from 'lucide-react';
+
+type Sum = { total: number; lunas: number; menunggu: number; batal: number; revenue: number; tickets: number; hadir: number };
+type Sub = Sum & { id: number; title: string };
+type TypeRow = { sub: string; name: string; price: number; quota: number; sold: number; hadir: number; revenue: number };
+type Props = {
+    isParent: boolean;
+    summary: Sum;
+    subs: Sub[];
+    types: TypeRow[];
+    cats: { name: string; n: number }[];
+    trend: { date: string; n: number }[];
+};
+
+const box = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
+const th = 'px-3 py-3';
+
+export default function Laporan({ isParent, summary: s, subs, types, cats, trend }: Props) {
+    const pct = s.tickets > 0 ? Math.round((s.hadir / s.tickets) * 100) : 0;
+    const max = Math.max(1, ...trend.map((t) => t.n));
+    const stats = [
+        { label: 'Total peserta', value: String(s.total), Icon: Users, tone: 'bg-indigo-100 text-indigo-600' },
+        { label: 'Terdaftar (lunas)', value: String(s.lunas), Icon: UserCheck, tone: 'bg-emerald-100 text-emerald-600' },
+        { label: 'Menunggu', value: String(s.menunggu), Icon: Clock, tone: 'bg-amber-100 text-amber-600' },
+        { label: 'Batal / kedaluwarsa', value: String(s.batal), Icon: UserX, tone: 'bg-slate-200 text-slate-600' },
+        { label: 'Pendapatan', value: rp(s.revenue), Icon: Banknote, tone: 'bg-violet-100 text-violet-600' },
+        { label: 'Kehadiran', value: s.tickets > 0 ? `${s.hadir}/${s.tickets} (${pct}%)` : '-', Icon: ScanLine, tone: 'bg-sky-100 text-sky-600' },
+    ];
+
+    return (
+        <PanelLayout title="Laporan">
+            <div className="space-y-5">
+                <div className={`${box} flex items-start gap-5 p-6`}>
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
+                        <Layers className="size-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-extrabold">{isParent ? 'Laporan gabungan' : 'Laporan event'}</h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                            {isParent
+                                ? 'Angka dijumlahkan dari semua sub-event. Halaman ini hanya untuk melihat; pengelolaan dilakukan di menu sub-event.'
+                                : 'Rekap pendaftaran, pendapatan, dan kehadiran event ini.'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {stats.map(({ label, value, Icon, tone }) => (
+                        <div key={label} className={`${box} flex items-center gap-4 p-4`}>
+                            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="size-5" /></div>
+                            <div className="min-w-0">
+                                <div className="truncate text-2xl font-extrabold leading-none">{value}</div>
+                                <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className={`${box} p-5`}>
+                    <h3 className="text-lg font-extrabold">Tren pendaftaran lunas per hari</h3>
+                    {trend.length === 0 ? (
+                        <p className="py-8 text-center text-sm font-semibold text-slate-500">Belum ada pendaftaran lunas.</p>
+                    ) : (
+                        <div className="mt-4 flex h-40 items-end gap-2 overflow-x-auto">
+                            {trend.map((t) => (
+                                <div key={t.date} className="flex h-full min-w-[34px] flex-1 flex-col items-center justify-end gap-1">
+                                    <span className="text-[11px] font-bold">{t.n}</span>
+                                    <div className="w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-violet-500" style={{ height: `${Math.max(6, (t.n / max) * 100)}%` }} />
+                                    <span className="whitespace-nowrap text-[10px] font-semibold text-slate-500">{t.date}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {isParent && (
+                    <div className={`${box} overflow-hidden`}>
+                        <h3 className="p-5 text-lg font-extrabold">Perbandingan per sub-event</h3>
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[800px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        <th className="px-5 py-3">Sub-event</th>
+                                        <th className={th}>Peserta</th>
+                                        <th className={th}>Lunas</th>
+                                        <th className={th}>Menunggu</th>
+                                        <th className={th}>Pendapatan</th>
+                                        <th className={th}>Hadir</th>
+                                        <th className="px-5 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {subs.map((c) => (
+                                        <tr key={c.id} className="align-middle">
+                                            <td className="px-5 py-3 font-extrabold">{c.title}</td>
+                                            <td className="px-3 py-3 font-semibold">{c.total}</td>
+                                            <td className="px-3 py-3 font-semibold">{c.lunas}</td>
+                                            <td className="px-3 py-3 font-semibold">{c.menunggu}</td>
+                                            <td className="px-3 py-3 font-semibold">{rp(c.revenue)}</td>
+                                            <td className="px-3 py-3 font-semibold">{c.tickets > 0 ? `${c.hadir}/${c.tickets}` : '-'}</td>
+                                            <td className="px-5 py-3 text-right">
+                                                <Link href={`/panel/event/${c.id}/laporan`} className="inline-flex items-center gap-1 rounded-lg bg-indigo-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-800">Detail<ChevronRight className="size-3.5" /></Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {types.length > 0 && (
+                    <div className={`${box} overflow-hidden`}>
+                        <h3 className="p-5 text-lg font-extrabold">Rincian per jenis tiket</h3>
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[760px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        {isParent && <th className="px-5 py-3">Sub-event</th>}
+                                        <th className={isParent ? th : 'px-5 py-3'}>Tiket</th>
+                                        <th className={th}>Harga</th>
+                                        <th className={th}>Terjual / kuota</th>
+                                        <th className={th}>Hadir</th>
+                                        <th className={th}>Pendapatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {types.map((t, i) => (
+                                        <tr key={`${t.sub}-${t.name}-${i}`} className="align-middle">
+                                            {isParent && <td className="px-5 py-3 font-semibold">{t.sub}</td>}
+                                            <td className={isParent ? th : 'px-5 py-3'}><span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{t.name}</span></td>
+                                            <td className="px-3 py-3 font-extrabold">{t.price > 0 ? rp(t.price) : 'Gratis'}</td>
+                                            <td className="px-3 py-3 font-semibold">{t.sold} / {t.quota}</td>
+                                            <td className="px-3 py-3 font-semibold">{t.hadir}</td>
+                                            <td className="px-3 py-3 font-semibold">{rp(t.revenue)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {cats.length > 0 && (
+                    <div className={`${box} p-5`}>
+                        <h3 className="text-lg font-extrabold">Peserta per kategori</h3>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {cats.map((c) => (
+                                <span key={c.name} className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{c.name} · {c.n}</span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </PanelLayout>
+    );
+}
+=================== resources/js/pages/panel/events/tiket-induk.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { Link } from '@inertiajs/react';
+import { Banknote, ChevronRight, Layers, Ticket, TicketCheck, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+type Sub = { id: number; title: string; method: string | null };
+type Row = { sub_id: number; sub: string; name: string; price: number; quota: number; sold: number; revenue: number; from: string | null; until: string | null; status: string };
+
+const box = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
+const STATUS: Record<string, { label: string; style: string }> = {
+    dibuka: { label: 'Dibuka', style: 'bg-emerald-100 text-emerald-800' },
+    belum: { label: 'Belum dibuka', style: 'bg-amber-100 text-amber-800' },
+    tutup: { label: 'Ditutup', style: 'bg-slate-200 text-slate-700' },
+    habis: { label: 'Habis', style: 'bg-rose-100 text-rose-800' },
+};
+
+export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] }) {
+    const [sub, setSub] = useState('');
+    const list = useMemo(() => rows.filter((r) => !sub || String(r.sub_id) === sub), [rows, sub]);
+    const countBy = (id: number) => rows.filter((r) => r.sub_id === id).length;
+
+    const stats = [
+        { label: 'Jenis tiket', value: String(list.length), Icon: Ticket, tone: 'bg-indigo-100 text-indigo-600' },
+        { label: 'Total kuota', value: String(list.reduce((a, r) => a + r.quota, 0)), Icon: Users, tone: 'bg-violet-100 text-violet-600' },
+        { label: 'Terjual', value: String(list.reduce((a, r) => a + r.sold, 0)), Icon: TicketCheck, tone: 'bg-emerald-100 text-emerald-600' },
+        { label: 'Pendapatan', value: rp(list.reduce((a, r) => a + r.revenue, 0)), Icon: Banknote, tone: 'bg-amber-100 text-amber-600' },
+    ];
+    const chip = (on: boolean) =>
+        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+
+    return (
+        <PanelLayout title="Tiket">
+            <div className="space-y-5">
+                <div className={`${box} flex items-start gap-5 p-6`}>
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
+                        <Layers className="size-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-extrabold">Tiket gabungan</h2>
+                        <p className="mt-1 text-sm text-slate-500">Ringkasan tiket dari semua sub-event. Halaman ini hanya untuk melihat; harga, kuota, dan masa jual diatur lewat tombol Kelola di tiap sub-event.</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {stats.map(({ label, value, Icon, tone }) => (
+                        <div key={label} className={`${box} flex items-center gap-4 p-4`}>
+                            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="size-5" /></div>
+                            <div className="min-w-0">
+                                <div className="truncate text-2xl font-extrabold leading-none">{value}</div>
+                                <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className={`${box} overflow-hidden`}>
+                    <div className="space-y-4 p-5">
+                        <h3 className="text-lg font-extrabold">Daftar tiket <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => setSub('')} className={chip(sub === '')}>Semua sub-event · {rows.length}</button>
+                            {subs.map((c) => (
+                                <button key={c.id} type="button" onClick={() => setSub(String(c.id))} className={chip(sub === String(c.id))}>
+                                    {c.title} · {countBy(c.id)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {list.length === 0 ? (
+                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">
+                            {sub && subs.find((c) => String(c.id) === sub)?.method !== 'ticket' ? 'Sub-event ini memakai formulir, bukan tiket.' : 'Belum ada tiket.'}
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[900px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        <th className="px-5 py-3">Sub-event</th>
+                                        <th className="px-3 py-3">Tiket</th>
+                                        <th className="px-3 py-3">Harga</th>
+                                        <th className="px-3 py-3">Masa jual</th>
+                                        <th className="px-3 py-3">Terjual / kuota</th>
+                                        <th className="px-3 py-3">Pendapatan</th>
+                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-5 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {list.map((r, i) => {
+                                        const st = STATUS[r.status] ?? STATUS.dibuka;
+                                        const pct = r.quota > 0 ? Math.min(100, Math.round((r.sold / r.quota) * 100)) : 0;
+                                        return (
+                                            <tr key={`${r.sub_id}-${r.name}-${i}`} className="align-middle">
+                                                <td className="px-5 py-3 font-semibold">{r.sub}</td>
+                                                <td className="px-3 py-3"><span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.name}</span></td>
+                                                <td className="px-3 py-3 font-extrabold">{r.price > 0 ? rp(r.price) : 'Gratis'}</td>
+                                                <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">{r.from ?? '-'} s/d {r.until ?? '-'}</td>
+                                                <td className="px-3 py-3">
+                                                    <div className="text-xs font-bold">{r.sold} / {r.quota}</div>
+                                                    <div className="mt-1 h-1.5 w-28 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-600" style={{ width: `${pct}%` }} /></div>
+                                                </td>
+                                                <td className="px-3 py-3 font-semibold">{rp(r.revenue)}</td>
+                                                <td className="px-3 py-3"><span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${st.style}`}>{st.label}</span></td>
+                                                <td className="px-5 py-3 text-right">
+                                                    <Link href={`/panel/event/${r.sub_id}/tiket`} className="inline-flex items-center gap-1 rounded-lg bg-indigo-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-800">Kelola<ChevronRight className="size-3.5" /></Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </PanelLayout>
+    );
+}
+=================== resources/js/pages/panel/events/checkin.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import TicketScanner, { type Result } from '@/components/panel/ticket-scanner';
+import { ChevronLeft, ChevronRight, Layers, Search } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+
+type Row = { code: string; reg_id: string | null; name: string; type: string | null; buyer: string | null; at: string | null; sub?: string | null };
+type Props = { eventId: number; rows: Row[]; subs?: string[] };
+
+const PER_PAGE = 25;
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const field = 'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+
+function xsrf() {
+    const m = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : '';
+}
+
+export default function Checkin({ eventId, rows: initial, subs: subList }: Props) {
+    const [rows, setRows] = useState<Row[]>(initial);
+    const [q, setQ] = useState('');
+    const [type, setType] = useState('');
+    const [sub, setSub] = useState('');
+    const [tab, setTab] = useState<'semua' | 'hadir' | 'belum'>('semua');
+    const [page, setPage] = useState(1);
+    const [busy, setBusy] = useState('');
+    const [err, setErr] = useState('');
+
+    const mark = useCallback((code: string, at: string) => {
+        setRows((l) => l.map((r) => (r.code === code ? { ...r, at } : r)));
+    }, []);
+    const onIn = useCallback((r: Result) => { if (r.code && r.at) mark(r.code, r.at); }, [mark]);
+
+    const rowCheckin = async (r: Row) => {
+        setBusy(r.code); setErr('');
+        try {
+            const res = await fetch(`/panel/event/${eventId}/registrasi/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': xsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ code: r.code }),
+            });
+            if (!res.ok) throw new Error();
+            const d: Result = await res.json();
+            if ((d.status === 'ok' || d.status === 'duplikat') && d.at) mark(r.code, d.at);
+            else setErr(`Gagal check-in ${r.name}.`);
+        } catch {
+            setErr(`Gagal check-in ${r.name}. Coba lagi.`);
+        } finally {
+            setBusy('');
+        }
+    };
+
+    const subs = useMemo(
+        () => (subList && subList.length > 0 ? subList : Array.from(new Set(rows.map((r) => r.sub).filter(Boolean) as string[]))),
+        [subList, rows],
+    );
+    const hasSub = subs.length > 0;
+
+    // Statistik mengikuti chip sub-event yang dipilih
+    const scoped = useMemo(() => (sub ? rows.filter((r) => r.sub === sub) : rows), [rows, sub]);
+    const total = scoped.length;
+    const hadir = useMemo(() => scoped.filter((r) => r.at).length, [scoped]);
+    const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
+    const types = useMemo(() => Array.from(new Set(rows.map((r) => r.type).filter(Boolean) as string[])), [rows]);
+
+    const subStat = useMemo(() => {
+        const m: Record<string, { t: number; h: number }> = {};
+        for (const s of subs) m[s] = { t: 0, h: 0 };
+        for (const r of rows) {
+            if (!r.sub) continue;
+            m[r.sub] = m[r.sub] ?? { t: 0, h: 0 };
+            m[r.sub].t += 1;
+            if (r.at) m[r.sub].h += 1;
+        }
+        return m;
+    }, [rows, subs]);
+
+    const list = useMemo(() => {
+        const k = q.trim().toLowerCase();
+        return scoped.filter((r) =>
+            (!type || r.type === type) &&
+            (tab === 'semua' || (tab === 'hadir' ? !!r.at : !r.at)) &&
+            (!k || [r.reg_id ?? '', r.name, r.buyer ?? '', r.code, r.sub ?? ''].some((v) => v.toLowerCase().includes(k))),
+        );
+    }, [scoped, q, type, tab]);
+
+    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    const cur = Math.min(page, pages);
+    const view = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
+    const from = list.length === 0 ? 0 : (cur - 1) * PER_PAGE + 1;
+    const to = Math.min(cur * PER_PAGE, list.length);
+
+    const stat = (t: string, v: number, extra?: string) => (
+        <div className={`${card} px-5 py-4`}>
+            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{t}</div>
+            <div className="mt-1 text-2xl font-extrabold">{v}{extra && <span className="ml-1 text-sm font-semibold text-slate-500">{extra}</span>}</div>
+        </div>
+    );
+    const tabBtn = (k: typeof tab, label: string) => (
+        <button type="button" onClick={() => { setTab(k); setPage(1); }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${tab === k ? 'bg-indigo-900 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'}`}>{label}</button>
+    );
+    const chip = (on: boolean) =>
+        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+
+    return (
+        <PanelLayout title="Check-in">
+            <div className="space-y-5">
+                {hasSub && (
+                    <div className={`${card} flex items-start gap-5 p-6`}>
+                        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
+                            <Layers className="size-6" strokeWidth={2} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-extrabold">Check-in gabungan</h2>
+                            <p className="mt-1 text-sm text-slate-500">Kehadiran dari semua sub-event. Kotak scan di bawah menerima kode tiket atau ID registrasi dari sub-event mana pun.</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                    {stat('Sudah hadir', hadir, `(${pct}%)`)}
+                    {stat('Belum hadir', total - hadir)}
+                    {stat('Total tiket lunas', total)}
+                </div>
+                <div className="-mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                    <div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+
+                <div className={`${card} p-5`}>
+                    <TicketScanner eventId={eventId} inline onCheckedIn={onIn} />
+                </div>
+
+                <div className={`${card} overflow-hidden`}>
+                    <div className="space-y-4 p-5">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                            <div className="flex gap-1 rounded-xl border border-slate-200 p-1 dark:border-white/10">
+                                {tabBtn('semua', 'Semua')}{tabBtn('hadir', 'Sudah hadir')}{tabBtn('belum', 'Belum hadir')}
+                            </div>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Cari ID, nama, pembeli, kode" className={`${field} w-64 pl-9`} />
+                            </div>
+                            {types.length > 1 && (
+                                <select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className={field}>
+                                    <option value="">Semua jenis tiket</option>
+                                    {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            )}
+                        </div>
+                        {hasSub && (
+                            <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => { setSub(''); setPage(1); }} className={chip(sub === '')}>
+                                    Semua sub-event · {rows.filter((r) => r.at).length}/{rows.length}
+                                </button>
+                                {subs.map((s) => (
+                                    <button key={s} type="button" onClick={() => { setSub(s); setPage(1); }} className={chip(sub === s)}>
+                                        {s} · {subStat[s]?.h ?? 0}/{subStat[s]?.t ?? 0}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {err && <p className="px-5 pb-3 text-xs font-semibold text-rose-600">{err}</p>}
+
+                    {view.length === 0 ? (
+                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{total === 0 ? 'Belum ada tiket lunas.' : 'Tidak ada data yang cocok.'}</p>
+                    ) : (
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[820px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        <th className="w-[210px] px-5 py-3">ID registrasi</th>
+                                        <th className="px-3 py-3">Peserta</th>
+                                        {hasSub && <th className="px-3 py-3">Sub-event</th>}
+                                        <th className="px-3 py-3">Jenis</th>
+                                        <th className="px-3 py-3">Pembeli</th>
+                                        <th className="w-[170px] px-3 py-3">Kehadiran</th>
+                                        <th className="w-[120px] px-5 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {view.map((r) => (
+                                        <tr key={r.code} className="align-middle">
+                                            <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                            <td className="px-3 py-3"><div className="font-extrabold">{r.name}</div><div className="font-mono text-[11px] text-slate-500">{r.code}</div></td>
+                                            {hasSub && <td className="px-3 py-3 font-semibold">{r.sub}</td>}
+                                            <td className="px-3 py-3">{r.type && <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span>}</td>
+                                            <td className="px-3 py-3 font-semibold">{r.buyer}</td>
+                                            <td className="px-3 py-3">
+                                                {r.at
+                                                    ? <div><span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">Sudah hadir</span><div className="mt-1 text-xs text-slate-500">{r.at}</div></div>
+                                                    : <span className="whitespace-nowrap rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">Belum hadir</span>}
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                {!r.at && <button type="button" disabled={busy === r.code} onClick={() => rowCheckin(r)} className="rounded-lg bg-indigo-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-800 disabled:opacity-60">{busy === r.code ? '...' : 'Check-in'}</button>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {list.length > PER_PAGE && (
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-xs font-semibold text-slate-500 dark:border-white/10">
+                            <span>{from}-{to} dari {list.length}</span>
+                            <div className="flex items-center gap-2">
+                                <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronLeft className="h-4 w-4" /></button>
+                                <span>Halaman {cur} / {pages}</span>
+                                <button type="button" disabled={cur >= pages} onClick={() => setPage(cur + 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronRight className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </PanelLayout>
+    );
+}
+=================== resources/js/pages/panel/events/registrasi-induk.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { Link, router } from '@inertiajs/react';
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Download, Layers, Paperclip, Plus, Search, Ticket, Trash2, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
+type Field = { key: string; label: string; type: FieldType; required: boolean; options: string[]; archived?: boolean; stage?: 'register' | 'after' };
+type Item = { key?: string; label: string; type: FieldType; required: boolean; optionsText: string; stage: 'register' | 'after' };
+type Sub = {
+    id: number; title: string; ticket: boolean; fee: number; published: boolean; isTeam: boolean; quota: number | null;
+    fields: Field[]; message: string; count: number; summary: { orders: number; sold: number; pending: number };
+};
+type Row = {
+    kind: 'form' | 'tiket'; id: number | null; sub_id: number; sub: string; reg_id: string | null; name: string; email: string; phone: string | null;
+    school: string | null; category: string | null; status: string; amount: number; proof: boolean; note: string | null; at: string; followup_done: boolean;
+    teams: { name: string; category: string | null }[]; answers: Record<string, unknown>;
+    order: string | null; buyer: string | null; type: string | null; code: string | null; contact: string | null; support: string | null;
+};
+type Props = { subs: Sub[]; rows: Row[] };
+
+const PER_PAGE = 25;
+const TYPES: { value: FieldType; label: string }[] = [
+    { value: 'text', label: 'Teks pendek' },
+    { value: 'textarea', label: 'Teks panjang' },
+    { value: 'number', label: 'Angka' },
+    { value: 'select', label: 'Pilihan (dropdown)' },
+    { value: 'checkbox', label: 'Pilihan ganda (centang)' },
+    { value: 'date', label: 'Tanggal' },
+    { value: 'file', label: 'Unggah file / foto' },
+];
+const STATUS: Record<string, { label: string; style: string }> = {
+    menunggu: { label: 'Menunggu verifikasi', style: 'bg-amber-100 text-amber-800' },
+    terdaftar: { label: 'Terdaftar', style: 'bg-emerald-100 text-emerald-800' },
+    ditolak: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800' },
+    batal: { label: 'Dibatalkan', style: 'bg-slate-200 text-slate-700' },
+};
+const needsOptions = (t: FieldType) => t === 'select' || t === 'checkbox';
+const toItems = (fs: Field[]): Item[] =>
+    fs.filter((f) => !f.archived).map((f) => ({ key: f.key, label: f.label, type: f.type, required: f.required, optionsText: (f.options ?? []).join('\n'), stage: f.stage === 'after' ? 'after' : 'register' }));
+const rupiah = (n: number) => 'Rp' + new Intl.NumberFormat('id-ID').format(n);
+
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const field = 'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+const iconBtn = 'rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-white/10';
+const th = 'px-3 py-3';
+const pill = 'whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200';
+
+export default function RegistrasiInduk({ subs, rows }: Props) {
+    const [sub, setSub] = useState('');
+    const [tab, setTab] = useState<'data' | 'form'>('data');
+    const [q, setQ] = useState('');
+    const [st, setSt] = useState('');
+    const [tp, setTp] = useState('');
+    const [page, setPage] = useState(1);
+    const [items, setItems] = useState<Item[]>([]);
+    const [errors, setErrors] = useState<string[]>([]);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    const cur = subs.find((s) => String(s.id) === sub) ?? null;
+    const mode: 'all' | 'ticket' | 'form' = !cur ? 'all' : cur.ticket ? 'ticket' : 'form';
+
+    const scoped = useMemo(() => rows.filter((r) => !sub || String(r.sub_id) === sub), [rows, sub]);
+    const count = (s: string) => scoped.filter((r) => r.status === s).length;
+    const open = (rs: Row[]) => rs.filter((r) => r.status !== 'ditolak' && r.status !== 'batal').length;
+    const statuses = useMemo(() => Array.from(new Set(scoped.map((r) => r.status))), [scoped]);
+    const ticketTypes = useMemo(() => Array.from(new Set(scoped.map((r) => r.type).filter(Boolean) as string[])), [scoped]);
+
+    const list = useMemo(() => {
+        const k = q.trim().toLowerCase();
+        return scoped.filter((r) =>
+            (!st || r.status === st) &&
+            (!tp || r.type === tp) &&
+            (!k || [r.reg_id ?? '', r.name, r.email, r.phone ?? '', r.school ?? '', r.sub, r.category ?? '', r.buyer ?? '', r.order ?? '', r.code ?? '', ...r.teams.map((t) => t.name)].some((v) => v.toLowerCase().includes(k))),
+        );
+    }, [scoped, q, st, tp]);
+
+    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    const pg = Math.min(page, pages);
+    const view = list.slice((pg - 1) * PER_PAGE, pg * PER_PAGE);
+    const from = list.length === 0 ? 0 : (pg - 1) * PER_PAGE + 1;
+    const to = Math.min(pg * PER_PAGE, list.length);
+
+    const shown = cur && !cur.ticket && !cur.isTeam ? cur.fields : [];
+    const hasAfter = !!cur && cur.fields.some((f) => !f.archived && f.stage === 'after');
+    const cell = (v: unknown) => (Array.isArray(v) ? v.join(', ') : v == null ? '' : String(v));
+    const showAnswer = (r: Row, k: string) => {
+        const v = r.answers[k];
+        if (v && typeof v === 'object' && !Array.isArray(v) && (v as { file?: boolean }).file) {
+            return (
+                <a href={`/panel/event/${r.sub_id}/registrasi/berkas/${r.id}/${k}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-indigo-700 underline">
+                    <Paperclip className="h-3.5 w-3.5" />{(v as { name: string }).name}
+                </a>
+            );
+        }
+        return cell(v);
+    };
+
+    const chip = (on: boolean) =>
+        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+
+    const pickSub = (v: string) => {
+        setSub(v); setSt(''); setTp(''); setQ(''); setPage(1); setTab('data'); setErrors([]); setSaved(false);
+        setItems(toItems(subs.find((s) => String(s.id) === v)?.fields ?? []));
+    };
+
+    const patch = (i: number, p: Partial<Item>) => { setSaved(false); setItems((a) => a.map((x, j) => (j === i ? { ...x, ...p } : x))); };
+    const move = (i: number, d: number) => { setSaved(false); setItems((a) => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; [c[i], c[j]] = [c[j], c[i]]; return c; }); };
+    const add = () => { setSaved(false); setItems((a) => [...a, { label: '', type: 'text', required: false, optionsText: '', stage: 'register' }]); };
+    const remove = (i: number) => { setSaved(false); setItems((a) => a.filter((_, j) => j !== i)); };
+
+    const save = () => {
+        if (!cur || cur.ticket) return;
+        setErrors([]);
+        setSaved(false);
+        router.put(
+            `/panel/event/${cur.id}/registrasi/form`,
+            {
+                message: cur.message,
+                fields: items.map((f) => ({
+                    key: f.key ?? null,
+                    stage: f.stage,
+                    label: f.label.trim(),
+                    type: f.type,
+                    required: f.required,
+                    options: needsOptions(f.type) ? f.optionsText.split('\n').map((s) => s.trim()).filter(Boolean) : [],
+                })),
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setSaving(true),
+                onFinish: () => setSaving(false),
+                onSuccess: (p) => {
+                    const next = (p.props as unknown as Props).subs.find((s) => s.id === cur.id);
+                    setItems(toItems(next?.fields ?? []));
+                    setSaved(true);
+                },
+                onError: (e) => setErrors(Object.values(e)),
+            },
+        );
+    };
+
+    const review = (r: Row, status: 'terdaftar' | 'ditolak') => {
+        let note: string | null = null;
+        if (status === 'ditolak') {
+            note = window.prompt('Alasan penolakan (akan terlihat oleh pendaftar):');
+            if (note === null) return;
+            if (!note.trim()) { window.alert('Alasan penolakan wajib diisi.'); return; }
+        }
+        router.patch(`/panel/event/${r.sub_id}/registrasi/pendaftar/${r.id}/status`, { status, note }, { preserveScroll: true });
+    };
+
+    const stat = (t: string, v: string, s: string) => (
+        <div className={`${card} p-5`}>
+            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{t}</div>
+            <div className="mt-2 text-3xl font-extrabold">{v}</div>
+            <div className="mt-1 text-xs text-slate-500">{s}</div>
+        </div>
+    );
+    const badge = (s: string) => {
+        const x = STATUS[s] ?? { label: s || '-', style: 'bg-slate-200 text-slate-700' };
+        return <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${x.style}`}>{x.label}</span>;
+    };
+
+    const unpublished = subs.filter((s) => !s.published);
+
+    return (
+        <PanelLayout title="Registrasi">
+            <div className="space-y-5">
+                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
+                    <div className="flex items-start gap-4">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white">
+                            {mode === 'ticket' ? <Ticket className="h-6 w-6" /> : <Layers className="h-6 w-6" />}
+                        </span>
+                        <div>
+                            <h2 className="text-xl font-extrabold">
+                                {mode === 'all' && 'Registrasi semua sub-event'}
+                                {mode === 'ticket' && `Pendaftaran lewat pembelian tiket · ${cur?.title}`}
+                                {mode === 'form' && `Pendaftaran transfer manual · ${cur?.title}`}
+                            </h2>
+                            <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+                                {mode === 'all' && 'Pendaftar dari seluruh sub-event. Pilih satu sub-event di bawah untuk mengelolanya sesuai metode pendaftarannya: tiket atau transfer manual.'}
+                                {mode === 'ticket' && 'Pada sub-event ini peserta tidak mengisi formulir. Mereka terdaftar saat membeli tiket, dan setiap pemegang tiket di bawah adalah peserta.'}
+                                {mode === 'form' && (cur && cur.fee > 0 ? `Biaya pendaftaran ${rupiah(cur.fee)}. Peserta mengisi formulir dan mengunggah bukti transfer, lalu panitia memverifikasi.` : 'Peserta mengisi formulir pendaftaran, lalu panitia memverifikasi.')}
+                            </p>
+                            {mode === 'form' && cur && !cur.published && <p className="mt-2 text-xs font-semibold text-amber-700">Sub-event belum terbit, jadi form publik belum bisa dibuka.</p>}
+                            {mode === 'all' && unpublished.length > 0 && <p className="mt-2 text-xs font-semibold text-amber-700">Belum terbit: {unpublished.map((s) => s.title).join(', ')}.</p>}
+                        </div>
+                    </div>
+                    {mode === 'ticket' && cur && (
+                        <Link href={`/panel/event/${cur.id}/tiket`} className="rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800">Atur jenis & harga tiket</Link>
+                    )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                    {mode === 'all' && <>{stat('Pendaftar', String(open(scoped)), 'dari semua sub-event')}{stat('Menunggu verifikasi', String(count('menunggu')), 'perlu ditinjau')}{stat('Terdaftar', String(count('terdaftar')), 'sudah terdaftar')}</>}
+                    {mode === 'ticket' && cur && <>{stat('Pesanan', String(cur.summary.orders), 'Total pesanan tiket')}{stat('Tiket terjual', String(cur.summary.sold), 'Pembayaran lunas')}{stat('Menunggu verifikasi', String(cur.summary.pending), 'Belum disetujui admin')}</>}
+                    {mode === 'form' && cur && <>{stat(cur.isTeam ? 'Tim terdaftar' : 'Pendaftar', String(cur.count), cur.quota ? `dari kuota ${cur.quota}` : 'tanpa batas kuota')}{stat('Menunggu verifikasi', String(count('menunggu')), 'perlu ditinjau')}{stat('Disetujui', String(count('terdaftar')), 'sudah terdaftar')}</>}
+                </div>
+
+                {mode === 'form' && (
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => setTab('data')} className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === 'data' ? 'bg-indigo-900 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5'}`}>Pendaftar ({scoped.length})</button>
+                        <button type="button" onClick={() => setTab('form')} className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === 'form' ? 'bg-indigo-900 text-white' : 'border border-slate-200 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5'}`}>Susun form</button>
+                    </div>
+                )}
+
+                {(mode !== 'form' || tab === 'data') && (
+                    <div className={`${card} overflow-hidden`}>
+                        <div className="space-y-4 p-5">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                                <div className="relative min-w-[200px]">
+                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                    <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder={mode === 'ticket' ? 'Cari ID, nama, pembeli, kode' : 'Cari ID, nama, sekolah, sub-event'} className={`${field} w-full pl-9`} />
+                                </div>
+                                {mode === 'ticket' && (
+                                    <select value={tp} onChange={(e) => { setTp(e.target.value); setPage(1); }} className={field}>
+                                        <option value="">Semua jenis tiket</option>
+                                        {ticketTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                )}
+                                <select value={st} onChange={(e) => { setSt(e.target.value); setPage(1); }} className={field}>
+                                    <option value="">Semua status</option>
+                                    {statuses.map((s) => <option key={s} value={s}>{STATUS[s]?.label ?? s}</option>)}
+                                </select>
+                                {mode === 'form' && cur && (
+                                    <a href={`/panel/event/${cur.id}/registrasi/export`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800"><Download className="h-4 w-4" /> Ekspor CSV</a>
+                                )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => pickSub('')} className={chip(sub === '')}>Semua sub-event · {open(rows)}</button>
+                                {subs.map((c) => (
+                                    <button key={c.id} type="button" onClick={() => pickSub(String(c.id))} className={chip(sub === String(c.id))}>{c.title} · {c.count}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {view.length === 0 ? (
+                            <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">
+                                {rows.length === 0 ? 'Belum ada pendaftar di sub-event mana pun.' : scoped.length === 0 ? (mode === 'ticket' ? 'Belum ada pembelian tiket.' : 'Belum ada pendaftar.') : 'Tidak ada data yang cocok.'}
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                                {mode === 'all' && (
+                                    <table className="w-full min-w-[820px] text-left text-sm">
+                                        <thead className="bg-slate-50 dark:bg-white/5">
+                                            <tr className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                                <th className="w-[210px] px-5 py-3">ID registrasi</th><th className={th}>Peserta</th><th className={th}>Sub-event</th><th className={th}>Jenis / kategori</th><th className={th}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                            {view.map((r, i) => (
+                                                <tr key={`${r.sub_id}-${r.kind}-${r.id ?? r.reg_id ?? i}-${i}`} className="align-middle">
+                                                    <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                                    <td className="px-3 py-3 font-extrabold">{r.name}</td>
+                                                    <td className="px-3 py-3 font-semibold">{r.sub}</td>
+                                                    <td className="px-3 py-3">{r.category ? <span className={pill}>{r.kind === 'tiket' ? `Tiket ${r.category}` : r.category}</span> : r.teams.length > 0 ? `${r.teams.length} tim` : ''}</td>
+                                                    <td className="px-3 py-3">{badge(r.status)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+
+                                {mode === 'ticket' && (
+                                    <table className="w-full min-w-[860px] text-left text-sm">
+                                        <thead className="bg-slate-50 dark:bg-white/5">
+                                            <tr className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                                <th className="w-[210px] px-5 py-3">ID registrasi</th><th className={th}>Peserta</th><th className={th}>Jenis</th><th className={th}>Pembeli</th><th className={th}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                            {view.map((r, i) => (
+                                                <tr key={`${r.order}-${i}`} className="align-top">
+                                                    <td className="px-5 py-3.5 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                                    <td className="px-3 py-3.5">
+                                                        <div className="font-extrabold">{r.name}</div>
+                                                        <div className="text-xs text-slate-500">{r.code ?? `Pesanan ${r.order}`}</div>
+                                                        {r.contact && <div className="text-xs text-slate-500">{r.contact}</div>}
+                                                        {r.support && <div className="text-xs font-semibold text-indigo-700">Mendukung: {r.support}</div>}
+                                                    </td>
+                                                    <td className="px-3 py-3.5"><span className={pill}>{r.type}</span></td>
+                                                    <td className="px-3 py-3.5"><div className="font-semibold">{r.buyer}</div><div className="text-xs text-slate-500">{r.email}</div></td>
+                                                    <td className="px-3 py-3.5">{badge(r.status)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+
+                                {mode === 'form' && cur && (
+                                    <table className="w-full min-w-[900px] text-left text-sm">
+                                        <thead className="bg-slate-50 dark:bg-white/5">
+                                            <tr className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                                <th className="px-5 py-3">{cur.isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
+                                                <th className={th}>Sekolah / instansi</th>
+                                                <th className={th}>{cur.isTeam ? 'Tim' : 'Kategori'}</th>
+                                                {cur.fee > 0 && <th className={th}>Tagihan</th>}
+                                                {cur.fee > 0 && <th className={th}>Bukti</th>}
+                                                <th className={th}>Status</th>
+                                                <th className={th}>Waktu</th>
+                                                {shown.map((f) => <th key={f.key} className={th}>{f.label}{f.archived ? ' (arsip)' : ''}</th>)}
+                                                <th />
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                            {view.map((r) => (
+                                                <tr key={r.id} className="align-top">
+                                                    <td className="px-5 py-3"><div className="font-semibold">{r.name}</div><div className="text-xs text-slate-500">{r.email}</div><div className="text-xs text-slate-500">{r.phone}</div></td>
+                                                    <td className="px-3 py-3">{r.school ?? ''}</td>
+                                                    <td className="px-3 py-3">{cur.isTeam ? r.teams.map((t, j) => <div key={j}>{t.name}{t.category ? <span className="text-xs text-slate-500"> ({t.category})</span> : null}</div>) : r.category ?? ''}</td>
+                                                    {cur.fee > 0 && <td className="whitespace-nowrap px-3 py-3">{rupiah(r.amount)}</td>}
+                                                    {cur.fee > 0 && (
+                                                        <td className="px-3 py-3">
+                                                            {r.proof ? <a href={`/panel/event/${r.sub_id}/registrasi/bukti/${r.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-indigo-700 underline"><Paperclip className="h-3.5 w-3.5" />Lihat</a> : '-'}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-3 py-3">
+                                                        {badge(r.status)}
+                                                        {r.status === 'ditolak' && r.note && <div className="mt-1 max-w-[200px] text-xs text-slate-500">{r.note}</div>}
+                                                        {r.status === 'terdaftar' && !cur.isTeam && hasAfter && <div className="mt-1 text-xs text-slate-500">{r.followup_done ? 'Data lengkap' : 'Menunggu data lanjutan'}</div>}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-3 py-3">{r.at}</td>
+                                                    {shown.map((f) => <td key={f.key} className="px-3 py-3">{showAnswer(r, f.key)}</td>)}
+                                                    <td className="whitespace-nowrap px-3 py-2">
+                                                        {r.status !== 'terdaftar' && <button type="button" className={`${iconBtn} text-emerald-700`} aria-label="Setujui" title="Setujui" onClick={() => review(r, 'terdaftar')}><Check className="h-4 w-4" /></button>}
+                                                        {r.status !== 'ditolak' && <button type="button" className={`${iconBtn} text-amber-700`} aria-label="Tolak" title="Tolak" onClick={() => review(r, 'ditolak')}><X className="h-4 w-4" /></button>}
+                                                        <button type="button" className={`${iconBtn} text-rose-600`} aria-label="Hapus pendaftar" title="Hapus" onClick={() => { if (confirm(`Hapus pendaftar ${r.name}? Data dan berkasnya ikut terhapus.`)) router.delete(`/panel/event/${r.sub_id}/registrasi/pendaftar/${r.id}`, { preserveScroll: true }); }}><Trash2 className="h-4 w-4" /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        )}
+
+                        {list.length > PER_PAGE && (
+                            <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-xs font-semibold text-slate-500 dark:border-white/10">
+                                <span>{from}-{to} dari {list.length}</span>
+                                <div className="flex items-center gap-2">
+                                    <button type="button" disabled={pg <= 1} onClick={() => setPage(pg - 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronLeft className="h-4 w-4" /></button>
+                                    <span>Halaman {pg} / {pages}</span>
+                                    <button type="button" disabled={pg >= pages} onClick={() => setPage(pg + 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronRight className="h-4 w-4" /></button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {mode === 'form' && tab === 'form' && cur && (
+                    <div className="space-y-4">
+                        {items.map((f, i) => (
+                            <div key={f.key ?? `new-${i}`} className={`${card} space-y-3 p-5`}>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <input value={f.label} onChange={(e) => patch(i, { label: e.target.value })} placeholder="Label kolom, misalnya Nama sekolah" maxLength={120} className={`${field} min-w-0 flex-1`} />
+                                    <select value={f.type} onChange={(e) => patch(i, { type: e.target.value as FieldType })} className={field}>
+                                        {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    </select>
+                                    {!cur.isTeam && (
+                                        <select value={f.stage} onChange={(e) => patch(i, { stage: e.target.value as 'register' | 'after' })} className={field}>
+                                            <option value="register">Diisi saat daftar</option>
+                                            <option value="after">Diisi setelah disetujui</option>
+                                        </select>
+                                    )}
+                                    <label className="flex items-center gap-2 text-sm font-semibold">
+                                        <input type="checkbox" checked={f.required} onChange={(e) => patch(i, { required: e.target.checked })} /> Wajib
+                                    </label>
+                                    <button type="button" className={iconBtn} disabled={i === 0} onClick={() => move(i, -1)} aria-label="Naik"><ArrowUp className="h-4 w-4" /></button>
+                                    <button type="button" className={iconBtn} disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Turun"><ArrowDown className="h-4 w-4" /></button>
+                                    <button type="button" className={`${iconBtn} text-rose-600`} onClick={() => remove(i)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></button>
+                                </div>
+                                {needsOptions(f.type) && (
+                                    <textarea value={f.optionsText} onChange={(e) => patch(i, { optionsText: e.target.value })} rows={3} placeholder={'Satu pilihan per baris\nContoh:\nSD\nSMP\nSMA'} className={`${field} w-full`} />
+                                )}
+                                {f.type === 'file' && <p className="text-xs text-slate-500">Pendaftar bisa mengunggah JPG, PNG, WEBP, atau PDF, maksimal 5 MB per berkas. Berkas tersimpan privat dan hanya bisa dibuka dari tab Pendaftar.</p>}
+                            </div>
+                        ))}
+
+                        <button type="button" onClick={add} className="inline-flex items-center gap-2 rounded-xl border-2 border-dashed border-indigo-300 px-4 py-3 text-sm font-bold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400/40 dark:text-indigo-300 dark:hover:bg-white/5">
+                            <Plus className="h-4 w-4" /> Tambah kolom
+                        </button>
+
+                        {errors.length > 0 && (
+                            <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+                                {errors.map((e, i) => <div key={i}>{e}</div>)}
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow hover:opacity-90 disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan form'}</button>
+                            {saved && <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><Check className="h-4 w-4" /> Tersimpan</span>}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </PanelLayout>
+    );
+}
+=================== resources/js/pages/panel/events/tiket.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { CheckCircle2, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+
+type T = {
+    id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number;
+    custom_sale: boolean; require_holder_details: boolean; max_per_order: number;
+    support_enabled: boolean; support_options: string[]; support_ranking: { name: string; votes: number }[];
+    sold: number; remaining: number; revenue: number; locked: boolean;
+};
+type Props = { eventId: number; salesOpen: boolean; feePercent: number; types: T[] };
+
+const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const lbl = 'text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300';
+const inp = 'mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:bg-slate-100 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
+const btn = 'rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
+
+function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+    return (
+        <button type="button" role="switch" aria-checked={on} disabled={disabled} onClick={() => onChange(!on)} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${on ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-white/20'}`}>
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`} />
+        </button>
+    );
+}
+function Step({ n, t }: { n: number; t: string }) {
+    return <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-700 text-sm font-extrabold text-white">{n}</span><h4 className="text-base font-extrabold">{t}</h4></div>;
+}
+
+function SupportEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const items = value.split('\n').map((o) => o.trim()).filter(Boolean);
+    const [draft, setDraft] = useState('');
+    const push = (raw: string[]) => {
+        const next = [...items];
+        for (const r of raw.map((x) => x.trim()).filter(Boolean)) {
+            if (next.length >= 50) break;
+            if (!next.some((i) => i.toLowerCase() === r.toLowerCase())) next.push(r.slice(0, 60));
+        }
+        onChange(next.join('\n'));
+    };
+    const add = () => { push([draft]); setDraft(''); };
+    const remove = (i: number) => onChange(items.filter((_, j) => j !== i).join('\n'));
+    const ok = items.length >= 2;
+
+    return (
+        <div className="mt-4">
+            <div className="flex items-center justify-between">
+                <span className={lbl}>Daftar pilihan</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{items.length} pilihan</span>
+            </div>
+
+            <div className="mt-2 flex gap-2">
+                <input
+                    value={draft}
+                    maxLength={60}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+                    onPaste={(e) => {
+                        const t = e.clipboardData.getData('text');
+                        if (t.includes('\n')) { e.preventDefault(); push(t.split('\n')); setDraft(''); }
+                    }}
+                    placeholder="Ketik nama pilihan, lalu tekan Enter"
+                    className={`${inp} !mt-0 flex-1`}
+                />
+                <button type="button" onClick={add} disabled={draft.trim() === ''} className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-700 px-4 text-sm font-extrabold text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" /> Tambah</button>
+            </div>
+
+            {items.length === 0 ? (
+                <div className="mt-3 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-white/10">Belum ada pilihan. Contoh: nama peserta, tim, atau kategori.</div>
+            ) : (
+                <ol className="mt-3 space-y-2">
+                    {items.map((o, i) => (
+                        <li key={o} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-extrabold text-indigo-800">{i + 1}</span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-bold">{o}</span>
+                            <button type="button" aria-label={`Hapus ${o}`} onClick={() => remove(i)} className="flex h-8 w-8 items-center justify-center rounded-xl text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                        </li>
+                    ))}
+                </ol>
+            )}
+
+            <p className={`mt-2 text-xs ${ok ? 'text-emerald-700' : 'text-amber-700'}`}>{ok ? 'Satu tiket = satu dukungan untuk pilihan yang dipilih pembeli.' : 'Tambahkan minimal 2 pilihan agar tiket bisa disimpan.'}</p>
+        </div>
+    );
+}
+
+export default function Tiket({ eventId, salesOpen, feePercent, types }: Props) {
+    const pg = usePage().props as any;
+    const evStart: string = pg.event?.starts_at ?? '';
+    const evEnd: string = pg.event?.ends_at ?? '';
+    const today = new Date().toISOString().slice(0, 10);
+    const span = evStart && evEnd ? Math.max(1, Math.round((Date.parse(evEnd) - Date.parse(evStart)) / 86400000) + 1) : 1;
+
+    const blank = { name: '', price: '', quota: '', valid_days: String(span), custom_sale: false, valid_from: today, valid_until: evEnd || today, require_holder_details: true, max_per_order: '10', support_enabled: false, support_options: '' };
+    const [editing, setEditing] = useState<T | 'new' | null>(null);
+    const form = useForm<typeof blank>(blank);
+
+    const base = `/panel/event/${eventId}/tiket`;
+    const locked = editing !== null && editing !== 'new' && editing.locked;
+    const d = form.data;
+    const free = d.price !== '' && Number(d.price) === 0;
+    const complete = d.name.trim() !== '' && d.price !== '' && d.quota !== '' && d.valid_days !== '' && (!d.custom_sale || (d.valid_from !== '' && d.valid_until !== '')) && (!d.support_enabled || d.support_options.split('\n').map((o) => o.trim()).filter(Boolean).length >= 2);
+
+    const openNew = () => { form.clearErrors(); form.setData(blank); setEditing('new'); };
+    const openEdit = (t: T) => {
+        form.clearErrors();
+        form.setData({ name: t.name, price: String(t.price), quota: String(t.quota), valid_days: String(t.valid_days), custom_sale: t.custom_sale, valid_from: t.valid_from, valid_until: t.valid_until, require_holder_details: t.require_holder_details, max_per_order: String(t.max_per_order), support_enabled: t.support_enabled, support_options: t.support_options.join('\n') });
+        setEditing(t);
+    };
+    const close = () => { setEditing(null); form.clearErrors(); };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.transform((x) => ({ ...x, valid_from: x.custom_sale ? x.valid_from : null, valid_until: x.custom_sale ? x.valid_until : null, support_options: x.support_enabled ? x.support_options.split('\n').map((o) => o.trim()).filter(Boolean) : [] }) as any);
+        const opts = { preserveScroll: true, onSuccess: close };
+        if (editing === 'new') form.post(`${base}/jenis`, opts);
+        else if (editing) form.put(`${base}/jenis/${editing.id}`, opts);
+    };
+
+    const toggle = () => router.post(`${base}/jual`, { open: !salesOpen }, { preserveScroll: true });
+    const remove = (t: T) => { if (confirm(`Hapus jenis tiket "${t.name}"?`)) router.delete(`${base}/jenis/${t.id}`, { preserveScroll: true }); };
+
+    const err = (k: keyof typeof blank) => form.errors[k] && <p className="mt-1 text-xs text-rose-600">{form.errors[k]}</p>;
+    const totalSold = types.reduce((a, t) => a + t.sold, 0);
+    const totalRevenue = types.reduce((a, t) => a + t.revenue, 0);
+
+    return (
+        <PanelLayout title="Tiket">
+            <div className="space-y-5">
+
+                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
+                    <div>
+                        <h2 className="text-xl font-extrabold">Penjualan tiket {salesOpen ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{salesOpen ? 'Pengunjung bisa membeli tiket sekarang. Tutup penjualan kalau kuota habis atau acara sudah dekat.' : 'Pengunjung tidak bisa membeli tiket. Buka kembali kapan saja.'}</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked={salesOpen} onClick={toggle} className={`relative h-8 w-14 rounded-full transition ${salesOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20'}`}>
+                        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${salesOpen ? 'left-7' : 'left-1'}`} />
+                    </button>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                    <div className={`${card} p-5`}><div className={lbl}>Jenis tiket</div><div className="mt-2 text-3xl font-extrabold">{types.length}</div></div>
+                    <div className={`${card} p-5`}><div className={lbl}>Tiket terpakai</div><div className="mt-2 text-3xl font-extrabold">{totalSold}</div></div>
+                    <div className={`${card} p-5`}><div className={lbl}>Penjualan lunas</div><div className="mt-2 text-3xl font-extrabold text-indigo-700">{rp(totalRevenue)}</div></div>
+                </div>
+
+                <div className={`${card} p-6`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="text-xl font-extrabold">Jenis tiket</h3>
+                        <button type="button" onClick={openNew} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah jenis</button>
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        {types.map((t) => {
+                            const pct = t.quota > 0 ? Math.min(100, Math.round((t.sold / t.quota) * 100)) : 0;
+                            return (
+                                <div key={t.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-lg font-extrabold">{t.name}</div>
+                                            <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">{t.price === 0 ? 'Gratis' : rp(t.price)}</div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button type="button" aria-label="Ubah" onClick={() => openEdit(t)} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
+                                            <button type="button" aria-label="Hapus" disabled={t.locked} title={t.locked ? 'Sudah ada pesanan' : 'Hapus'} onClick={() => remove(t)} className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} /></div>
+                                    <div className="mt-2 flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>Terpakai {t.sold} dari {t.quota}</span><span>Sisa {t.remaining}</span></div>
+                                    <dl className="mt-3 space-y-1 text-xs text-slate-500">
+                                        <div className="flex justify-between"><dt>Masa berlaku</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.valid_days} hari sejak tanggal event</dd></div>
+                                        <div className="flex justify-between"><dt>Jadwal jual</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.custom_sale ? `${t.valid_from} s/d ${t.valid_until}` : 'Mengikuti penjualan event'}</dd></div>
+                                        <div className="flex justify-between"><dt>Data pemegang</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.require_holder_details ? 'Nama, email, telepon' : 'Nama saja'}</dd></div>
+                                        <div className="flex justify-between"><dt>Maks. per pesanan</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.max_per_order} tiket</dd></div>
+                                        <div className="flex justify-between"><dt>Penjualan lunas</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{rp(t.revenue)}</dd></div>
+                                    </dl>
+                                    {t.support_enabled && (
+                                        <div className="mt-3 rounded-xl bg-indigo-50 p-3 dark:bg-indigo-500/10">
+                                            <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-800 dark:text-indigo-200">Pendukung terbanyak</div>
+                                            <ol className="mt-2 space-y-1 text-xs">
+                                                {t.support_ranking.map((r, i) => (
+                                                    <li key={r.name} className="flex justify-between"><span className="font-semibold">{i + 1}. {r.name}</span><span>{r.votes} dukungan</span></li>
+                                                ))}
+                                            </ol>
+                                        </div>
+                                    )}
+                                    {t.locked && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500"><Lock className="h-3.5 w-3.5" /> Harga terkunci karena sudah ada pesanan</p>}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <p className="rounded-2xl bg-sky-50 p-4 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">Biaya layanan {feePercent}% dibayar pembeli di atas harga tiket dan tidak mengurangi hak lembaga. Tiket gratis tidak dikenai biaya layanan dan tidak butuh verifikasi pembayaran.</p>
+            </div>
+
+            {editing && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 p-4" onClick={close}>
+                    <form onSubmit={submit} className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/10">
+                            <div>
+                                <h3 className="text-xl font-extrabold">{editing === 'new' ? 'Buat jenis tiket baru' : `Ubah ${editing.name}`}</h3>
+                                <p className="text-sm text-slate-500">Lengkapi pengaturan tiket untuk event ini.</p>
+                            </div>
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{editing === 'new' ? 'Tiket baru' : 'Ubah tiket'}</span>
+                        </div>
+
+                        <div className="flex-1 space-y-7 overflow-y-auto px-6 py-6">
+                            <section className="space-y-4">
+                                <Step n={1} t="Dasar tiket" />
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <label className="block"><span className={lbl}>Nama jenis tiket</span>
+                                        <input value={d.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Reguler, VIP, Early Bird" className={inp} />
+                                        <span className="mt-1 block text-xs text-slate-500">Nama yang dilihat pembeli.</span>{err('name')}
+                                    </label>
+                                    <label className="block"><span className={lbl}>Harga tiket (Rp)</span>
+                                        <input type="number" inputMode="numeric" min={0} disabled={locked} value={d.price} onChange={(e) => form.setData('price', e.target.value)} placeholder="0 untuk gratis" className={inp} />
+                                        <span className="mt-1 block text-xs text-slate-500">{locked ? 'Terkunci, sudah ada pesanan.' : 'Isi 0 untuk tiket gratis.'}</span>{err('price')}
+                                    </label>
+                                    <label className="block"><span className={lbl}>Kuota tiket</span>
+                                        <input type="number" inputMode="numeric" min={1} value={d.quota} onChange={(e) => form.setData('quota', e.target.value)} placeholder="100" className={inp} />
+                                        <span className="mt-1 block text-xs text-slate-500">Jumlah maksimum tiket yang bisa terjual.</span>{err('quota')}
+                                    </label>
+                                </div>
+                                {free && <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Tiket ini gratis dan tidak dikenakan biaya pembelian.</p>}
+                            </section>
+
+                            <section className="space-y-4 border-t border-slate-100 pt-6 dark:border-white/10">
+                                <Step n={2} t="Jadwal dan masa berlaku" />
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                                        <div className="font-extrabold">Masa berlaku tiket</div>
+                                        <div className="relative mt-2">
+                                            <input type="number" inputMode="numeric" min={1} max={365} value={d.valid_days} onChange={(e) => form.setData('valid_days', e.target.value)} className={`${inp} !mt-0 pr-14`} />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">hari</span>
+                                        </div>
+                                        <p className="mt-1 text-xs text-slate-500">Dihitung sejak tanggal event.</p>{err('valid_days')}
+                                    </div>
+                                    <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="font-extrabold">Jadwal jual khusus tiket ini</div>
+                                                <p className="mt-1 text-xs text-slate-500">Jika dimatikan: tiket mengikuti jadwal penjualan event.</p>
+                                            </div>
+                                            <Switch on={d.custom_sale} onChange={(v) => form.setData('custom_sale', v)} />
+                                        </div>
+                                        {d.custom_sale && (
+                                            <div className="mt-3 grid gap-2">
+                                                <label className="block"><span className={lbl}>Mulai jual</span><input type="date" value={d.valid_from} onChange={(e) => form.setData('valid_from', e.target.value)} className={inp} />{err('valid_from')}</label>
+                                                <label className="block"><span className={lbl}>Akhir jual</span><input type="date" value={d.valid_until} onChange={(e) => form.setData('valid_until', e.target.value)} className={inp} />{err('valid_until')}</label>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 border-t border-slate-100 pt-6 dark:border-white/10">
+                                <Step n={3} t="Data pembeli" />
+                                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
+                                    <div className="flex items-center justify-between gap-4 p-4">
+                                        <div><div className="font-extrabold">Wajibkan data diri pemegang tiket</div><p className="text-xs text-slate-500">Pembeli mengisi nama, email, dan telepon setiap pemegang tiket.</p></div>
+                                        <Switch on={d.require_holder_details} onChange={(v) => form.setData('require_holder_details', v)} />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 p-4">
+                                        <div><div className="font-extrabold">Maksimal tiket per pesanan</div><p className="text-xs text-slate-500">Batas 1 sampai 10 tiket.</p></div>
+                                        <input type="number" inputMode="numeric" min={1} max={10} value={d.max_per_order} onChange={(e) => form.setData('max_per_order', e.target.value)} className={`${inp} !mt-0 w-24 text-center`} />
+                                    </div>
+                                </div>
+                                {err('max_per_order')}
+                                <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div><div className="font-extrabold">Aktifkan pilihan dukungan</div><p className="text-xs text-slate-500">Pembeli wajib memilih satu pilihan yang didukung. Cocok untuk event pendukung terbanyak.</p></div>
+                                        <Switch on={d.support_enabled} onChange={(v) => form.setData('support_enabled', v)} />
+                                    </div>
+                                    {d.support_enabled && (
+                                        <>
+                                            <SupportEditor value={d.support_options} onChange={(v) => form.setData('support_options', v)} />
+                                            {err('support_options')}
+                                        </>
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 dark:border-white/10">
+                            <div className="flex gap-2">
+                                <button type="submit" disabled={!complete || form.processing} className={btn}>{form.processing ? 'Menyimpan…' : editing === 'new' ? 'Tambahkan jenis tiket' : 'Simpan perubahan'}</button>
+                                <button type="button" onClick={close} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold dark:border-white/10">Batal</button>
+                            </div>
+                            {!complete && <p className="max-w-xs text-xs text-slate-500">Lengkapi dulu: nama tiket, harga (isi 0 untuk gratis), kuota, dan masa berlaku.</p>}
+                        </div>
+                    </form>
+                </div>
+            )}
+        </PanelLayout>
+    );
+}
+=================== resources/js/pages/panel/events/registrasi.tsx
+import PanelLayout from '@/components/panel/panel-layout';
+import { Link } from '@inertiajs/react';
+import { Search, Ticket } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+type Row = { order: string; type: string; buyer: string; email: string; status: string; name: string; code: string | null; reg_id: string | null; contact?: string | null; support?: string | null };
+type Props = {
+    eventId: number;
+    summary: { orders: number; sold: number; pending: number };
+    types: string[];
+    rows: Row[];
+};
+
+const STATUS: Record<string, { label: string; style: string }> = {
+    lunas: { label: 'Terdaftar', style: 'bg-emerald-100 text-emerald-800' },
+    menunggu: { label: 'Menunggu verifikasi', style: 'bg-amber-100 text-amber-800' },
+    menunggu_verifikasi: { label: 'Menunggu verifikasi', style: 'bg-amber-100 text-amber-800' },
+    batal: { label: 'Dibatalkan', style: 'bg-slate-200 text-slate-700' },
+    dibatalkan: { label: 'Dibatalkan', style: 'bg-slate-200 text-slate-700' },
+    kedaluwarsa: { label: 'Kedaluwarsa', style: 'bg-slate-200 text-slate-700' },
+    ditolak: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800' },
+};
+const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const field = 'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+
+export default function Registrasi({ eventId, summary, types, rows }: Props) {
+    const [q, setQ] = useState('');
+    const [type, setType] = useState('');
+    const [status, setStatus] = useState('');
+
+    const list = useMemo(() => {
+        const k = q.trim().toLowerCase();
+        return rows.filter((r) =>
+            (!type || r.type === type) &&
+            (!status || r.status === status) &&
+            (!k || [r.reg_id ?? '', r.name, r.buyer, r.email, r.order, r.code ?? ''].some((v) => v.toLowerCase().includes(k))),
+        );
+    }, [rows, q, type, status]);
+
+    const statuses = Array.from(new Set(rows.map((r) => r.status)));
+    const stat = (t: string, v: number, s: string) => (
+        <div className={`${card} p-5`}>
+            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{t}</div>
+            <div className="mt-2 text-3xl font-extrabold">{v}</div>
+            <div className="mt-1 text-xs text-slate-500">{s}</div>
+        </div>
+    );
+
+    return (
+        <PanelLayout title="Registrasi">
+            <div className="space-y-5">
+                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
+                    <div className="flex items-start gap-4">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white"><Ticket className="h-6 w-6" /></span>
+                        <div>
+                            <h2 className="text-xl font-extrabold">Pendaftaran lewat pembelian tiket</h2>
+                            <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Pada paket ini peserta tidak mengisi formulir. Mereka terdaftar saat membeli tiket. Setiap pemegang tiket di bawah adalah peserta event.</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href={`/panel/event/${eventId}/tiket`} className="rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800">Atur jenis & harga tiket</Link>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {stat('Pesanan', summary.orders, 'Total pesanan tiket')}
+                    {stat('Tiket terjual', summary.sold, 'Pembayaran lunas')}
+                    {stat('Menunggu verifikasi', summary.pending, 'Belum disetujui admin')}
+                </div>
+
+                <div className={`${card} overflow-hidden`}>
+                    <div className="flex flex-wrap items-center gap-3 p-5">
+                        <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari ID, nama, pembeli, kode" className={`${field} w-64 pl-9`} />
+                        </div>
+                        <select value={type} onChange={(e) => setType(e.target.value)} className={field}>
+                            <option value="">Semua jenis tiket</option>
+                            {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <select value={status} onChange={(e) => setStatus(e.target.value)} className={field}>
+                            <option value="">Semua status</option>
+                            {statuses.map((s) => <option key={s} value={s}>{STATUS[s]?.label ?? s}</option>)}
+                        </select>
+                    </div>
+                    {list.length === 0 ? (
+                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{rows.length === 0 ? 'Belum ada pembelian tiket.' : 'Tidak ada data yang cocok.'}</p>
+                    ) : (
+                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[860px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                        <th className="w-[210px] px-5 py-3">ID registrasi</th>
+                                        <th className="px-3 py-3">Peserta</th>
+                                        <th className="px-3 py-3">Jenis</th>
+                                        <th className="px-3 py-3">Pembeli</th>
+                                        <th className="px-3 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {list.map((r, i) => {
+                                        const st = STATUS[r.status] ?? { label: r.status, style: 'bg-slate-200 text-slate-700' };
+                                        return (
+                                            <tr key={`${r.order}-${i}`} className="align-top">
+                                                <td className="px-5 py-3.5 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                                <td className="px-3 py-3.5">
+                                                    <div className="font-extrabold">{r.name}</div>
+                                                    <div className="text-xs text-slate-500">{r.code ?? `Pesanan ${r.order}`}</div>
+                                                    {r.contact && <div className="text-xs text-slate-500">{r.contact}</div>}
+                                                    {r.support && <div className="text-xs font-semibold text-indigo-700">Mendukung: {r.support}</div>}
+                                                </td>
+                                                <td className="px-3 py-3.5"><span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span></td>
+                                                <td className="px-3 py-3.5"><div className="font-semibold">{r.buyer}</div><div className="text-xs text-slate-500">{r.email}</div></td>
+                                                <td className="px-3 py-3.5"><span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${st.style}`}>{st.label}</span></td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </PanelLayout>
+    );
+}

@@ -1,0 +1,160 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Support\RegistrationForm;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class RegistrationFormController extends Controller
+{
+    private function own(Request $request, Event $event): void
+    {
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst && $event->institution_id === $inst->id, 404);
+        abort_if($event->registration_method === 'ticket', 404);
+    }
+
+    public function update(Request $request, Event $event): RedirectResponse
+    {
+        $this->own($request, $event);
+
+        $d = $request->validate([
+            'fields' => ['present', 'array', 'max:200'],
+            'fields.*.key' => ['nullable', 'string', 'max:20'],
+            'fields.*.label' => ['required', 'string', 'max:120'],
+            'fields.*.type' => ['required', Rule::in(RegistrationForm::TYPES)],
+            'fields.*.required' => ['boolean'],
+            'fields.*.options' => ['nullable', 'array', 'max:50'],
+            'fields.*.options.*' => ['string', 'max:80'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ], [], ['fields.*.label' => 'Label kolom']);
+
+        $existing = collect(RegistrationForm::fields($event))->keyBy('key');
+        $taken = $existing->keys()->all();
+        $out = [];
+        $seen = [];
+
+        foreach ($d['fields'] as $i => $f) {
+            $type = $f['type'];
+            $options = [];
+            if (RegistrationForm::needsOptions($type)) {
+                $options = array_values(array_unique(array_filter(
+                    array_map('trim', $f['options'] ?? []),
+                    fn ($o) => $o !== ''
+                )));
+                if (! $options) {
+                    throw ValidationException::withMessages([
+                        "fields.$i.options" => 'Kolom "'.trim($f['label']).'" butuh minimal satu pilihan.',
+                    ]);
+                }
+            }
+
+            // Kunci hanya dipercaya kalau memang sudah ada di server; selain itu dibuat baru.
+            $key = $f['key'] ?? null;
+            if (! $key || ! $existing->has($key) || isset($seen[$key])) {
+                do {
+                    $key = 'f_'.Str::lower(Str::random(8));
+                } while (in_array($key, $taken, true) || isset($seen[$key]));
+            }
+            $seen[$key] = true;
+
+            $out[] = [
+                'key' => $key,
+                'label' => trim($f['label']),
+                'type' => $type,
+                'required' => (bool) ($f['required'] ?? false),
+                'options' => $options,
+                'archived' => false,
+            ];
+        }
+
+        // Kolom yang dihapus tapi sudah punya pendaftar diarsipkan, supaya jawaban lama tidak hilang.
+        if (DB::table('form_registrations')->where('event_id', $event->id)->exists()) {
+            foreach ($existing as $key => $f) {
+                if (! isset($seen[$key])) {
+                    $out[] = ['archived' => true] + $f;
+                }
+            }
+        }
+
+        DB::table('events')->where('id', $event->id)->update([
+            'registration_fields' => json_encode($out, JSON_UNESCAPED_UNICODE),
+            'registration_message' => $d['message'] ?? null,
+        ]);
+
+        return back();
+    }
+
+    public function destroy(Request $request, Event $event, int $reg): RedirectResponse
+    {
+        $this->own($request, $event);
+        $row = DB::table('form_registrations')->where('event_id', $event->id)->where('id', $reg)->first();
+        if ($row) {
+            foreach ((json_decode((string) $row->answers, true) ?: []) as $v) {
+                if (is_array($v) && isset($v['path']) && str_starts_with($v['path'], 'form-registrations/'.$event->id.'/')) {
+                    Storage::disk('local')->delete($v['path']);
+                }
+            }
+            DB::table('form_registrations')->where('id', $row->id)->delete();
+        }
+
+        return back();
+    }
+
+    public function berkas(Request $request, Event $event, int $reg, string $key)
+    {
+        $this->own($request, $event);
+        $r = DB::table('form_registrations')->where('event_id', $event->id)->where('id', $reg)->first();
+        abort_unless($r, 404);
+
+        $v = (json_decode((string) $r->answers, true) ?: [])[$key] ?? null;
+        abort_unless(is_array($v) && isset($v['path']) && str_starts_with($v['path'], 'form-registrations/'.$event->id.'/'), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($v['path']), 404);
+
+        return $disk->response($v['path'], $v['name'] ?? basename($v['path']), ['X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function export(Request $request, Event $event): StreamedResponse
+    {
+        $this->own($request, $event);
+        $fields = RegistrationForm::fields($event);
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        // Cegah rumus spreadsheet dari isian pendaftar.
+        $safe = fn ($v) => is_string($v) && $v !== '' && str_contains("=+-@\t\r", $v[0]) ? "'".$v : $v;
+        $name = 'pendaftar-'.Str::slug($event->title ?: 'event').'.csv';
+
+        return response()->streamDownload(function () use ($event, $fields, $tz, $safe) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, array_merge(['Nama', 'Email', 'WhatsApp', 'Waktu daftar'], array_map(fn ($f) => $safe($f['label']), $fields)), ',', '"', '\\');
+
+            DB::table('form_registrations')->where('event_id', $event->id)->orderBy('id')->chunk(500, function ($chunk) use ($out, $fields, $tz, $safe) {
+                foreach ($chunk as $r) {
+                    $a = json_decode((string) $r->answers, true) ?: [];
+                    $row = [$r->name, $r->email, $r->whatsapp, Carbon::parse($r->created_at)->setTimezone($tz)->format('Y-m-d H:i')];
+                    foreach ($fields as $f) {
+                        $v = $a[$f['key']] ?? '';
+                        if (is_array($v) && isset($v['path'])) {
+                            $v = $v['name'] ?? 'berkas';
+                        }
+                        $row[] = is_array($v) ? implode(', ', $v) : $v;
+                    }
+                    fputcsv($out, array_map($safe, $row), ',', '"', '\\');
+                }
+            });
+            fclose($out);
+        }, $name, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+}

@@ -20,7 +20,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'flash' => fn () => ['success' => $request->session()->get('success')],
+            'flash' => fn () => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
             'auth' => [
                 'user' => $request->user()
                     ? $request->user()->only('id', 'name', 'email', 'role')
@@ -38,12 +41,33 @@ class HandleInertiaRequests extends Middleware
                         'created_at' => $n->created_at?->toISOString(),
                     ])->all(),
                 ]
-                : null,
+                : ($request->user()
+                    ? $request->user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                        'id' => $n->id,
+                        'text' => $n->data['text'] ?? trim(($n->data['title'] ?? '').' — '.($n->data['message'] ?? ''), ' —'),
+                        'url' => $n->data['url'] ?? null,
+                        'read' => $n->read_at !== null,
+                        'at' => $n->created_at?->toIso8601String(),
+                    ])->all()
+                    : []),
             'pending_comments' => fn () => $request->user()?->isAdmin()
                 ? \App\Models\EventComment::whereNotNull('reported_at')->count()
                 : 0,
             'pending_lembaga' => fn () => $request->user()?->isAdmin()
                 ? Institution::where('status', Institution::PENDING)->count()
+                : 0,
+            'pending_review' => fn () => $request->user()?->isAdmin()
+                ? \App\Models\Event::whereNull('parent_id')->where('status', 'pending')
+                    ->where(fn ($w) => $w->whereNull('payment_status')->orWhere('payment_status', '!=', 'menunggu_verifikasi'))->count()
+                : 0,
+            'pending_penarikan' => fn () => $request->user()?->isAdmin()
+                ? \App\Models\Withdrawal::where('status', 'menunggu')->count()
+                : 0,
+            'pending_paket' => fn () => $request->user()?->isAdmin()
+                ? \App\Models\Event::whereNull('parent_id')->where('payment_status', 'menunggu_verifikasi')->count()
+                : 0,
+            'pending_tiket' => fn () => $request->user()?->isAdmin()
+                ? \Illuminate\Support\Facades\DB::table('ticket_orders')->where('status', 'menunggu_verifikasi')->count()
                 : 0,
         ];
     }

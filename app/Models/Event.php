@@ -14,7 +14,7 @@ class Event extends Model
 
     protected $fillable = [ 'team_per_row', 'team_leaders',  'team_slots', 'competition_type', 'team_size',  'bank_name', 'bank_account_number', 'bank_account_name', 'parent_id', 'sub_order', 'participant_quota', 'registration_method', 'registration_fee', 'contact_name', 'contact_phone', 'contact_email', 'contact_position', 
         'institution_id', 'package_id', 'title', 'slug', 'category', 'description', 'location',
-        'starts_at', 'ends_at', 'poster_path', 'juknis_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot',
+        'starts_at', 'ends_at', 'poster_path', 'juknis_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot', 'payment_status',
     ];
 
     protected function casts(): array
@@ -49,13 +49,28 @@ class Event extends Model
 
     public function hasFeature(string $key): bool
     {
-        return in_array($key, $this->package_snapshot['features'] ?? [], true);
+        return in_array($key, $this->effectiveFeatures(), true);
+    }
+
+    /** Fitur paket ditambah fitur add-on yang dibeli dan sudah lunas. Dihitung saat dibaca, tidak disimpan, jadi paket tidak berubah. */
+    public function effectiveFeatures(): array
+    {
+        $snap = (array) ($this->package_snapshot ?? []);
+        $features = (array) ($snap['features'] ?? []);
+        // Sub-event mewarisi add-on yang dibeli di event induk.
+        $src = $this->parent_id ? (self::find($this->parent_id) ?? $this) : $this;
+        $opt = (array) (((array) ($src->package_snapshot ?? []))['options'] ?? []);
+        if ($src->payment_status === 'lunas' && (! empty($opt['assessment_addon']) || ! empty($opt['judge_addon']))) {
+            $features[] = 'penilaian_juri';
+        }
+
+        return array_values(array_unique($features));
     }
 
     /** Menu dashboard event, dari snapshot (bukan dari paket yang mungkin sudah berubah). */
     public function menus(): array
     {
-        return Package::menusFor($this->package_snapshot['features'] ?? []);
+        return Package::menusFor($this->effectiveFeatures());
     }
 
     public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -71,6 +86,11 @@ class Event extends Model
     public function comments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(EventComment::class);
+    }
+
+    public function ticketTypes(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TicketType::class);
     }
 
     public function scopeMain($query)

@@ -1,3 +1,4 @@
+import { Trophy } from 'lucide-react';
 import { Users } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
@@ -40,6 +41,11 @@ type Child = {
     starts_at: string | null;
     ends_at: string | null;
     juknis: string | null;
+    registration_fee: number;
+    slug: string;
+    poster: string | null;
+    quota: number;
+    registered: number;
 };
 
 type CommentItem = { id: number; body: string; author: string; created_at: string; mine: boolean; reported: boolean };
@@ -55,11 +61,15 @@ type Detail = {
     ends_at: string | null;
     status: { key: StatusKey; label: string };
     description: string | null;
+    registration_fee: number;
     registration_method: 'ticket' | 'transfer_manual' | null;
     juknis: string | null;
     contact: { name?: string; position?: string; phone?: string; email?: string } | null;
     children: Child[];
     comments: CommentItem[];
+    fee_from?: boolean;
+    parent?: { title: string; slug: string } | null;
+    siblings?: { id: number; title: string; slug: string }[];
 };
 
 type Icon = ComponentType<{ className?: string }>;
@@ -248,6 +258,7 @@ type Participants = {
         registered: number;
         approved: number;
         names: { name: string; school: string | null }[];
+        info?: { min_age: number | null; max_age: number | null; requirements: string | null; prizes: { rank: string; prize: string }[] };
     }[];
 };
 
@@ -311,18 +322,64 @@ function PesertaTab({ data }: { data?: Participants }) {
     );
 }
 
-export default function EventDetail() {
+function HadiahTab({ data }: { data?: Participants }) {
+    const rows = (data?.branches ?? []).filter((b) => b.info);
+    const age = (a: number | null, b: number | null) =>
+        a != null && b != null ? `${a}–${b} tahun` : a != null ? `Minimal ${a} tahun` : b != null ? `Maksimal ${b} tahun` : null;
+    return (
+        <section className={card}>
+            <SectionTitle icon={Trophy}>Hadiah</SectionTitle>
+            <div className="mt-6 space-y-4">
+                {rows.map((b) => {
+                    const i = b.info!;
+                    const ageText = age(i.min_age, i.max_age);
+                    const showSub = b.subtitle && !b.title.toLowerCase().endsWith(b.subtitle.toLowerCase());
+                    return (
+                        <div key={b.id} className={infoBox}>
+                            <p className="text-lg font-bold">{b.title}</p>
+                            {showSub && <p className="text-sm text-slate-500 dark:text-slate-400">{b.subtitle}</p>}
+                            {i.prizes.length > 0 ? (
+                                <ul className="mt-4 divide-y divide-slate-200/70 dark:divide-white/10">
+                                    {i.prizes.map((p, k) => (
+                                        <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                                            <span className="flex items-center gap-2 font-bold"><Trophy className="h-4 w-4 text-amber-500" />{p.rank}</span>
+                                            {p.prize && <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{p.prize}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200"><Trophy className="h-4 w-4 text-amber-500" />Memperebutkan Juara 1, 2, dan 3</p>
+                            )}
+                            {(ageText || i.requirements) && (
+                                <div className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-sm dark:border-white/10">
+                                    {ageText && <p><span className="font-semibold text-slate-500 dark:text-slate-400">Usia: </span><span className="font-bold">{ageText}</span></p>}
+                                    {i.requirements && <p className="whitespace-pre-line text-slate-700 dark:text-slate-200">{i.requirements}</p>}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function EventDetailSingle() {
     const { event } = usePage<{ event: Detail }>().props;
-    const [tab, setTab] = useState<'info' | 'peserta' | 'kontak'>('info');
+    const [tab, setTab] = useState<'info' | 'hadiah' | 'peserta' | 'kontak'>('info');
     const [copied, setCopied] = useState(false);
     const st = STATUS[event.status.key];
     const single = !event.ends_at || event.ends_at === event.starts_at;
     const days = dayCount(event.starts_at, event.ends_at);
     const cal = calendarUrl(event);
+    const parts = (event as unknown as { participants?: Participants }).participants;
+    const hasHadiah = (parts?.branches ?? []).some((b) => b.info);
 
     // Tujuan sementara: ganti dua href ini setelah form pembelian tiket / pendaftaran dibuat.
     const cta =
-        event.registration_method === 'transfer_manual'
+        event.children.length > 0
+            ? { label: 'Pilih kegiatan', Icon: Layers, href: '#kegiatan' }
+            : event.registration_method === 'transfer_manual'
             ? { label: 'Daftar', Icon: ClipboardList, href: `/events/${event.id}/daftar` }
             : { label: 'Beli Tiket', Icon: Ticket, href: `/events/${event.id}/tiket` };
 
@@ -365,6 +422,18 @@ export default function EventDetail() {
                             <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
                             Semua Event
                         </Link>
+                        {event.parent && (
+                            <div className="mt-4 rounded-2xl border border-white/70 bg-white/60 p-4 text-sm shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
+                                <p className="text-slate-600 dark:text-slate-300">Bagian dari rangkaian <Link href={`/events/${event.parent.slug}`} className="font-bold text-indigo-700 hover:underline dark:text-indigo-300">{event.parent.title}</Link></p>
+                                {(event.siblings?.length ?? 0) > 1 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {event.siblings!.map((x) => (
+                                            <Link key={x.id} href={`/events/${x.slug}`} className={`rounded-full px-4 py-1.5 text-xs font-bold ${x.id === event.id ? 'bg-indigo-900 text-white' : 'bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:bg-white/10 dark:text-slate-200'}`}>{x.title}</Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Kartu utama */}
                         <section className="mt-6 rounded-[2rem] border border-white/70 bg-white/60 p-6 shadow-sm backdrop-blur md:p-10 dark:border-white/10 dark:bg-slate-900/40">
@@ -424,6 +493,12 @@ export default function EventDetail() {
                                                 <p className="mt-3 text-lg font-bold">{event.organizer}</p>
                                             </div>
                                         )}
+                                        <div className={infoBox}>
+                                            <p className={eyebrow}><Ticket className="h-4 w-4 text-indigo-700" />Biaya Pendaftaran</p>
+                                            <p className="mt-3 text-lg font-bold">
+                                                {event.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(event.registration_fee)}` : 'Gratis'}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-white/70 p-4 sm:flex-row dark:bg-white/5">
@@ -440,17 +515,6 @@ export default function EventDetail() {
                                                 {cta.label}
                                             </a>
                                         )}
-                                        {event.juknis && (
-                                            <a
-                                                href={event.juknis}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white"
-                                            >
-                                                <FileText className="h-5 w-5" />
-                                                Juknis
-                                            </a>
-                                        )}
                                         <button
                                             onClick={share}
                                             className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-8 py-4 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10 dark:text-white"
@@ -463,15 +527,51 @@ export default function EventDetail() {
                             </div>
                         </section>
 
+                        {event.children.length > 0 && (
+                            <section id="kegiatan" className="mt-6 scroll-mt-28">
+                                <h2 className="text-2xl font-black">Pilih Kegiatan</h2>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Event ini terdiri dari beberapa kegiatan. Pilih salah satu untuk melihat detail dan mendaftar.</p>
+                                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                                    {event.children.map((c) => {
+                                        const left = Math.max(0, c.quota - c.registered);
+                                        return (
+                                            <Link key={c.id} href={`/events/${c.slug}`} className="group overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900/50">
+                                                {c.poster ? (
+                                                    <img src={c.poster} alt={c.title} className="aspect-[16/9] w-full object-cover object-top" />
+                                                ) : (
+                                                    <div className="aspect-[16/9] w-full bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500" />
+                                                )}
+                                                <div className="space-y-3 p-5">
+                                                    {c.category && <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{c.category}</span>}
+                                                    <h3 className="text-xl font-bold">{c.title}</h3>
+                                                    <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                                                        {c.starts_at && (
+                                                            <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{shortDate(c.starts_at)}{c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}</p>
+                                                        )}
+                                                        {c.location && <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{c.location}</p>}
+                                                        <p className="flex items-center gap-2"><Ticket className="h-4 w-4" />{c.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(c.registration_fee)}` : 'Gratis'}{c.quota > 0 ? ` · sisa ${left} slot` : ''}</p>
+                                                    </div>
+                                                    <span className="inline-flex rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg">Lihat detail</span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
                         {/* Tab */}
                         <div className="mt-6 flex gap-1 rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
                             <button onClick={() => setTab('info')} className={tabBtn(tab === 'info')}>Informasi</button>
+                            {hasHadiah && <button onClick={() => setTab('hadiah')} className={tabBtn(tab === 'hadiah')}>Hadiah</button>}
                             <button onClick={() => setTab('peserta')} className={tabBtn(tab === 'peserta')}>Peserta</button>
                             <button onClick={() => setTab('kontak')} className={tabBtn(tab === 'kontak')}>Kontak Panitia</button>
                         </div>
 
                         <div className="mt-6 space-y-6">
-                            {tab === 'peserta' ? (
+                            {tab === 'hadiah' ? (
+                                <HadiahTab data={parts} />
+                            ) : tab === 'peserta' ? (
                                 <PesertaTab data={(event as unknown as { participants?: Participants }).participants} />
                             ) : tab === 'info' ? (
                                 <>
@@ -506,49 +606,7 @@ export default function EventDetail() {
                                     )}
 
 
-                                    {event.children.length > 0 && (
-                                        <section className={card}>
-                                            <SectionTitle icon={Layers}>Rangkaian Kegiatan</SectionTitle>
-                                            <ul className="mt-6 space-y-3">
-                                                {event.children.map((c, i) => (
-                                                    <li key={c.id} className="flex items-start gap-4 rounded-2xl bg-white/80 p-4 shadow-sm dark:bg-white/5">
-                                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200">
-                                                            {i + 1}
-                                                        </span>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="font-bold">{c.title}</p>
-                                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-                                                                {c.starts_at && (
-                                                                    <span className="inline-flex items-center gap-1.5">
-                                                                        <CalendarDays className="h-3.5 w-3.5" />
-                                                                        {shortDate(c.starts_at)}
-                                                                        {c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}
-                                                                    </span>
-                                                                )}
-                                                                {c.location && (
-                                                                    <span className="inline-flex items-center gap-1.5">
-                                                                        <MapPin className="h-3.5 w-3.5" />
-                                                                        {c.location}
-                                                                    </span>
-                                                                )}
-                                                                {c.juknis && (
-                                                                    <a href={c.juknis} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-indigo-700 hover:underline dark:text-indigo-300">
-                                                                        <FileText className="h-3.5 w-3.5" />
-                                                                        Juknis
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        {c.category && (
-                                                            <span className="hidden shrink-0 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 sm:inline dark:bg-blue-500/20 dark:text-blue-200">
-                                                                {c.category}
-                                                            </span>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </section>
-                                    )}
+
 
                                     <section className={card}>
                                         <SectionTitle icon={CalendarDays}>Waktu & Tempat</SectionTitle>
@@ -647,4 +705,112 @@ export default function EventDetail() {
             </div>
         </>
     );
+}
+
+
+function SeriesView({ event }: { event: Detail }) {
+    const st = STATUS[event.status.key];
+    const range = event.starts_at
+        ? `${shortDate(event.starts_at)}${event.ends_at && event.ends_at !== event.starts_at ? ` – ${shortDate(event.ends_at)}` : ''}`
+        : null;
+
+    return (
+        <>
+            <Head title={`${event.title} - SIMPLE`} />
+            <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+                <PageBackground />
+                <SiteNavbar />
+
+                <div className="relative z-10">
+                    <main className="mx-auto max-w-7xl px-6 pb-24 pt-32">
+                        <Link
+                            href="/events"
+                            className="group inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white"
+                        >
+                            <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
+                            Semua Event
+                        </Link>
+
+                        <section className="mt-6 flex items-center gap-5 rounded-3xl border border-white/70 bg-white/60 p-5 shadow-sm backdrop-blur md:gap-6 md:p-6 dark:border-white/10 dark:bg-slate-900/40">
+                            <div className="h-28 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg md:h-36 md:w-28">
+                                {event.poster && <img src={event.poster} alt={event.title} className="h-full w-full object-cover object-top" />}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold dark:border-white/10 dark:bg-white/10 ${st.cls}`}>
+                                        <span className={`h-2 w-2 rounded-full ${st.dot}`} />
+                                        {st.text(event.status.label)}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800 dark:bg-violet-500/20 dark:text-violet-200">
+                                        <Layers className="h-3 w-3" /> Rangkaian · {event.children.length} kegiatan
+                                    </span>
+                                </div>
+                                <h1 className="mt-2 text-2xl font-black leading-tight md:text-4xl">{event.title}</h1>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                    {event.organizer && <>oleh <span className="font-bold text-slate-900 dark:text-white">{event.organizer}</span></>}
+                                    {event.organizer && range ? ' · ' : ''}
+                                    {range}
+                                </p>
+                            </div>
+                        </section>
+
+                        <h2 className="mt-8 text-xl font-black">Pilih Kegiatan</h2>
+                        <div className="mt-4 space-y-3">
+                            {event.children.map((c) => {
+                                const left = Math.max(0, c.quota - c.registered);
+                                return (
+                                    <Link
+                                        key={c.id}
+                                        href={`/events/${c.slug}`}
+                                        className="group flex items-center gap-4 rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg md:gap-5 md:p-4 dark:border-white/10 dark:bg-slate-900/50"
+                                    >
+                                        <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 md:h-28 md:w-24">
+                                            {c.poster && <img src={c.poster} alt={c.title} className="h-full w-full object-cover object-top" />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            {c.category && (
+                                                <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
+                                                    {c.category}
+                                                </span>
+                                            )}
+                                            <h3 className="mt-1 truncate text-lg font-bold">{c.title}</h3>
+                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600 dark:text-slate-300">
+                                                {c.starts_at && (
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <CalendarDays className="h-3.5 w-3.5" />
+                                                        {shortDate(c.starts_at)}
+                                                        {c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}
+                                                    </span>
+                                                )}
+                                                {c.location && (
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <MapPin className="h-3.5 w-3.5" />
+                                                        {c.location}
+                                                    </span>
+                                                )}
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <Ticket className="h-3.5 w-3.5" />
+                                                    {c.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(c.registration_fee)}` : 'Gratis'}
+                                                    {c.quota > 0 ? ` · sisa ${left} slot` : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="hidden shrink-0 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg sm:inline-flex">
+                                            Lihat detail
+                                        </span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </main>
+                    <Footer />
+                </div>
+            </div>
+        </>
+    );
+}
+
+export default function EventDetail() {
+    const { event } = usePage<{ event: Detail }>().props;
+    return event.children.length > 0 ? <SeriesView event={event} /> : <EventDetailSingle />;
 }

@@ -1,0 +1,91 @@
+import { Head, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+
+type Crit = { id: number; name: string; weight: number; max_score: number };
+type Part = { id: number; name: string; school: string | null };
+type Props = {
+    token: string;
+    judge: { name: string; active: boolean };
+    event: { title: string };
+    enabled: boolean;
+    criteria: Crit[];
+    participants: Part[];
+    scores: Record<string, Record<string, number>>;
+};
+
+const inp = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/30';
+
+export default function JuriNilai({ token, judge, event, enabled, criteria, participants, scores }: Props) {
+    const page = usePage().props as any;
+    const flash = page.flash ?? {};
+    const errors = (page.errors ?? {}) as Record<string, string>;
+    const [vals, setVals] = useState<Record<number, Record<number, string>>>(() => {
+        const o: Record<number, Record<number, string>> = {};
+        participants.forEach((p) => {
+            o[p.id] = {};
+            criteria.forEach((c) => { const v = scores?.[p.id]?.[c.id]; o[p.id][c.id] = v === undefined ? '' : String(v); });
+        });
+        return o;
+    });
+    const [saving, setSaving] = useState<number | null>(null);
+    const [openId, setOpenId] = useState<number | null>(null);
+
+    const complete = (p: Part) => criteria.length > 0 && criteria.every((c) => vals[p.id]?.[c.id] !== '' && vals[p.id]?.[c.id] !== undefined);
+    const done = participants.filter((p) => scores?.[p.id] && Object.keys(scores[p.id]).length >= criteria.length).length;
+    const save = (p: Part) => {
+        setSaving(p.id);
+        router.post(`/juri/${token}`, { registration_id: p.id, scores: vals[p.id] } as any, { preserveScroll: true, onFinish: () => setSaving(null) });
+    };
+
+    const blocked = !judge.active ? 'Akses Anda sebagai juri sedang dinonaktifkan oleh panitia.' : !enabled ? 'Penilaian belum dibuka atau sudah ditutup oleh panitia.' : null;
+
+    return (
+        <div className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900">
+            <Head title={`Penilaian - ${event.title}`} />
+            <div className="mx-auto max-w-2xl space-y-4">
+                <header className="rounded-3xl bg-gradient-to-br from-indigo-800 to-violet-600 p-6 text-white shadow-lg">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-100">Penilaian juri</div>
+                    <h1 className="mt-1 text-2xl font-extrabold">{event.title}</h1>
+                    <p className="mt-1 text-sm text-blue-50">Halo, {judge.name}. {done} dari {participants.length} peserta sudah Anda nilai.</p>
+                </header>
+
+                {blocked && <p className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">{blocked}</p>}
+                {flash.success && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{flash.success}</p>}
+                {errors.scores && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{errors.scores}</p>}
+                {criteria.length === 0 && !blocked && <p className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">Kriteria penilaian belum diatur panitia.</p>}
+
+                {participants.map((p) => {
+                    const isDone = scores?.[p.id] && Object.keys(scores[p.id]).length >= criteria.length;
+                    const open = openId === p.id;
+                    return (
+                        <section key={p.id} className="rounded-3xl bg-white p-5 shadow-sm">
+                            <button type="button" onClick={() => setOpenId(open ? null : p.id)} className="flex w-full items-center justify-between gap-3 text-left">
+                                <span>
+                                    <span className="block text-lg font-extrabold">{p.name}</span>
+                                    {p.school && <span className="block text-xs text-slate-500">{p.school}</span>}
+                                </span>
+                                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{isDone ? 'Sudah dinilai' : 'Belum dinilai'}</span>
+                            </button>
+                            {open && !blocked && criteria.length > 0 && (
+                                <div className="mt-4 space-y-3">
+                                    {criteria.map((c) => (
+                                        <label key={c.id} className="block">
+                                            <span className="text-sm font-bold">{c.name} <span className="font-normal text-slate-500">(bobot {c.weight}%, maks {c.max_score})</span></span>
+                                            <input
+                                                className={`${inp} mt-1`} type="number" inputMode="decimal" min={0} max={c.max_score} step="0.01"
+                                                value={vals[p.id]?.[c.id] ?? ''}
+                                                onChange={(e) => setVals({ ...vals, [p.id]: { ...vals[p.id], [c.id]: e.target.value } })}
+                                            />
+                                        </label>
+                                    ))}
+                                    <button type="button" disabled={!complete(p) || saving === p.id} onClick={() => save(p)} className="w-full rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white hover:bg-indigo-800 disabled:opacity-50">{saving === p.id ? 'Menyimpan...' : 'Simpan nilai'}</button>
+                                </div>
+                            )}
+                        </section>
+                    );
+                })}
+                {participants.length === 0 && <p className="rounded-2xl bg-white p-4 text-sm text-slate-600">Belum ada peserta terdaftar.</p>}
+            </div>
+        </div>
+    );
+}

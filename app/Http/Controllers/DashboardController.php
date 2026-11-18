@@ -44,8 +44,38 @@ class DashboardController extends Controller
             'status' => $e->status,
         ]);
 
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        $statusMap = [
+            'menunggu' => ['Menunggu verifikasi', 'wait'],
+            'terdaftar' => ['Terdaftar', 'ok'],
+            'ditolak' => ['Ditolak', 'bad'],
+        ];
+        $history = \Illuminate\Support\Facades\DB::table('event_registrations as r')
+            ->join('events as e', 'e.id', '=', 'r.event_id')
+            ->where('r.user_id', $user->id)
+            ->orderByDesc('r.id')
+            ->limit(100)
+            ->get(['r.id', 'r.status', 'r.created_at', 'r.event_id', 'e.title', 'e.location', 'e.starts_at'])
+            ->map(function ($r) use ($tz, $statusMap) {
+                [$label, $tone] = $statusMap[$r->status] ?? [ucfirst((string) $r->status), 'wait'];
+
+                return [
+                    'id' => 'reg-'.$r->id,
+                    'role' => 'peserta',
+                    'title' => $r->title,
+                    'subtitle' => implode(' · ', array_filter([
+                        $r->starts_at ? \Illuminate\Support\Carbon::parse($r->starts_at)->format('d M Y') : null,
+                        $r->location,
+                    ])),
+                    'date' => \Illuminate\Support\Carbon::parse($r->created_at)->setTimezone($tz)->toDateString(),
+                    'status' => $label,
+                    'tone' => $tone,
+                    'href' => '/events/'.$r->event_id.'/daftar',
+                ];
+            })->values()->all();
+
         return Inertia::render('dashboard', [
-            'hasPanel' => (bool) $approved,
+            'hasPanel' => (bool) $approved || \App\Models\InstitutionMember::where('user_id', $user->id)->where('status', 'aktif')->whereIn('institution_id', Institution::where('status', Institution::APPROVED)->select('id'))->exists(),
             'institution' => $current?->only('id', 'name', 'status'),
             'institutionCount' => $institutions->count(),
             'summary' => [
@@ -60,6 +90,23 @@ class DashboardController extends Controller
                 'starts_at' => $nearest->starts_at->toDateString(),
             ] : null,
             'recent' => $recent,
+            'history' => $history,
+            'invitations' => collect(\App\Support\JudgeInvites::forUser($user->id))->concat(\App\Models\InstitutionMember::where('user_id', $user->id)
+                ->where('status', 'menunggu')
+                ->latest('id')->get()
+                ->map(function ($m) {
+                    $inst = Institution::find($m->institution_id);
+                    $roles = ['admin' => 'Admin', 'manajer' => 'Manajer event', 'keuangan' => 'Keuangan', 'staf' => 'Staf lapangan'];
+
+                    return [
+                        'id' => 'lembaga-'.$m->id,
+                        'member_id' => $m->id,
+                        'kind' => 'lembaga',
+                        'from' => $inst?->name ?? 'Lembaga',
+                        'title' => 'Diundang sebagai '.($roles[$m->role] ?? $m->role),
+                        'date' => $m->created_at?->toDateString(),
+                    ];
+                })->values()->all())->values()->all(),
             'steps' => [
                 ['label' => 'Akun dibuat', 'done' => true],
                 ['label' => 'Daftarkan lembaga', 'done' => $institutions->isNotEmpty(), 'href' => '/lembaga/daftar'],

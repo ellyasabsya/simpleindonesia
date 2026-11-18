@@ -26,7 +26,7 @@ type Pkg = {
 type Detail = {
     title: string; category: string; location: string; starts_at: string; ends_at: string;
     description: string; poster: File | null; juknis: File | null;
-    participant_quota: string; participant_categories: { name: string; quota: string }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string;
+    participant_quota: string; participant_categories: { name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: { rank: string; prize: string }[] }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string; ticket_types: TicketType[];
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
 };
 type Props = { institution: { name: string }; packages: Pkg[]; categories: Record<string, string>; selected_package_id: number | null };
@@ -42,16 +42,22 @@ const help = 'mt-1.5 text-xs text-slate-500 dark:text-slate-400';
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
+type TicketType = { name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string };
+const newTicket = (): TicketType => ({ name: 'Reguler', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '10' });
+
+const todayStr = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; };
+const saleStart = (end: string) => (end && todayStr() > end ? end : todayStr());
+
 const blank = (): Detail => ({
     title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
-    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '',
+    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '', ticket_types: [],
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
 const blanks = (n: number) => Array.from({ length: n }, blank);
 const isSeriesPkg = (p: Pkg) => p.is_series === true || p.event_type === 'series';
 const initialSubs = (p: Pkg | null | undefined) => (p && isSeriesPkg(p) ? blanks(Math.max(1, p.included_sub_events)) : []);
 const canAddon = (p: Pkg) => p.assessment_addon_price !== null && !p.has_judging;
-const canJudge = (p: Pkg) => p.judge_addon_price !== null && !p.has_judging;
+const canJudge = (_p: Pkg) => false; // juri digabung ke add-on penilaian juri
 const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p) || canJudge(p);
 const maxCats = (p?: Pkg) => p?.max_participant_categories ?? 100;
 
@@ -88,11 +94,19 @@ const vInfo = (d: Detail, pre: string, b?: Bounds): Errs => {
     return e;
 };
 const isComp = (c?: string) => ['perlombaan', 'olahraga'].includes(c ?? '');
+const newCat = (name: string) => ({
+    name, quota: '', competition_name: '', min_age: '', max_age: '', requirements: '',
+    prizes: [{ rank: 'Juara 1', prize: '' }, { rank: 'Juara 2', prize: '' }, { rank: 'Juara 3', prize: '' }],
+});
 const vPeserta = (d: Detail, pre: string): Errs => {
     const e: Errs = {};
     if (d.participant_categories.length < 1) e[pre + 'participant_categories'] = 'Pilih minimal 1 kategori peserta.';
     d.participant_categories.forEach((c, i) => {
         if (!/^\d+$/.test(c.quota) || Number(c.quota) < 1) e[`${pre}participant_categories.${i}.quota`] = 'Isi kuota (minimal 1).';
+        if (isComp(d.category)) {
+            if (!(c.competition_name ?? '').trim()) e[`${pre}participant_categories.${i}.competition_name`] = 'Isi nama perlombaan/pertandingan.';
+            if (c.min_age && c.max_age && Number(c.max_age) < Number(c.min_age)) e[`${pre}participant_categories.${i}.max_age`] = 'Usia maksimal tidak boleh lebih kecil dari usia minimal.';
+        }
     });
     if (isComp(d.category)) {
         if (!d.competition_type) e[pre + 'competition_type'] = 'Pilih perorangan atau tim.';
@@ -103,12 +117,35 @@ const vPeserta = (d: Detail, pre: string): Errs => {
         if (d.team_leaders === '' || Number(d.team_leaders) >= Number(d.team_size)) e[pre + 'team_leaders'] = 'Jumlah kotak ketua harus lebih kecil dari jumlah peserta per tim.';
     }
     if (!d.registration_method) e[pre + 'registration_method'] = 'Pilih metode pendaftaran.';
+    if (d.registration_method === 'ticket') {
+        if (d.ticket_types.length === 0) e[pre + 'ticket_types'] = 'Aktifkan pendaftaran tiket: tambahkan minimal satu jenis tiket.';
+        d.ticket_types.forEach((t, i) => {
+            const k = pre + `ticket_types.${i}.`;
+            if (!t.name.trim()) e[k + 'name'] = 'Nama tiket wajib diisi.';
+            if (t.price === '') e[k + 'price'] = 'Harga tiket wajib diisi (isi 0 jika gratis).';
+            if (!t.quota || Number(t.quota) < 1) e[k + 'quota'] = 'Kuota tiket minimal 1.';
+            if (!t.valid_from) e[k + 'valid_from'] = 'Tanggal mulai berlaku wajib diisi.';
+            if (!t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku wajib diisi.';
+            else if (t.valid_from && t.valid_until < t.valid_from) e[k + 'valid_until'] = 'Tanggal akhir tidak boleh sebelum tanggal mulai.';
+            if (!t.max_per_order || Number(t.max_per_order) < 1 || Number(t.max_per_order) > 10) e[k + 'max_per_order'] = 'Maksimal per pesanan 1 sampai 10.';
+        });
+    }
     if (d.registration_fee && !/^\d+$/.test(d.registration_fee)) e[pre + 'registration_fee'] = 'Biaya pendaftaran harus berupa angka.';
     if (d.registration_method === 'transfer_manual') {
         if (!d.bank_name.trim()) e[pre + 'bank_name'] = 'Nama bank wajib diisi.';
         if (!/^[0-9 -]{5,}$/.test(d.bank_account_number.trim())) e[pre + 'bank_account_number'] = 'Isi nomor rekening yang valid.';
         if (!d.bank_account_name.trim()) e[pre + 'bank_account_name'] = 'Nama pemilik rekening wajib diisi.';
     }
+    return e;
+};
+const regKey = /(registration_method|registration_fee|ticket_types|bank_)/;
+const vDaftar = (d: Detail & { subs: Detail[] }): Errs => {
+    const e: Errs = {};
+    if (!d.registration_method) { e.registration_method = 'Pilih cara pendaftaran peserta untuk rangkaian ini.'; return e; }
+    d.subs.forEach((s, i) => {
+        const x = vPeserta({ ...s, registration_method: d.registration_method }, `subs.${i}.`);
+        Object.entries(x).forEach(([k, v]) => { if (regKey.test(k) && !/valid_(from|until)$/.test(k)) e[k] = v; });
+    });
     return e;
 };
 const vPj = (d: Detail, pre: string): Errs => {
@@ -251,8 +288,9 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
                 </div>
                 <div>
                     <label className={label}>Lokasi *</label>
-                    <input className={input} value={d.location} onChange={(e) => set({ location: e.target.value })} placeholder="Contoh: Ballroom Hotel Pacific" />
+                    <input className={input} value={d.location} onChange={(e) => set({ location: e.target.value })} maxLength={150} placeholder="Contoh: Universitas Batam, Jl. Uniba No. 5, Batam" />
                     <Err m={err(pre + 'location')} />
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />Tulis nama tempat, alamat, dan kota agar peserta mudah menemukan lokasi lewat Google Maps.</p>
                 </div>
             </div>
             <Schedule {...props} withJuknis />
@@ -263,7 +301,63 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
 const PRESET_CATEGORIES = ['TK', 'SD', 'SMP', 'SMA', 'Mahasiswa', 'Umum'];
 const totalQuota = (d: Detail) => d.participant_categories.reduce((a, c) => a + (parseInt(c.quota, 10) || 0), 0);
 
-function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = true, ticketOnly = false }: Sec & { max: number; canTicket?: boolean; canTeam?: boolean; ticketOnly?: boolean }) {
+type CatRow = Detail['participant_categories'][number];
+
+function CompFields({ c, i, patch, err, pre, kind }: { c: CatRow; i: number; patch: (i: number, p: Partial<CatRow>) => void; err: (k: string) => any; pre: string; kind: string }) {
+    const inp = 'h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800';
+    const prizes = c.prizes ?? [];
+    const setPrize = (j: number, p: Partial<{ rank: string; prize: string }>) => patch(i, { prizes: prizes.map((x, k) => (k === j ? { ...x, ...p } : x)) });
+    const base = `${pre}participant_categories.${i}.`;
+    return (
+        <div className="w-full basis-full space-y-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
+            <div>
+                <label className={label}>Nama {kind} *</label>
+                <input className={inp} maxLength={120} value={c.competition_name ?? ''} onChange={(e) => patch(i, { competition_name: e.target.value })}
+                    placeholder={kind === 'pertandingan' ? 'Contoh: Futsal Putra' : 'Contoh: Lomba Menyanyi Solo'} />
+                <Err m={err(base + 'competition_name')} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label className={label}>Usia minimal (opsional)</label>
+                    <input inputMode="numeric" className={inp} value={c.min_age ?? ''} onChange={(e) => patch(i, { min_age: e.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="Tanpa batas" />
+                    <Err m={err(base + 'min_age')} />
+                </div>
+                <div>
+                    <label className={label}>Usia maksimal (opsional)</label>
+                    <input inputMode="numeric" className={inp} value={c.max_age ?? ''} onChange={(e) => patch(i, { max_age: e.target.value.replace(/\D/g, '').slice(0, 3) })} placeholder="Tanpa batas" />
+                    <Err m={err(base + 'max_age')} />
+                </div>
+            </div>
+            <div>
+                <label className={label}>Syarat tambahan (opsional)</label>
+                <textarea rows={3} maxLength={1000} className="w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 py-3 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                    value={c.requirements ?? ''} onChange={(e) => patch(i, { requirements: e.target.value })}
+                    placeholder="Contoh: Peserta membawa kartu pelajar, karya orisinal, dan belum pernah dipublikasikan." />
+                <Err m={err(base + 'requirements')} />
+            </div>
+            <div>
+                <b className="block text-[15px]">Hadiah &amp; Juara <span className="font-normal text-slate-500">(opsional)</span></b>
+                <p className={help}>Isi hadiah kalau ada. Kalau dikosongkan, halaman event hanya menampilkan peringkat juara.</p>
+                <div className="mt-3 space-y-2.5">
+                    {prizes.map((p, j) => (
+                        <div key={j} className="grid grid-cols-[minmax(0,1fr)_2.75rem] gap-2 sm:grid-cols-[9rem_minmax(0,1fr)_2.75rem]">
+                            <input className={`${inp} w-full min-w-0`} maxLength={40} value={p.rank} onChange={(e) => setPrize(j, { rank: e.target.value })} placeholder="Juara 1" />
+                            <input className={`${inp} order-3 col-span-2 w-full min-w-0 sm:order-none sm:col-span-1`} maxLength={150} value={p.prize} onChange={(e) => setPrize(j, { prize: e.target.value })} placeholder="Contoh: Rp1.500.000 + piala + sertifikat" />
+                            <button type="button" aria-label="Hapus hadiah" onClick={() => patch(i, { prizes: prizes.filter((_, k) => k !== j) })}
+                                className="order-2 h-11 w-11 shrink-0 rounded-xl border border-slate-200 text-slate-500 sm:order-none hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/10">×</button>
+                        </div>
+                    ))}
+                </div>
+                {prizes.length < 10 && (
+                    <button type="button" onClick={() => patch(i, { prizes: [...prizes, { rank: `Juara ${prizes.length + 1}`, prize: '' }] })}
+                        className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-bold text-cyan-800 dark:border-white/10 dark:bg-white/10 dark:text-cyan-200">+ Tambah penghargaan</button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = true, ticketOnly = false, fixedMethod, hideRegistration = false }: Sec & { max: number; canTicket?: boolean; canTeam?: boolean; ticketOnly?: boolean; fixedMethod?: string; hideRegistration?: boolean }) {
     const [draft, setDraft] = useState('');
     const list = d.participant_categories;
     const idx = (v: string) => list.findIndex((x) => x.name.toLowerCase() === v.toLowerCase());
@@ -287,10 +381,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
     const add = (v: string) => {
         const name = v.trim();
         if (!name || full || idx(name) >= 0) return;
-        set({ participant_categories: [...list, { name, quota: '' }] });
+        set({ participant_categories: [...list, newCat(name)] });
     };
     const remove = (i: number) => set({ participant_categories: list.filter((_, j) => j !== i) });
     const setQuota = (i: number, v: string) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, quota: v.replace(/\D/g, '') } : c)) });
+    const patch = (i: number, p: Partial<(typeof list)[number]>) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, ...p } : c)) });
     const toggle = (v: string) => { const i = idx(v); if (i >= 0) remove(i); else add(v); };
     const options = [...PRESET_CATEGORIES, ...list.map((x) => x.name).filter((n) => !PRESET_CATEGORIES.some((p) => p.toLowerCase() === n.toLowerCase()))];
     return (
@@ -401,6 +496,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                 <Err m={err(`${pre}participant_categories.${i}.quota`)} />
                             </div>
                             <button type="button" onClick={() => remove(i)} className="text-sm font-bold text-rose-500">Hapus</button>
+                            {comp && <CompFields c={c} i={i} patch={patch} err={err} pre={pre} kind={d.category === 'olahraga' ? 'pertandingan' : 'perlombaan'} />}
                         </div>
                     ))}
                     <div className="flex items-center justify-between px-4 py-3 font-extrabold">
@@ -410,6 +506,8 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 </div>
             )}
 
+            {!hideRegistration && (
+            <>
             {ticketOnly ? (
                 <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
             ) : (
@@ -430,11 +528,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     </div>
                     <Err m={err(pre + 'registration_fee')} />
                 </div>
-                <label className={label}>Pendaftaran peserta *</label></>
-                <div className="grid gap-3 sm:grid-cols-2">
+                {fixedMethod ? (<div className={`${box} mb-3 p-4 text-sm`}><b className="block">Pendaftaran peserta: {fixedMethod === 'ticket' ? 'Tiket' : 'Transfer Manual'}</b><span className="text-xs text-slate-500 dark:text-slate-400">Mengikuti event utama. Satu rangkaian memakai satu metode pendaftaran.</span></div>) : (<label className={label}>Pendaftaran peserta *</label>)}</>
+                <div className={fixedMethod ? 'hidden' : 'grid gap-3 sm:grid-cols-2'}>
                     {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
-                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v })} />
+                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v, ticket_types: v === 'ticket' && d.ticket_types.length === 0 ? [newTicket()] : d.ticket_types })} />
                             <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
                         </label>
                     ))}
@@ -442,6 +540,68 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 <Err m={err(pre + 'registration_method')} />
                 {!canTicket && <p className={help}>Pendaftaran lewat tiket hanya tersedia di paket dengan fitur Tiket.</p>}
             </div>
+            )}
+
+            {d.registration_method === 'ticket' && (
+                <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 dark:border-white/10 dark:bg-indigo-500/10">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">Wajib diisi. Tanpa jenis tiket, pembeli tidak bisa mendaftar.</p>
+                    </div>
+                    {d.ticket_types.map((t, i) => {
+                        const up = (patch: Partial<TicketType>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+                        const k = pre + `ticket_types.${i}.`;
+                        const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5';
+                        return (
+                            <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}</span>
+                                    {d.ticket_types.length > 1 && (
+                                        <button type="button" onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })} className="text-xs font-bold text-red-600">Hapus</button>
+                                    )}
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
+                                        <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" onChange={(e) => up({ name: e.target.value })} />
+                                        <Err m={err(k + 'name')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
+                                        <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
+                                            value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
+                                            onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                                        <Err m={err(k + 'price')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
+                                        <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
+                                        <Err m={err(k + 'quota')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Maksimal per pesanan (1-10) *</label>
+                                        <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
+                                        <Err m={err(k + 'max_per_order')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Berlaku mulai *</label>
+                                        <input type="date" className={inp} value={t.valid_from} onChange={(e) => up({ valid_from: e.target.value })} />
+                                        <Err m={err(k + 'valid_from')} />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Berlaku sampai *</label>
+                                        <input type="date" className={inp} value={t.valid_until} onChange={(e) => up({ valid_until: e.target.value })} />
+                                        <Err m={err(k + 'valid_until')} />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <Err m={err(pre + 'ticket_types')} />
+                    {d.ticket_types.length < 10 && (
+                        <button type="button" onClick={() => set({ ticket_types: [...d.ticket_types, newTicket()] })} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-200">+ Tambah jenis tiket</button>
+                    )}
+                </div>
             )}
 
             {d.registration_method === 'transfer_manual' && (
@@ -464,8 +624,81 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     </div>
                 </div>
             )}
+            </>
+            )}
         </div>
     );
+}
+
+function RegistrasiBlocks({ d, set, pre, err }: Sec) {
+    const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5';
+    if (d.registration_method === 'ticket') {
+        return (
+            <div className="space-y-4">
+                {d.ticket_types.map((t, i) => {
+                    const up = (patch: Partial<TicketType>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+                    const k = pre + `ticket_types.${i}.`;
+                    return (
+                        <div key={i} className="grid gap-3 rounded-xl border border-slate-200 bg-white/80 p-4 sm:grid-cols-2 dark:border-white/10 dark:bg-white/5">
+                            <div>
+                                <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
+                                <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" onChange={(e) => up({ name: e.target.value })} />
+                                <Err m={err(k + 'name')} />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
+                                <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
+                                    value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
+                                    onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                                <Err m={err(k + 'price')} />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
+                                <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
+                                <Err m={err(k + 'quota')} />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-bold">Maksimal per pesanan (1-10) *</label>
+                                <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
+                                <Err m={err(k + 'max_per_order')} />
+                            </div>
+                            <p className="text-xs text-slate-500 sm:col-span-2 dark:text-slate-400">Penjualan dibuka setelah event disetujui admin dan ditutup saat event selesai.</p>
+                        </div>
+                    );
+                })}
+                <Err m={err(pre + 'ticket_types')} />
+            </div>
+        );
+    }
+    if (d.registration_method === 'transfer_manual') {
+        return (
+            <div className="space-y-4">
+                <div>
+                    <label className={label}>Biaya pendaftaran per peserta</label>
+                    <div className="flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 dark:border-white/10 dark:bg-slate-950/60">
+                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
+                        <input inputMode="numeric" placeholder="0 jika gratis" className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
+                            value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
+                            onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                    </div>
+                    <Err m={err(pre + 'registration_fee')} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                    {([['bank_name', 'Nama bank', 'Contoh: BCA, Mandiri, BRI'], ['bank_account_number', 'Nomor rekening', 'Hanya angka'], ['bank_account_name', 'Atas nama', 'Nama pemilik rekening']] as const).map(([k, t, ph]) => (
+                        <div key={k}>
+                            <label className={label}>{t} *</label>
+                            <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                inputMode={k === 'bank_account_number' ? 'numeric' : 'text'} maxLength={k === 'bank_account_number' ? 40 : 100}
+                                value={d[k]} placeholder={ph}
+                                onChange={(ev) => set({ [k]: k === 'bank_account_number' ? ev.target.value.replace(/[^0-9 -]/g, '') : ev.target.value })} />
+                            <Err m={err(pre + k)} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+    return null;
 }
 
 function PjSection({ d, set, pre, err }: Sec) {
@@ -504,8 +737,8 @@ function PosterThumb({ file }: { file: File | null }) {
         return () => URL.revokeObjectURL(u);
     }, [file]);
     return (
-        <div className="aspect-[4/5] w-full shrink-0 overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 shadow-md sm:w-44">
-            {url ? <img src={url} alt="Poster" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs font-semibold text-white/70">Tanpa poster</div>}
+        <div className="w-full shrink-0 self-start overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 shadow-md sm:w-44">
+            {url ? <img src={url} alt="Poster" className="block h-auto w-full" /> : <div className="flex aspect-[4/5] items-center justify-center text-xs font-semibold text-white/70">Tanpa poster</div>}
         </div>
     );
 }
@@ -543,8 +776,10 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         {!main && <Fact icon={MapPin} title="Lokasi">{d.location || '-'}</Fact>}
                         {!main && <Fact icon={Tag} title="Kategori event">{categories[d.category] ?? '-'}</Fact>}
                         {!main && <Fact icon={Users} title="Kuota peserta">{totalQuota(d) || '-'} orang</Fact>}
+                        {main && <Fact icon={Ticket} title="Pendaftaran peserta (semua event)">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
                         {!main && <Fact icon={Ticket} title="Pendaftaran">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
-                        {!main && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
+                        {!main && d.registration_method === 'ticket' && <Fact icon={Ticket} title="Tiket">{d.ticket_types.map((t) => `${t.name}: ${Number(t.price) > 0 ? rp(Number(t.price)) : 'Gratis'}`).join(' · ') || '-'}</Fact>}
+                        {!main && d.registration_method !== 'ticket' && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
                         {!main && (
                             <Fact icon={Phone} title="Penanggung jawab">
                                 {contact || '-'}
@@ -556,7 +791,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         <div>
                             <p className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">Kategori peserta</p>
                             <div className="flex flex-wrap gap-2">
-                                {d.participant_categories.map((c) => <span key={c.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c.name} · {c.quota}</span>)}
+                                {d.participant_categories.map((c) => <span key={c.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c.competition_name ? `${c.competition_name} (${c.name})` : c.name} · {c.quota}</span>)}
                             </div>
                         </div>
                     )}
@@ -586,11 +821,11 @@ export default function CreateEvent({ packages, categories, selected_package_id,
     const pkg = packages.find((p) => p.id === data.package_id);
     const series = !!pkg && (isSeriesPkg(pkg) || data.subs.length > 0);
     const keys = series
-        ? ['paket', 'utama', ...data.subs.map((_, i) => `sub:${i}`), 'tinjau']
+        ? ['paket', 'utama', ...data.subs.map((_, i) => `sub:${i}`), 'daftar', 'tinjau']
         : ['paket', 'info', 'peserta', 'pj', 'tinjau'];
     const titleOf = (k: string) =>
         k.startsWith('sub:') ? `Event ${Number(k.slice(4)) + 1}` :
-        ({ paket: 'Paket', info: 'Informasi Event', peserta: 'Peserta & Pendaftaran', pj: 'Penanggung Jawab', utama: 'Event Utama', tinjau: 'Tinjau' } as Record<string, string>)[k];
+        ({ paket: 'Paket', info: 'Informasi Event', peserta: 'Peserta & Pendaftaran', pj: 'Penanggung Jawab', utama: 'Event Utama', daftar: 'Pendaftaran', tinjau: 'Tinjau' } as Record<string, string>)[k];
     const cur = keys[Math.min(step, keys.length - 1)];
     const last = step >= keys.length - 1;
     useEffect(() => {
@@ -599,6 +834,19 @@ export default function CreateEvent({ packages, categories, selected_package_id,
             setData((d) => ({ ...d, registration_method: 'ticket', subs: d.subs.map((x) => ({ ...x, registration_method: 'ticket' })) }));
         }
     }, [pkg?.id, data.subs.length, data.registration_method]);
+    useEffect(() => {
+        if (!series) return;
+        const m = data.registration_method;
+        if (!m || data.subs.every((x) => x.registration_method === m && (m !== 'ticket' || x.ticket_types.length > 0))) return;
+        setData((d) => ({
+            ...d,
+            subs: d.subs.map((x) => ({
+                ...x,
+                registration_method: m,
+                ticket_types: m === 'ticket' && x.ticket_types.length === 0 ? [{ ...newTicket(), name: 'Pendaftaran', max_per_order: '1', quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '', valid_from: saleStart(x.ends_at), valid_until: x.ends_at }] : x.ticket_types,
+            })),
+        }));
+    }, [series, data.registration_method, data.subs.length]);
     const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
@@ -641,11 +889,13 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         else if (key === 'info') e = vInfo(data, '');
         else if (key === 'peserta') e = vPeserta(data, '');
         else if (key === 'pj') e = vPj(data, '');
+        else if (key === 'daftar') e = vDaftar(data);
         else if (key.startsWith('sub:')) {
             const i = Number(key.slice(4));
             const s = data.subs[i];
             const pre = `subs.${i}.`;
-            e = { ...vInfo(s, pre, bounds), ...vPeserta(s, pre), ...vPj(s, pre) };
+            const pe = Object.fromEntries(Object.entries(vPeserta(s, pre)).filter(([k]) => !regKey.test(k)));
+            e = { ...vInfo(s, pre, bounds), ...pe, ...vPj(s, pre) };
         }
         setLocal(e);
         return Object.keys(e).length === 0;
@@ -662,17 +912,22 @@ export default function CreateEvent({ packages, categories, selected_package_id,
 
     const stepOfField = (k: string) => {
         if (k === 'subs' || k === 'package_id' || k === 'assessment_addon' || k === 'judge_addon') return 'paket';
-        const m = k.match(/^subs\.(\d+)\./);
-        if (m) return `sub:${m[1]}`;
+        const m = k.match(/^subs\.(\d+)\.(.*)$/);
+        if (m) return regKey.test(m[2]) ? 'daftar' : `sub:${m[1]}`;
+        if (series && k === 'registration_method') return 'daftar';
         if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster', 'juknis'].includes(k) ? 'utama' : 'tinjau';
         if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster', 'juknis'].includes(k)) return 'info';
-        if (k.startsWith('participant_') || k === 'registration_method' || k === 'registration_fee') return 'peserta';
+        if (k.startsWith('participant_') || k === 'registration_method' || k === 'registration_fee' || k.includes('ticket_types')) return 'peserta';
         if (k.startsWith('contact_')) return 'pj';
         return 'tinjau';
     };
     const submit = () => {
         setLocal({});
-        transform((d) => ({ ...d, payment_method: payMethod }));
+        transform((d) => ({
+            ...d,
+            payment_method: payMethod,
+            subs: d.subs.map((x) => (x.registration_method === 'ticket' ? { ...x, ticket_types: x.ticket_types.map((t) => ({ ...t, valid_from: saleStart(x.ends_at), valid_until: x.ends_at })) } : x)),
+        }));
         post('/panel/ajukan', {
             forceFormData: true,
             onError: (errs) => {
@@ -797,8 +1052,8 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                     <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-indigo-200 pt-4 text-sm dark:border-white/10">
                                         <input type="checkbox" checked={data.assessment_addon} onChange={(e) => setData('assessment_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
                                         <span>
-                                            <b>Tambah sistem penilaian</b> (+{rp(pkg.assessment_addon_price ?? 0)})
-                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Untuk lomba yang butuh skor dan penilaian.</span>
+                                            <b>Tambah penilaian juri</b> (+{rp(pkg.assessment_addon_price ?? 0)})
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Sistem penilaian dan akun juri untuk memberi nilai pada peserta.</span>
                                         </span>
                                     </label>
                                 )}
@@ -824,7 +1079,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                     <div className="space-y-4">
                         <div>
                             <h2 className={h2}>Event utama</h2>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ini hanya judul dan periode pembungkus rangkaian, bukan event tersendiri. Kategori, lokasi, peserta, dan penanggung jawab diisi pada tiap event di langkah berikutnya.</p>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ini judul dan periode pembungkus rangkaian, bukan event tersendiri. Kategori, lokasi, kuota, dan penanggung jawab diisi pada tiap event di langkah berikutnya. Cara pendaftaran dan tiket diatur di langkah terakhir, setelah semua event terisi.</p>
                         </div>
                         <UtamaSection d={data} set={setMain} pre="" err={err} />
                     </div>
@@ -866,8 +1121,48 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 </p>
                             </div>
                             <div><h3 className={h3}>Informasi Event</h3><InfoSection d={s} set={set} pre={pre} err={err} categories={categories} bounds={bounds} /></div>
-                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
+                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} hideRegistration ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
                             <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Penanggung Jawab</h3><PjSection d={s} set={set} pre={pre} err={err} /></div>
+                        </div>
+                    );
+                })()}
+
+                {cur === 'daftar' && (() => {
+                    const forced = !!pkg && pkg.payment_type === 'revenue_share';
+                    const canTicket = pkg ? pkg.can_ticket : true;
+                    const opts: [string, string, string][] = [
+                        ['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'],
+                        ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.'] as [string, string, string]] : []),
+                    ];
+                    return (
+                        <div className="space-y-6">
+                            <div>
+                                <h2 className={h2}>Pendaftaran peserta</h2>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Semua event sudah terisi. Pilih cara peserta mendaftar. Pilihan ini berlaku untuk seluruh rangkaian dan tidak bisa dicampur.</p>
+                            </div>
+                            {forced ? (
+                                <div className={`${box} p-4 text-sm`}><b className="block">Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket.</span></div>
+                            ) : (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {opts.map(([v, t, sub]) => (
+                                        <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${data.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
+                                            <input type="radio" className="mt-1 accent-indigo-700" checked={data.registration_method === v} onChange={() => setMain({ registration_method: v })} />
+                                            <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                            <Err m={err('registration_method')} />
+                            {!canTicket && <p className={help}>Pendaftaran lewat tiket hanya tersedia di paket dengan fitur Tiket.</p>}
+                            {data.registration_method === 'ticket' && (
+                                <p className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 text-sm dark:border-white/10 dark:bg-indigo-500/10">Form tiket sudah dibuatkan otomatis untuk tiap event di bawah. Tinggal isi harga dan kuotanya.</p>
+                            )}
+                            {data.registration_method && data.subs.map((s, i) => (
+                                <div key={i} className={`${box} space-y-4 p-5`}>
+                                    <h3 className="text-lg font-extrabold">Event {i + 1}: {s.title || '-'}</h3>
+                                    <RegistrasiBlocks d={s} set={(p) => setSub(i, p)} pre={`subs.${i}.`} err={err} />
+                                </div>
+                            ))}
                         </div>
                     );
                 })()}
@@ -916,7 +1211,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 <div className="space-y-1">
                                     <div className="flex justify-between"><span>Paket {pkg.name}{pkg.included_sub_events > 0 ? ` (termasuk ${pkg.included_sub_events} event)` : ''}</span><span>{c.base === 0 ? 'Gratis' : rp(c.base)}</span></div>
                                     {c.extra > 0 && <div className="flex justify-between"><span>Event tambahan ({c.extra} × {rp(pkg.extra_sub_event_price ?? 0)})</span><span>{rp(c.sub)}</span></div>}
-                                    {c.ad > 0 && <div className="flex justify-between"><span>Add-on sistem penilaian</span><span>{rp(c.ad)}</span></div>}
+                                    {c.ad > 0 && <div className="flex justify-between"><span>Add-on penilaian juri</span><span>{rp(c.ad)}</span></div>}
                                     {c.aj > 0 && <div className="flex justify-between"><span>Add-on juri</span><span>{rp(c.aj)}</span></div>}
                                     <div className="mt-2 flex justify-between border-t border-indigo-200 pt-2 font-extrabold dark:border-white/10"><span>Total di muka</span><span>{c.total === 0 ? 'Gratis' : rp(c.total)}</span></div>
                                 </div>

@@ -10,6 +10,8 @@ type Pkg = {
     event_type: string;
     is_series?: boolean;
     max_participant_categories: number | null;
+    can_ticket: boolean;
+    can_team: boolean;
     price_label: string;
     description: string | null;
     payment_type: string;
@@ -17,13 +19,14 @@ type Pkg = {
     included_sub_events: number;
     extra_sub_event_price: number | null;
     assessment_addon_price: number | null;
+    judge_addon_price: number | null;
     has_judging: boolean;
     features: string[];
 };
 type Detail = {
     title: string; category: string; location: string; starts_at: string; ends_at: string;
-    description: string; poster: File | null;
-    participant_quota: string; participant_categories: string[]; registration_method: string;
+    description: string; poster: File | null; juknis: File | null;
+    participant_quota: string; participant_categories: { name: string; quota: string }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string;
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
 };
 type Props = { institution: { name: string }; packages: Pkg[]; categories: Record<string, string>; selected_package_id: number | null };
@@ -35,29 +38,32 @@ const input =
 const label = 'mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200';
 const card = 'rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
 const box = 'rounded-2xl border border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5';
+const help = 'mt-1.5 text-xs text-slate-500 dark:text-slate-400';
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
 const blank = (): Detail => ({
-    title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null,
-    participant_quota: '', participant_categories: [], registration_method: '',
+    title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
+    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '',
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
 const blanks = (n: number) => Array.from({ length: n }, blank);
 const isSeriesPkg = (p: Pkg) => p.is_series === true || p.event_type === 'series';
 const initialSubs = (p: Pkg | null | undefined) => (p && isSeriesPkg(p) ? blanks(Math.max(1, p.included_sub_events)) : []);
 const canAddon = (p: Pkg) => p.assessment_addon_price !== null && !p.has_judging;
-const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p);
-const maxCats = (p?: Pkg) => p?.max_participant_categories ?? 20;
+const canJudge = (p: Pkg) => p.judge_addon_price !== null && !p.has_judging;
+const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p) || canJudge(p);
+const maxCats = (p?: Pkg) => p?.max_participant_categories ?? 100;
 
 const freeEvents = (p: Pkg) => p.included_sub_events + (isSeriesPkg(p) ? 0 : 1);
 
-function cost(p: Pkg, subCount: number, addon: boolean) {
+function cost(p: Pkg, subCount: number, addon: boolean, judge: boolean) {
     const base = p.payment_type === 'upfront' ? (p.price ?? 0) : 0;
     const extra = subCount === 0 ? 0 : Math.max(0, subCount - freeEvents(p));
     const sub = p.extra_sub_event_price ? extra * p.extra_sub_event_price : 0;
     const ad = addon && canAddon(p) ? (p.assessment_addon_price ?? 0) : 0;
-    return { base, extra, sub, ad, total: base + sub + ad };
+    const aj = judge && canJudge(p) ? (p.judge_addon_price ?? 0) : 0;
+    return { base, extra, sub, ad, aj, total: base + sub + ad + aj };
 }
 
 /* ---------- validasi di browser (server tetap memeriksa ulang) ---------- */
@@ -81,11 +87,28 @@ const vInfo = (d: Detail, pre: string, b?: Bounds): Errs => {
     else if (b && d.ends_at > b.max) e[pre + 'ends_at'] = 'Tidak boleh melewati event utama selesai.';
     return e;
 };
+const isComp = (c?: string) => ['perlombaan', 'olahraga'].includes(c ?? '');
 const vPeserta = (d: Detail, pre: string): Errs => {
     const e: Errs = {};
-    if (!/^\d+$/.test(d.participant_quota) || Number(d.participant_quota) < 1) e[pre + 'participant_quota'] = 'Kuota peserta wajib diisi (minimal 1).';
-    if (d.participant_categories.length < 1) e[pre + 'participant_categories'] = 'Tambahkan minimal 1 kategori peserta.';
+    if (d.participant_categories.length < 1) e[pre + 'participant_categories'] = 'Pilih minimal 1 kategori peserta.';
+    d.participant_categories.forEach((c, i) => {
+        if (!/^\d+$/.test(c.quota) || Number(c.quota) < 1) e[`${pre}participant_categories.${i}.quota`] = 'Isi kuota (minimal 1).';
+    });
+    if (isComp(d.category)) {
+        if (!d.competition_type) e[pre + 'competition_type'] = 'Pilih perorangan atau tim.';
+        if (d.competition_type === 'team' && (!/^\d+$/.test(d.team_size) || Number(d.team_size) < 2)) e[pre + 'team_size'] = 'Isi jumlah peserta per tim (minimal 2).';
+    }
+    if (isComp(d.category) && d.competition_type === 'team') {
+        if (!(Number(d.team_per_row) >= 1)) e[pre + 'team_per_row'] = 'Isi peserta per baris (minimal 1).';
+        if (d.team_leaders === '' || Number(d.team_leaders) >= Number(d.team_size)) e[pre + 'team_leaders'] = 'Jumlah kotak ketua harus lebih kecil dari jumlah peserta per tim.';
+    }
     if (!d.registration_method) e[pre + 'registration_method'] = 'Pilih metode pendaftaran.';
+    if (d.registration_fee && !/^\d+$/.test(d.registration_fee)) e[pre + 'registration_fee'] = 'Biaya pendaftaran harus berupa angka.';
+    if (d.registration_method === 'transfer_manual') {
+        if (!d.bank_name.trim()) e[pre + 'bank_name'] = 'Nama bank wajib diisi.';
+        if (!/^[0-9 -]{5,}$/.test(d.bank_account_number.trim())) e[pre + 'bank_account_number'] = 'Isi nomor rekening yang valid.';
+        if (!d.bank_account_name.trim()) e[pre + 'bank_account_name'] = 'Nama pemilik rekening wajib diisi.';
+    }
     return e;
 };
 const vPj = (d: Detail, pre: string): Errs => {
@@ -122,7 +145,50 @@ function PosterInput({ file, onChange, error }: { file: File | null; onChange: (
     );
 }
 
-function Schedule({ d, set, pre, err, bounds }: Sec & { bounds?: Bounds }) {
+function JuknisInput({ file, onChange, error }: { file: File | null; onChange: (f: File | null) => void; error?: string }) {
+    const [localError, setLocalError] = useState<string | null>(null);
+    const pick = (f: File | null) => {
+        if (f && f.size > 5 * 1024 * 1024) {
+            setLocalError('Ukuran file maksimal 5 MB.');
+            onChange(null);
+            return;
+        }
+        setLocalError(null);
+        onChange(f);
+    };
+    const size = file ? (file.size >= 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`) : '';
+    return (
+        <div>
+            <label className={label}>Juknis (opsional)</label>
+            <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-4 transition hover:border-indigo-400 hover:bg-indigo-50/60 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+                <input type="file" accept="application/pdf" className="hidden"
+                    onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-white">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <path d="M14 2v6h6" />
+                        <path d="M9 13h6M9 17h6" />
+                    </svg>
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">{file ? file.name : 'Pilih file PDF juknis'}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">{file ? size : 'Petunjuk teknis · PDF · maks. 5 MB'}</span>
+                </span>
+                {file ? (
+                    <button type="button" onClick={(e) => { e.preventDefault(); onChange(null); }}
+                        className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-200">
+                        Hapus
+                    </button>
+                ) : (
+                    <span className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-800 dark:bg-indigo-500/20 dark:text-white">Pilih File</span>
+                )}
+            </label>
+            <Err m={localError ?? error} />
+        </div>
+    );
+}
+
+function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bounds; withJuknis?: boolean }) {
     return (
         <div className="grid gap-6 md:grid-cols-[1fr_200px]">
             <div className="space-y-4">
@@ -144,6 +210,7 @@ function Schedule({ d, set, pre, err, bounds }: Sec & { bounds?: Bounds }) {
                         className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
                     <Err m={err(pre + 'description')} />
                 </div>
+                {withJuknis && <JuknisInput file={d.juknis} onChange={(f) => set({ juknis: f })} error={err(pre + 'juknis')} />}
             </div>
             <PosterInput file={d.poster} onChange={(f) => set({ poster: f })} error={err(pre + 'poster')} />
         </div>
@@ -188,63 +255,184 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
                     <Err m={err(pre + 'location')} />
                 </div>
             </div>
-            <Schedule {...props} />
+            <Schedule {...props} withJuknis />
         </div>
     );
 }
 
 const PRESET_CATEGORIES = ['TK', 'SD', 'SMP', 'SMA', 'Mahasiswa', 'Umum'];
+const totalQuota = (d: Detail) => d.participant_categories.reduce((a, c) => a + (parseInt(c.quota, 10) || 0), 0);
 
-function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
+function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = true, ticketOnly = false }: Sec & { max: number; canTicket?: boolean; canTeam?: boolean; ticketOnly?: boolean }) {
     const [draft, setDraft] = useState('');
     const list = d.participant_categories;
-    const has = (v: string) => list.some((x) => x.toLowerCase() === v.toLowerCase());
+    const idx = (v: string) => list.findIndex((x) => x.name.toLowerCase() === v.toLowerCase());
     const full = list.length >= max;
-    const toggle = (v: string) => {
-        if (has(v)) set({ participant_categories: list.filter((x) => x.toLowerCase() !== v.toLowerCase()) });
-        else if (!full) set({ participant_categories: [...list, v] });
+    const comp = isComp(d.category);
+    const isTeam = comp && d.competition_type === 'team';
+    const unit = isTeam ? 'tim' : 'orang';
+    const teamN = Math.min(parseInt(d.team_size, 10) || 0, 100);
+    const perRow = Math.max(parseInt(d.team_per_row, 10) || 1, 1);
+    const leaderN = Math.min(parseInt(d.team_leaders, 10) || 0, teamN);
+    const memberN = Math.max(teamN - leaderN, 0);
+    const buildSlots = (n: number, l: number) => Array.from({ length: n }, (_, i) => (i < l ? (l > 1 ? `Ketua ${i + 1}` : 'Ketua') : `Peserta ${i - l + 1}`));
+    const updateTeam = (p: { size?: string; row?: string; lead?: string }) => {
+        const size = p.size ?? d.team_size;
+        const row = p.row ?? d.team_per_row;
+        const lead = p.lead ?? d.team_leaders;
+        const n = Math.min(parseInt(size, 10) || 0, 100);
+        const l = Math.min(parseInt(lead, 10) || 0, n);
+        set({ team_size: n ? String(n) : '', team_per_row: row, team_leaders: lead, team_slots: buildSlots(n, l) });
     };
-    const addCustom = () => {
-        const v = draft.trim();
-        if (!v || full || has(v)) return;
-        set({ participant_categories: [...list, v] });
-        setDraft('');
+    const add = (v: string) => {
+        const name = v.trim();
+        if (!name || full || idx(name) >= 0) return;
+        set({ participant_categories: [...list, { name, quota: '' }] });
     };
-    const options = [...PRESET_CATEGORIES, ...list.filter((x) => !PRESET_CATEGORIES.some((p) => p.toLowerCase() === x.toLowerCase()))];
+    const remove = (i: number) => set({ participant_categories: list.filter((_, j) => j !== i) });
+    const setQuota = (i: number, v: string) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, quota: v.replace(/\D/g, '') } : c)) });
+    const toggle = (v: string) => { const i = idx(v); if (i >= 0) remove(i); else add(v); };
+    const options = [...PRESET_CATEGORIES, ...list.map((x) => x.name).filter((n) => !PRESET_CATEGORIES.some((p) => p.toLowerCase() === n.toLowerCase()))];
     return (
         <div className="space-y-5">
-            <div className="max-w-xs">
-                <label className={label}>Kuota peserta *</label>
-                <input type="number" min={1} className={input} value={d.participant_quota} onChange={(e) => set({ participant_quota: e.target.value })} placeholder="Contoh: 200" />
-                <Err m={err(pre + 'participant_quota')} />
-            </div>
-            <div>
-                <label className={label}>Kategori peserta * <span className="font-normal text-slate-500">(pilih yang sesuai{max <= 10 ? `, maksimal ${max}` : ''})</span></label>
-                <div className="flex flex-wrap gap-2">
+            {comp && (
+                <div className={`${box} space-y-5 p-5`}>
+                    <div>
+                        <b className="block text-[15px]">Jenis perlombaan *</b>
+                        <p className={help}>Pilih apakah peserta mendaftar sendiri atau sebagai tim.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {[['individual', 'Perorangan', 'Peserta mendaftar sendiri-sendiri.'], ...(canTeam ? [['team', 'Tim', 'Peserta mendaftar sebagai satu tim.']] : [])].map(([v, t, sub]) => (
+                            <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.competition_type === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
+                                <input type="radio" className="mt-1 accent-indigo-700" checked={d.competition_type === v} onChange={() => set({ competition_type: v })} />
+                                <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
+                            </label>
+                        ))}
+                    </div>
+                    <Err m={err(pre + 'competition_type')} />
+                    {!canTeam && <p className={help}>Perlombaan tim hanya tersedia di paket dengan fitur Manajemen Tim.</p>}
+
+                    {isTeam && (
+                        <div className="space-y-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                {([['team_size', 'Jumlah peserta per tim', 'Contoh: 6'], ['team_per_row', 'Peserta per baris', 'Contoh: 3'], ['team_leaders', 'Kotak ketua', 'Contoh: 1']] as const).map(([k, t, ph]) => (
+                                    <div key={k}>
+                                        <label className={label}>{t} *</label>
+                                        <input inputMode="numeric" className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                            value={d[k]} placeholder={ph}
+                                            onChange={(ev) => { const v = ev.target.value.replace(/\D/g, ''); updateTeam(k === 'team_size' ? { size: v } : k === 'team_per_row' ? { row: v } : { lead: v }); }} />
+                                        <Err m={err(pre + k)} />
+                                    </div>
+                                ))}
+                            </div>
+                            <p className={help}>Jumlah peserta per tim sudah termasuk kotak ketua.</p>
+                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 text-center dark:border-white/10 dark:bg-white/5">
+                                <b className="block text-sm">Preview Barisan</b>
+                                {teamN > 0 ? (
+                                    <>
+                                        <div className="my-4 flex items-start justify-center gap-6">
+                                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${perRow}, 2.75rem)` }}>
+                                                {Array.from({ length: memberN }, (_, n) => (
+                                                    <div key={n} title={`Peserta ${n + 1}`} className="h-11 w-11 rounded-xl bg-sky-400" />
+                                                ))}
+                                            </div>
+                                            {leaderN > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {Array.from({ length: leaderN }, (_, n) => (
+                                                        <div key={n} title="Ketua" className="h-11 w-11 rounded-xl bg-rose-500" />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{memberN} peserta (biru) · {leaderN} ketua (merah) · {perRow} per baris</p>
+                                    </>
+                                ) : (
+                                    <p className={`${help} mt-3`}>Isi jumlah peserta per tim untuk melihat susunan barisan.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div className={`${box} space-y-4 p-5`}>
+                <div>
+                    <b className="block text-[15px]">Kategori peserta *</b>
+                    <p className={help}>
+                        {max <= 10 ? `Paket ini maksimal ${max} kategori (${list.length} dipilih).` : 'Pilih kategori yang sesuai. Setiap kategori punya kuota sendiri dan jumlahnya tidak dibatasi.'}
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                     {options.map((o) => {
-                        const on = has(o);
+                        const on = idx(o) >= 0;
                         return (
                             <button key={o} type="button" onClick={() => toggle(o)} disabled={!on && full}
-                                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>
-                                {on && <Check className="h-4 w-4" />} {o}
+                                className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>
+                                {on && <Check className="h-4 w-4 shrink-0" />}
+                                <span className="truncate">{o}</span>
                             </button>
                         );
                     })}
                 </div>
-                <div className="mt-3 flex max-w-md gap-2">
-                    <input className="h-10 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+
+                <div className="flex gap-2 border-t border-slate-200/70 pt-4 dark:border-white/10">
+                    <input className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                         value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={60} disabled={full}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
-                        placeholder="Tidak ada di daftar? Tambah sendiri" />
-                    <button type="button" onClick={addCustom} disabled={full} className="rounded-xl bg-slate-800 px-4 text-sm font-bold text-white disabled:opacity-40 dark:bg-white/20">Tambah</button>
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); setDraft(''); } }}
+                        placeholder="Tidak ada di daftar? Ketik nama kategori lalu tekan Tambah" />
+                    <button type="button" onClick={() => { add(draft); setDraft(''); }} disabled={full}
+                        className="h-11 shrink-0 rounded-xl bg-slate-800 px-6 text-sm font-bold text-white transition hover:bg-slate-700 disabled:opacity-40 dark:bg-white/20">Tambah</button>
                 </div>
-                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{list.length} kategori dipilih{max <= 10 ? ` dari maksimal ${max}` : ''}.</p>
-                <Err m={err(pre + 'participant_categories')} />
+                {list.length === 0 && <Err m={err(pre + 'participant_categories')} />}
             </div>
+
+            {list.length > 0 && (
+                <div className={`${box} divide-y divide-slate-200/70 dark:divide-white/10`}>
+                    {list.map((c, i) => (
+                        <div key={c.name} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                            <span className="min-w-[6rem] flex-1 font-bold">{c.name}</span>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <input inputMode="numeric" className="h-11 w-32 rounded-xl border border-slate-200 bg-white/90 px-3 text-right text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                        value={c.quota} onChange={(e) => setQuota(i, e.target.value)} placeholder="Kuota" />
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">{unit}</span>
+                                </div>
+                                <Err m={err(`${pre}participant_categories.${i}.quota`)} />
+                            </div>
+                            <button type="button" onClick={() => remove(i)} className="text-sm font-bold text-rose-500">Hapus</button>
+                        </div>
+                    ))}
+                    <div className="flex items-center justify-between px-4 py-3 font-extrabold">
+                        <span>Total kuota event</span>
+                        <span className="text-indigo-700 dark:text-indigo-300">{totalQuota(d).toLocaleString('id-ID')} {unit}</span>
+                    </div>
+                </div>
+            )}
+
+            {ticketOnly ? (
+                <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
+            ) : (
             <div>
-                <label className={label}>Pendaftaran peserta *</label>
+                <>
+                <div className={`${box} mb-6 p-5`}>
+                    <b className="block text-[15px]">Biaya pendaftaran</b>
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Biaya per peserta. Kosongkan atau isi 0 kalau pendaftaran gratis.</span>
+                    <div className="mt-3 flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-950/60">
+                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
+                        <input
+                            inputMode="numeric"
+                            value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
+                            onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                            placeholder="0"
+                            className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
+                        />
+                    </div>
+                    <Err m={err(pre + 'registration_fee')} />
+                </div>
+                <label className={label}>Pendaftaran peserta *</label></>
                 <div className="grid gap-3 sm:grid-cols-2">
-                    {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']].map(([v, t, sub]) => (
+                    {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
                             <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v })} />
                             <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
@@ -252,7 +440,30 @@ function PesertaSection({ d, set, pre, err, max }: Sec & { max: number }) {
                     ))}
                 </div>
                 <Err m={err(pre + 'registration_method')} />
+                {!canTicket && <p className={help}>Pendaftaran lewat tiket hanya tersedia di paket dengan fitur Tiket.</p>}
             </div>
+            )}
+
+            {d.registration_method === 'transfer_manual' && (
+                <div className={`${box} space-y-4 p-4`}>
+                    <div>
+                        <b className="block text-sm">Rekening tujuan pembayaran</b>
+                        <p className={help}>Peserta akan diminta transfer ke rekening ini, lalu panitia memverifikasi pembayarannya.</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        {([['bank_name', 'Nama bank', 'Contoh: BCA, Mandiri, BRI'], ['bank_account_number', 'Nomor rekening', 'Hanya angka'], ['bank_account_name', 'Atas nama', 'Nama pemilik rekening']] as const).map(([k, t, ph]) => (
+                            <div key={k}>
+                                <label className={label}>{t} *</label>
+                                <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                    inputMode={k === 'bank_account_number' ? 'numeric' : 'text'} maxLength={k === 'bank_account_number' ? 40 : 100}
+                                    value={d[k]} placeholder={ph}
+                                    onChange={(ev) => set({ [k]: k === 'bank_account_number' ? ev.target.value.replace(/[^0-9 -]/g, '') : ev.target.value })} />
+                                <Err m={err(pre + k)} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -331,8 +542,9 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         <Fact icon={CalendarDays} title="Tanggal">{fmt(d.starts_at)} – {fmt(d.ends_at)}</Fact>
                         {!main && <Fact icon={MapPin} title="Lokasi">{d.location || '-'}</Fact>}
                         {!main && <Fact icon={Tag} title="Kategori event">{categories[d.category] ?? '-'}</Fact>}
-                        {!main && <Fact icon={Users} title="Kuota peserta">{d.participant_quota || '-'} orang</Fact>}
+                        {!main && <Fact icon={Users} title="Kuota peserta">{totalQuota(d) || '-'} orang</Fact>}
                         {!main && <Fact icon={Ticket} title="Pendaftaran">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
+                        {!main && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
                         {!main && (
                             <Fact icon={Phone} title="Penanggung jawab">
                                 {contact || '-'}
@@ -344,7 +556,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         <div>
                             <p className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">Kategori peserta</p>
                             <div className="flex flex-wrap gap-2">
-                                {d.participant_categories.map((c) => <span key={c} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c}</span>)}
+                                {d.participant_categories.map((c) => <span key={c.name} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-white/10">{c.name} · {c.quota}</span>)}
                             </div>
                         </div>
                     )}
@@ -355,17 +567,21 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
 }
 
 /* ---------- halaman ---------- *//* ---------- halaman ---------- */
-export default function CreateEvent({ packages, categories, selected_package_id }: Props) {
+export default function CreateEvent({ packages, categories, selected_package_id, payment_methods = [], platform_bank = null }: Props & { payment_methods?: string[]; platform_bank?: { bank_name: string; bank_account_number: string; bank_account_holder: string } | null }) {
     const initial = packages.find((p) => p.id === selected_package_id) ?? null;
     const [step, setStep] = useState(initial && !hasOptions(initial) ? 1 : 0);
     const [local, setLocal] = useState<Errs>({});
 
-    const { data, setData, post, processing, errors } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; subs: Detail[] }>({
+    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[] }>({
         ...blank(),
         package_id: initial?.id ?? '',
         assessment_addon: false,
+        judge_addon: false,
+        payment_method: '',
+        payment_proof: null,
         subs: initialSubs(initial),
     });
+    const payMethod = payment_methods.length === 1 ? payment_methods[0] : data.payment_method;
 
     const pkg = packages.find((p) => p.id === data.package_id);
     const series = !!pkg && (isSeriesPkg(pkg) || data.subs.length > 0);
@@ -377,7 +593,13 @@ export default function CreateEvent({ packages, categories, selected_package_id 
         ({ paket: 'Paket', info: 'Informasi Event', peserta: 'Peserta & Pendaftaran', pj: 'Penanggung Jawab', utama: 'Event Utama', tinjau: 'Tinjau' } as Record<string, string>)[k];
     const cur = keys[Math.min(step, keys.length - 1)];
     const last = step >= keys.length - 1;
-    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon) : null;
+    useEffect(() => {
+        if (pkg?.payment_type !== 'revenue_share') return;
+        if (data.registration_method !== 'ticket' || data.subs.some((x) => x.registration_method !== 'ticket')) {
+            setData((d) => ({ ...d, registration_method: 'ticket', subs: d.subs.map((x) => ({ ...x, registration_method: 'ticket' })) }));
+        }
+    }, [pkg?.id, data.subs.length, data.registration_method]);
+    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
 
@@ -387,7 +609,16 @@ export default function CreateEvent({ packages, categories, selected_package_id 
     const setMain = (patch: Partial<Detail>) => setData((d) => ({ ...d, ...patch }));
     const setSub = (i: number, patch: Partial<Detail>) => setData('subs', data.subs.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
-    const choosePackage = (p: Pkg) => setData((d) => ({ ...d, package_id: p.id, subs: initialSubs(p), assessment_addon: false }));
+    const choosePackage = (p: Pkg) => setData((d) => ({
+        ...d,
+        package_id: p.id,
+        subs: initialSubs(p),
+        assessment_addon: false,
+        judge_addon: false,
+        participant_categories: d.participant_categories.slice(0, maxCats(p)),
+        registration_method: d.registration_method === 'ticket' && !p.can_ticket ? '' : d.registration_method,
+        competition_type: d.competition_type === 'team' && !p.can_team ? '' : d.competition_type,
+    }));
     // Isian = jumlah event TAMBAHAN di luar yang sudah termasuk paket.
     const setExtra = (raw: number) => {
         if (!pkg) return;
@@ -430,17 +661,18 @@ export default function CreateEvent({ packages, categories, selected_package_id 
     const back = () => { setLocal({}); setStep(step - 1); };
 
     const stepOfField = (k: string) => {
-        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon') return 'paket';
+        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon' || k === 'judge_addon') return 'paket';
         const m = k.match(/^subs\.(\d+)\./);
         if (m) return `sub:${m[1]}`;
-        if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster'].includes(k) ? 'utama' : 'tinjau';
-        if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster'].includes(k)) return 'info';
-        if (k.startsWith('participant_') || k === 'registration_method') return 'peserta';
+        if (series) return ['title', 'description', 'starts_at', 'ends_at', 'poster', 'juknis'].includes(k) ? 'utama' : 'tinjau';
+        if (['title', 'category', 'location', 'starts_at', 'ends_at', 'description', 'poster', 'juknis'].includes(k)) return 'info';
+        if (k.startsWith('participant_') || k === 'registration_method' || k === 'registration_fee') return 'peserta';
         if (k.startsWith('contact_')) return 'pj';
         return 'tinjau';
     };
     const submit = () => {
         setLocal({});
+        transform((d) => ({ ...d, payment_method: payMethod }));
         post('/panel/ajukan', {
             forceFormData: true,
             onError: (errs) => {
@@ -566,7 +798,17 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                         <input type="checkbox" checked={data.assessment_addon} onChange={(e) => setData('assessment_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
                                         <span>
                                             <b>Tambah sistem penilaian</b> (+{rp(pkg.assessment_addon_price ?? 0)})
-                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Untuk lomba yang butuh juri dan skor.</span>
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Untuk lomba yang butuh skor dan penilaian.</span>
+                                        </span>
+                                    </label>
+                                )}
+
+                                {canJudge(pkg) && (
+                                    <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-indigo-200 pt-4 text-sm dark:border-white/10">
+                                        <input type="checkbox" checked={data.judge_addon} onChange={(e) => setData('judge_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
+                                        <span>
+                                            <b>Tambah juri</b> (+{rp(pkg.judge_addon_price ?? 0)})
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Akun juri untuk memberi nilai pada peserta.</span>
                                         </span>
                                     </label>
                                 )}
@@ -574,13 +816,7 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                             </div>
                         )}
 
-                        {false && pkg && c && (
-                            <p className="text-sm font-semibold">
-                                {pkg.payment_type === 'revenue_share'
-                                    ? <>Biaya di muka: <span className="text-indigo-700 dark:text-indigo-300">Rp0</span> (bayar lewat {pkg.price_label.toLowerCase()})</>
-                                    : <>Perkiraan biaya di muka: <span className="text-indigo-700 dark:text-indigo-300">{c.total === 0 ? 'Gratis' : rp(c.total)}</span></>}
-                            </p>
-                        )}
+                        
                     </div>
                 )}
 
@@ -603,7 +839,7 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                 {cur === 'peserta' && (
                     <div className="space-y-4">
                         <h2 className={h2}>Peserta & Pendaftaran</h2>
-                        <PesertaSection d={data} set={setMain} pre="" err={err} max={cap} />
+                        <PesertaSection d={data} set={setMain} pre="" err={err} max={cap} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} />
                     </div>
                 )}
                 {cur === 'pj' && (
@@ -630,7 +866,7 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                 </p>
                             </div>
                             <div><h3 className={h3}>Informasi Event</h3><InfoSection d={s} set={set} pre={pre} err={err} categories={categories} bounds={bounds} /></div>
-                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} /></div>
+                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
                             <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Penanggung Jawab</h3><PjSection d={s} set={set} pre={pre} err={err} /></div>
                         </div>
                     );
@@ -681,10 +917,57 @@ export default function CreateEvent({ packages, categories, selected_package_id 
                                     <div className="flex justify-between"><span>Paket {pkg.name}{pkg.included_sub_events > 0 ? ` (termasuk ${pkg.included_sub_events} event)` : ''}</span><span>{c.base === 0 ? 'Gratis' : rp(c.base)}</span></div>
                                     {c.extra > 0 && <div className="flex justify-between"><span>Event tambahan ({c.extra} × {rp(pkg.extra_sub_event_price ?? 0)})</span><span>{rp(c.sub)}</span></div>}
                                     {c.ad > 0 && <div className="flex justify-between"><span>Add-on sistem penilaian</span><span>{rp(c.ad)}</span></div>}
+                                    {c.aj > 0 && <div className="flex justify-between"><span>Add-on juri</span><span>{rp(c.aj)}</span></div>}
                                     <div className="mt-2 flex justify-between border-t border-indigo-200 pt-2 font-extrabold dark:border-white/10"><span>Total di muka</span><span>{c.total === 0 ? 'Gratis' : rp(c.total)}</span></div>
                                 </div>
                             )}
                         </div>
+                        {pkg.payment_type !== 'revenue_share' && c.total > 0 && (
+                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 text-[15px] dark:border-white/10 dark:bg-white/5">
+                                <p className="mb-3 font-extrabold">Metode pembayaran</p>
+                                <div className={`grid gap-3 ${payment_methods.length > 1 ? 'md:grid-cols-2' : ''}`}>
+                                    {payment_methods.map((m) => {
+                                        const on = payMethod === m;
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={m}
+                                                onClick={() => setData('payment_method', m)}
+                                                className={`rounded-xl border p-4 text-left transition ${on ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-400/40 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-indigo-300 dark:border-white/10'}`}
+                                            >
+                                                <b className="block">{m === 'midtrans' ? 'Midtrans (online)' : 'Transfer manual'}</b>
+                                                <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">
+                                                    {m === 'midtrans' ? 'Bayar online, pembayaran terkonfirmasi otomatis.' : 'Transfer ke rekening SIMPLE, pembayaran diverifikasi admin.'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {payMethod === 'transfer_manual' && platform_bank && (
+                                    <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm dark:bg-white/5">
+                                        <p className="font-bold">Rekening tujuan</p>
+                                        <p>{platform_bank.bank_name} - {platform_bank.bank_account_number}</p>
+                                        <p className="text-slate-500 dark:text-slate-400">a.n. {platform_bank.bank_account_holder}</p>
+                                    </div>
+                                )}
+                                {payMethod === 'transfer_manual' && (
+                                    <div className="mt-4">
+                                        <label className="block text-sm font-bold">Bukti pembayaran *</label>
+                                        <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Transfer sesuai total di muka, lalu unggah bukti transfer (foto otomatis dikompres, PDF maks. 2 MB).</p>
+                                        <input
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                            onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)}
+                                            className="block w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white dark:border-white/10 dark:bg-white/5"
+                                        />
+                                        {data.payment_proof && <p className="mt-1 text-xs text-emerald-600">Terpilih: {data.payment_proof.name}</p>}
+                                        {errors.payment_proof && <p className="mt-2 text-sm text-rose-500">{errors.payment_proof}</p>}
+                                    </div>
+                                )}
+                                {errors.payment_method && <p className="mt-3 text-sm text-rose-500">{errors.payment_method}</p>}
+                            </div>
+                        )}
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Semua pengajuan akan ditinjau dan dikonfirmasi admin sebelum event aktif.</p>
                         {Object.keys(errors).length > 0 && <p className="text-sm text-rose-500">Ada isian yang belum sesuai. Silakan periksa langkah yang ditandai.</p>}
                     </div>
                 )}

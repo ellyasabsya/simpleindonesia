@@ -22,6 +22,7 @@ class SettingController extends Controller
             ],
             'bank' => Setting::bank(),
             'voting_open' => Setting::votingOpen(),
+            'fee_percent' => Setting::serviceFeePercent(),
         ]);
     }
 
@@ -35,11 +36,16 @@ class SettingController extends Controller
             'bank_name' => [Rule::requiredIf($manual), 'nullable', 'string', 'max:100'],
             'bank_account_number' => [Rule::requiredIf($manual), 'nullable', 'string', 'max:40', 'regex:/^[0-9\s\-]+$/'],
             'bank_account_holder' => [Rule::requiredIf($manual), 'nullable', 'string', 'max:150'],
+            'service_fee_percent' => ['required', 'numeric', 'min:0', 'max:50'],
         ], [
             'bank_name.required' => 'Nama bank wajib diisi.',
             'bank_account_number.required' => 'Nomor rekening wajib diisi.',
             'bank_account_number.regex' => 'Nomor rekening hanya boleh berisi angka.',
             'bank_account_holder.required' => 'Nama pemilik rekening wajib diisi.',
+            'service_fee_percent.required' => 'Biaya layanan wajib diisi.',
+            'service_fee_percent.numeric' => 'Biaya layanan harus berupa angka.',
+            'service_fee_percent.min' => 'Biaya layanan minimal 0%.',
+            'service_fee_percent.max' => 'Biaya layanan maksimal 50%.',
         ]);
 
         if (! $data['pay_midtrans'] && ! $data['pay_manual']) {
@@ -53,7 +59,8 @@ class SettingController extends Controller
         Setting::putText('bank_name', $data['bank_name'] ?? '');
         Setting::putText('bank_account_number', $data['bank_account_number'] ?? '');
         Setting::putText('bank_account_holder', $data['bank_account_holder'] ?? '');
+        Setting::putText('service_fee_percent', (string) $data['service_fee_percent']);
 
-        return back();
+        return back()->with('success', 'Pengaturan berhasil disimpan.');
     }
 }

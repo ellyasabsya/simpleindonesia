@@ -1,7 +1,8 @@
 import { router } from '@inertiajs/react';
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, MapPin, Search, XCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CalendarDays, CheckCircle2, ChevronDown, Inbox, Layers, MapPin, Search, XCircle } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import AdminLayout from '@/components/admin/admin-layout';
+import Pagination from '@/components/admin/pagination';
 
 type Ev = {
     id: number;
@@ -16,6 +17,8 @@ type Ev = {
     institution: string | null;
     package: string;
     share_percent: number | null;
+    sub_count: number;
+    children: { id: number; title: string; category: string | null; location: string | null; starts_at: string | null; ends_at: string | null; poster_url: string | null }[];
 };
 
 type Props = {
@@ -32,7 +35,6 @@ const badge = {
     rejected: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200' },
 };
 
-const card = 'rounded-2xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
 const fmt = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function AdminEvents({ events, filters, counts, base, pageTitle }: Props) {
@@ -40,6 +42,8 @@ export default function AdminEvents({ events, filters, counts, base, pageTitle }
     const [rejecting, setRejecting] = useState<Ev | null>(null);
     const [reason, setReason] = useState('');
     const [error, setError] = useState('');
+    const [openIds, setOpenIds] = useState<number[]>([]);
+    const toggleOpen = (id: number) => setOpenIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
     const first = useRef(true);
 
     const go = (p: { status?: string; search?: string }) =>
@@ -83,96 +87,172 @@ export default function AdminEvents({ events, filters, counts, base, pageTitle }
 
     return (
         <AdminLayout title={pageTitle}>
-            <section className={`${card} p-6`}>
-                <h3 className="text-xl font-extrabold">Daftar Event</h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Periksa pengajuan event, lalu tayangkan atau tolak dengan alasan.</p>
-
-                <label className="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100 dark:border-white/10 dark:bg-slate-900/60 dark:focus-within:ring-indigo-500/20">
-                    <Search className="h-4 w-4 text-slate-400" />
-                    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama event, lokasi, atau lembaga..." className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
-                </label>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {tabs.map((t) => (
-                        <button
-                            key={t.key}
-                            onClick={() => go({ status: t.key })}
-                            className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                                filters.status === t.key
-                                    ? 'border-indigo-300 bg-indigo-50 text-indigo-800 dark:border-indigo-400/40 dark:bg-indigo-500/20 dark:text-white'
-                                    : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300'
-                            }`}
-                        >
-                            {t.label}
-                            <span className="rounded-md bg-slate-100 px-1.5 text-xs dark:bg-white/10">{t.count}</span>
-                        </button>
-                    ))}
+            <div className="w-full space-y-5">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
+                    <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
+                    <div className="relative">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Admin Workspace
+                        </span>
+                        <h2 className="mt-3 text-2xl font-extrabold">{pageTitle}</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-white/80">
+                            {base === '/admin/review'
+                                ? 'Periksa pengajuan event yang tidak perlu verifikasi pembayaran, lalu tayangkan atau tolak dengan alasan.'
+                                : 'Lihat dan kelola semua event di semua status, lalu tayangkan atau tolak dengan alasan.'}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="mt-5 divide-y divide-slate-200/70 dark:divide-white/10">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/60">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {tabs.map((t) => {
+                                const active = filters.status === t.key;
+                                const alert = t.key === 'pending' && t.count > 0;
+                                return (
+                                    <button
+                                        key={t.key}
+                                        type="button"
+                                        onClick={() => go({ status: t.key })}
+                                        className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition ${
+                                            active ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10'
+                                        }`}
+                                    >
+                                        {t.label}
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                                active ? 'bg-white/25 text-white' : alert ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'
+                                            }`}
+                                        >
+                                            {t.count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Cari event, lokasi, lembaga"
+                                className="w-64 rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5"
+                            />
+                        </div>
+                    </div>
+
                     {events.data.length === 0 && (
-                        <div className="py-14 text-center text-slate-500 dark:text-slate-400">
-                            <p className="font-semibold">Tidak ada event</p>
-                            <p className="text-sm">Belum ada data untuk filter atau pencarian ini.</p>
+                        <div className="flex flex-col items-center px-4 py-16 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-white/10">
+                                <Inbox className="h-7 w-7" />
+                            </div>
+                            <p className="mt-4 font-semibold text-slate-700 dark:text-slate-200">Tidak ada event</p>
+                            <p className="mt-1 text-sm text-slate-500">Belum ada data untuk filter atau pencarian ini.</p>
                         </div>
                     )}
 
-                    {events.data.map((e) => (
-                        <article key={e.id} className="flex flex-wrap items-start justify-between gap-4 py-5">
-                            <div className="flex min-w-0 gap-4">
-                                <div className="relative h-24 w-[76px] shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600">
-                                    {e.poster_url && <img src={e.poster_url} alt={e.title} className="absolute inset-0 h-full w-full object-cover" />}
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h4 className="text-base font-extrabold">{e.title}</h4>
-                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${badge[e.status].style}`}>{badge[e.status].label}</span>
-                                    </div>
-                                    <p className="mt-1 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                                        {e.institution} · {e.category} · Paket {e.package}{e.share_percent ? ` (${e.share_percent}%)` : ''}
-                                    </p>
-                                    <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
-                                        <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{e.location}</span>
-                                        <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{fmt(e.starts_at)} – {fmt(e.ends_at)}</span>
-                                    </div>
-                                    {e.status === 'rejected' && e.rejection_reason && (
-                                        <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">Alasan: {e.rejection_reason}</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2">
-                                {e.status !== 'published' && (
-                                    <button onClick={() => approve(e)} className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm">
-                                        <CheckCircle2 className="h-4 w-4" /> Tayangkan
-                                    </button>
-                                )}
-                                {e.status !== 'rejected' && (
-                                    <button onClick={() => { setRejecting(e); setError(''); }} className="flex items-center gap-1.5 rounded-xl bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300">
-                                        <XCircle className="h-4 w-4" /> Tolak
-                                    </button>
-                                )}
-                            </div>
-                        </article>
-                    ))}
-                </div>
-
-                {events.last_page > 1 && (
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-200/70 pt-4 text-sm dark:border-white/10">
-                        <span className="text-slate-500 dark:text-slate-400">Halaman {events.current_page} dari {events.last_page} · {events.total} event</span>
-                        <div className="flex gap-2">
-                            <button disabled={!events.prev_page_url} onClick={() => events.prev_page_url && router.get(events.prev_page_url, {}, { preserveState: true, replace: true })} className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80 shadow-sm disabled:opacity-40 dark:bg-white/10"><ChevronLeft className="h-4 w-4" /></button>
-                            <button disabled={!events.next_page_url} onClick={() => events.next_page_url && router.get(events.next_page_url, {}, { preserveState: true, replace: true })} className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/80 shadow-sm disabled:opacity-40 dark:bg-white/10"><ChevronRight className="h-4 w-4" /></button>
+                    {events.data.length > 0 && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[980px] text-sm">
+                                <thead className="bg-slate-50 dark:bg-white/5">
+                                    <tr>
+                                        {['Event', 'Lembaga & Paket', 'Lokasi', 'Tanggal', 'Status', 'Aksi'].map((h) => (
+                                            <th key={h} className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 ${h === 'Aksi' ? 'text-right' : ''}`}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                                    {events.data.map((e) => (
+                                        <Fragment key={e.id}>
+                                            <tr>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600">
+                                                            {e.poster_url && <img src={e.poster_url} alt={e.title} className="absolute inset-0 h-full w-full object-cover" />}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-semibold text-slate-800 dark:text-slate-100">{e.title}</p>
+                                                            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                                                {e.sub_count > 0 ? (
+                                                                    <button type="button" onClick={() => toggleOpen(e.id)}
+                                                                        className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 font-bold text-violet-800 hover:bg-violet-200 dark:bg-violet-500/20 dark:text-violet-200">
+                                                                        <Layers className="h-3 w-3" /> Rangkaian · {e.sub_count} kegiatan
+                                                                        <ChevronDown className={`h-3 w-3 transition ${openIds.includes(e.id) ? 'rotate-180' : ''}`} />
+                                                                    </button>
+                                                                ) : (
+                                                                    e.category && <span>{e.category}</span>
+                                                                )}
+                                                            </div>
+                                                            {e.status === 'rejected' && e.rejection_reason && (
+                                                                <p className="mt-1 text-xs text-rose-600 dark:text-rose-300">Alasan: {e.rejection_reason}</p>
+                                                            )}
+                                                            {e.status === 'pending' && e.sub_count > 0 && (
+                                                                <p className="mt-1 text-xs text-slate-500">Aksi berlaku untuk event utama dan seluruh kegiatannya.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{e.institution ?? '-'}</p>
+                                                    <p className="text-xs text-slate-500">Paket {e.package}{e.share_percent ? ` (${e.share_percent}%)` : ''}</p>
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle text-slate-600 dark:text-slate-300">{e.location || '-'}</td>
+                                                <td className="px-4 py-3.5 align-middle whitespace-nowrap text-slate-600 dark:text-slate-300">{fmt(e.starts_at)} – {fmt(e.ends_at)}</td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${badge[e.status].style}`}>{badge[e.status].label}</span>
+                                                </td>
+                                                <td className="px-4 py-3.5 align-middle">
+                                                    <div className="flex justify-end gap-2">
+                                                        {e.status !== 'published' && (
+                                                            <button type="button" onClick={() => approve(e)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white transition hover:bg-emerald-700">
+                                                                <CheckCircle2 className="h-4 w-4" /> Tayangkan
+                                                            </button>
+                                                        )}
+                                                        {e.status !== 'rejected' && (
+                                                            <button type="button" onClick={() => { setRejecting(e); setError(''); }} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-bold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300">
+                                                                <XCircle className="h-4 w-4" /> Tolak
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {e.sub_count > 0 && openIds.includes(e.id) && (
+                                                <tr className="bg-slate-50/70 dark:bg-white/5">
+                                                    <td colSpan={6} className="px-4 py-3">
+                                                        <ul className="grid gap-2 md:grid-cols-2">
+                                                            {e.children.map((c) => (
+                                                                <li key={c.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+                                                                    <div className="relative h-12 w-9 shrink-0 overflow-hidden rounded-md bg-gradient-to-b from-indigo-900 to-purple-600">
+                                                                        {c.poster_url && <img src={c.poster_url} alt={c.title} className="absolute inset-0 h-full w-full object-cover" />}
+                                                                    </div>
+                                                                    <div className="min-w-0 text-sm">
+                                                                        <p className="font-semibold">{c.title}{c.category ? <span className="ml-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{c.category}</span> : null}</p>
+                                                                        <p className="text-xs text-slate-500">
+                                                                            {c.location ?? '-'}{c.starts_at && c.ends_at ? ` · ${fmt(c.starts_at)} – ${fmt(c.ends_at)}` : ''}
+                                                                        </p>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                )}
-            </section>
+                    )}
+
+                    <Pagination current={events.current_page} last={events.last_page} total={events.total} unit="event" />
+                </div>
+            </div>
 
             {rejecting && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setRejecting(null)} />
                     <div className="relative w-full max-w-md rounded-3xl border border-white/70 bg-white p-7 shadow-2xl dark:border-white/10 dark:bg-slate-900">
-                        <h3 className="text-xl font-extrabold">Tolak event</h3>
+                        <h3 className="text-lg font-extrabold">Tolak event</h3>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                             Tuliskan alasan untuk <b>{rejecting.title}</b> agar lembaga tahu apa yang perlu diperbaiki.
                         </p>

@@ -144,3 +144,42 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::get('pengaturan', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('pengaturan');
         Route::patch('pengaturan', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('pengaturan.update');
     });
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('komentar', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('komentar');
+        Route::patch('komentar/{comment}/abaikan', [\App\Http\Controllers\Admin\CommentController::class, 'dismiss'])->name('komentar.dismiss');
+        Route::delete('komentar/{comment}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('komentar.destroy');
+    });
+
+Route::get('/tiket-data', function () {
+    $events = \App\Models\Event::where('status', \App\Models\Event::PUBLISHED)
+        ->where('registration_method', 'ticket')
+        ->where('ticket_sales_open', true)
+        ->whereHas('ticketTypes')
+        ->with('ticketTypes')
+        ->orderBy('starts_at')
+        ->get()
+        ->map(function ($e) {
+            $cheapest = $e->ticketTypes->sortBy('price')->first();
+            return [
+                'id' => $e->id,
+                'href' => '/events/'.$e->slug,
+                'title' => $e->title,
+                'poster' => $e->posterUrl(),
+                'starts_at' => $e->starts_at->translatedFormat('j M Y'),
+                'ends_at' => $e->ends_at->translatedFormat('j M Y'),
+                'location' => $e->location ?? '-',
+                'category' => \App\Http\Controllers\Panel\EventController::CATEGORIES[$e->category] ?? null,
+                'ticket_name' => $cheapest->name,
+                'price' => (int) $cheapest->price,
+                'valid_until' => $cheapest->valid_until->translatedFormat('j M Y'),
+                'available' => $e->ticketTypes->sum('quota') > 0
+                    && $e->ticketTypes->max('valid_until')->endOfDay()->isFuture(),
+            ];
+        })->values();
+
+    return response()->json($events);
+});

@@ -1,3 +1,4 @@
+import { Trophy } from 'lucide-react';
 import { Users } from 'lucide-react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
@@ -5,7 +6,6 @@ import {
     Building2,
     CalendarCheck,
     CalendarDays,
-    CalendarPlus,
     Check,
     ClipboardList,
     Clock,
@@ -40,6 +40,17 @@ type Child = {
     starts_at: string | null;
     ends_at: string | null;
     juknis: string | null;
+    registration_fee: number;
+    ticket_price?: number | null;
+    ticket_open?: boolean;
+    ticket_left?: number | null;
+    description?: string | null;
+    contact?: { name?: string; position?: string; phone?: string; email?: string } | null;
+    registration_method?: 'ticket' | 'transfer_manual' | null;
+    slug: string;
+    poster: string | null;
+    quota: number;
+    registered: number;
 };
 
 type CommentItem = { id: number; body: string; author: string; created_at: string; mine: boolean; reported: boolean };
@@ -61,6 +72,9 @@ type Detail = {
     contact: { name?: string; position?: string; phone?: string; email?: string } | null;
     children: Child[];
     comments: CommentItem[];
+    fee_from?: boolean;
+    parent?: { title: string; slug: string } | null;
+    siblings?: { id: number; title: string; slug: string }[];
 };
 
 type Icon = ComponentType<{ className?: string }>;
@@ -98,21 +112,6 @@ function dayCount(start: string | null, end: string | null) {
     return Math.max(diff, 0) + 1;
 }
 
-// Google Calendar: tanggal akhir bersifat eksklusif, jadi ditambah satu hari.
-function calendarUrl(e: Detail) {
-    if (!e.starts_at) return null;
-    const [y, m, d] = (e.ends_at ?? e.starts_at).split('-').map(Number);
-    const endExclusive = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10).replace(/-/g, '');
-    const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: e.title,
-        dates: `${e.starts_at.replace(/-/g, '')}/${endExclusive}`,
-        location: e.location ?? '',
-        details: e.organizer ? `Diselenggarakan oleh ${e.organizer}` : '',
-    });
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
 const mapUrl = (loc: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
 
 function SectionTitle({ icon: Icon, children }: { icon: Icon; children: string }) {
@@ -126,7 +125,7 @@ function SectionTitle({ icon: Icon, children }: { icon: Icon; children: string }
     );
 }
 
-function Fact({ icon: Icon, label, value, tone }: { icon: Icon; label: string; value: string; tone: string }) {
+function Fact({ icon: Icon, label, value, tone, action }: { icon: Icon; label: string; value: string; tone: string; action?: React.ReactNode }) {
     return (
         <div className="flex items-start gap-4 rounded-2xl bg-white/80 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-white/5">
             <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${tone}`}>
@@ -135,6 +134,7 @@ function Fact({ icon: Icon, label, value, tone }: { icon: Icon; label: string; v
             <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</p>
                 <p className="mt-1.5 break-words text-base font-bold">{value}</p>
+                {action}
             </div>
         </div>
     );
@@ -249,6 +249,7 @@ type Participants = {
         registered: number;
         approved: number;
         names: { name: string; school: string | null }[];
+        info?: { min_age: number | null; max_age: number | null; requirements: string | null; prizes: { rank: string; prize: string }[] };
     }[];
 };
 
@@ -312,19 +313,200 @@ function PesertaTab({ data }: { data?: Participants }) {
     );
 }
 
-export default function EventDetail() {
+function HadiahTab({ data }: { data?: Participants }) {
+    const rows = (data?.branches ?? []).filter((b) => b.info);
+    const age = (a: number | null, b: number | null) =>
+        a != null && b != null ? `${a}–${b} tahun` : a != null ? `Minimal ${a} tahun` : b != null ? `Maksimal ${b} tahun` : null;
+    return (
+        <section className={card}>
+            <SectionTitle icon={Trophy}>Hadiah</SectionTitle>
+            <div className="mt-6 space-y-4">
+                {rows.map((b) => {
+                    const i = b.info!;
+                    const ageText = age(i.min_age, i.max_age);
+                    const showSub = b.subtitle && !b.title.toLowerCase().endsWith(b.subtitle.toLowerCase());
+                    return (
+                        <div key={b.id} className={infoBox}>
+                            <p className="text-lg font-bold">{b.title}</p>
+                            {showSub && <p className="text-sm text-slate-500 dark:text-slate-400">{b.subtitle}</p>}
+                            {i.prizes.length > 0 ? (
+                                <ul className="mt-4 divide-y divide-slate-200/70 dark:divide-white/10">
+                                    {i.prizes.map((p, k) => (
+                                        <li key={k} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
+                                            <span className="flex items-center gap-2 font-bold"><Trophy className="h-4 w-4 text-amber-500" />{p.rank}</span>
+                                            {p.prize && <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{p.prize}</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200"><Trophy className="h-4 w-4 text-amber-500" />Memperebutkan Juara 1, 2, dan 3</p>
+                            )}
+                            {(ageText || i.requirements) && (
+                                <div className="mt-4 space-y-1 border-t border-slate-200/70 pt-3 text-sm dark:border-white/10">
+                                    {ageText && <p><span className="font-semibold text-slate-500 dark:text-slate-400">Usia: </span><span className="font-bold">{ageText}</span></p>}
+                                    {i.requirements && <p className="whitespace-pre-line text-slate-700 dark:text-slate-200">{i.requirements}</p>}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+const KEGIATAN_PER_HALAMAN = 8;
+
+function KegiatanTab({ event }: { event: Detail }) {
+    const { user } = useAuth();
+    const [q, setQ] = useState('');
+    const [cat, setCat] = useState('');
+    const [limit, setLimit] = useState(KEGIATAN_PER_HALAMAN);
+    const money = (n: number) => (n > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(n)}` : 'Gratis');
+
+    const cats = Array.from(new Set(event.children.map((c) => c.category).filter((x): x is string => !!x)));
+    const list = event.children.filter((c) => (!cat || c.category === cat) && `${c.title} ${c.location ?? ''}`.toLowerCase().includes(q.trim().toLowerCase()));
+    const shown = list.slice(0, limit);
+    const chip = (on: boolean) =>
+        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+
+    return (
+        <>
+            <section className={card}>
+                <SectionTitle icon={Layers}>Rangkaian Kegiatan</SectionTitle>
+                <p className="mt-6 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                    Event ini terdiri dari {event.children.length} kegiatan. Tiket semua kegiatan dibeli sekaligus lewat tombol di bagian atas halaman.
+                </p>
+                {(event.children.length > 6 || cats.length > 1) && (
+                    <div className="mt-5 space-y-3">
+                        {event.children.length > 6 && (
+                            <input
+                                type="search"
+                                value={q}
+                                onChange={(e) => { setQ(e.target.value); setLimit(KEGIATAN_PER_HALAMAN); }}
+                                placeholder="Cari kegiatan atau lokasi..."
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-900/70 dark:text-white"
+                            />
+                        )}
+                        {cats.length > 1 && (
+                            <div className="flex flex-wrap gap-2">
+                                <button type="button" onClick={() => { setCat(''); setLimit(KEGIATAN_PER_HALAMAN); }} className={chip(cat === '')}>Semua · {event.children.length}</button>
+                                {cats.map((c) => (
+                                    <button key={c} type="button" onClick={() => { setCat(c); setLimit(KEGIATAN_PER_HALAMAN); }} className={chip(cat === c)}>
+                                        {c} · {event.children.filter((x) => x.category === c).length}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </section>
+
+            {list.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 py-12 text-center text-sm text-slate-500 dark:border-white/15 dark:text-slate-400">Tidak ada kegiatan yang cocok.</p>
+            ) : (
+                <div className="space-y-3">
+                    {shown.map((c) => {
+                        const price = c.ticket_price ?? c.registration_fee;
+                        const left = c.ticket_left != null ? `sisa ${c.ticket_left} tiket` : c.quota > 0 ? `sisa ${Math.max(0, c.quota - c.registered)} slot` : null;
+                        const daftar = !c.ticket_open && c.registration_method === 'transfer_manual';
+                        return (
+                            <article key={c.id} className="flex items-center gap-4 rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur md:gap-5 md:p-4 dark:border-white/10 dark:bg-slate-900/50">
+                                <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 md:h-28 md:w-24">
+                                    {c.poster && <img src={c.poster} alt={c.title} className="h-full w-full object-cover object-top" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    {c.category && <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{c.category}</span>}
+                                    <h3 className="mt-1 text-lg font-bold">{c.title}</h3>
+                                    {c.description && <p className="mt-0.5 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{c.description}</p>}
+                                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600 dark:text-slate-300">
+                                        {c.starts_at && (
+                                            <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{shortDate(c.starts_at)}{c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}</span>
+                                        )}
+                                        {c.location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{c.location}</span>}
+                                        <span className="inline-flex items-center gap-1.5"><Ticket className="h-3.5 w-3.5" />{money(price)}{left ? ` · ${left}` : ''}</span>
+                                    </div>
+                                    {(daftar || c.juknis) && (
+                                        <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
+                                            {daftar && <a href={user ? `/events/${c.id}/daftar` : `/events/${c.id}/masuk`} className="rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white">Daftar</a>}
+                                            {c.juknis && <a href={c.juknis} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-white/20 dark:text-slate-200">Juknis</a>}
+                                        </div>
+                                    )}
+                                </div>
+                                {(daftar || c.juknis) && (
+                                    <div className="hidden shrink-0 flex-col gap-2 sm:flex">
+                                        {daftar && <a href={user ? `/events/${c.id}/daftar` : `/events/${c.id}/masuk`} className="rounded-xl bg-gradient-to-r from-pink-600 to-orange-500 px-5 py-2.5 text-center text-sm font-bold text-white shadow transition hover:shadow-lg">Daftar</a>}
+                                        {c.juknis && <a href={c.juknis} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-300 px-5 py-2.5 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10">Juknis</a>}
+                                    </div>
+                                )}
+                            </article>
+                        );
+                    })}
+                    <div className="flex flex-col items-center gap-2 pt-2">
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Menampilkan {shown.length} dari {list.length} kegiatan</p>
+                        {shown.length < list.length && (
+                            <button type="button" onClick={() => setLimit((n) => n + KEGIATAN_PER_HALAMAN)} className="rounded-xl border border-slate-300 bg-white px-6 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/20 dark:bg-white/5 dark:text-slate-200">Tampilkan lebih banyak</button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+function ContactBlock({ contact }: { contact: NonNullable<Detail['contact']> }) {
+    return (
+        <div className="space-y-4">
+            {(contact.name || contact.position) && (
+                <div>
+                    {contact.name && <p className="text-lg font-bold">{contact.name}</p>}
+                    {contact.position && <p className="text-sm text-slate-500 dark:text-slate-400">{contact.position}</p>}
+                </div>
+            )}
+            <div className="flex flex-wrap gap-3">
+                {contact.phone && (
+                    <>
+                        <a href={`tel:${contact.phone}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10">
+                            <Phone className="h-4 w-4 text-indigo-700" />
+                            {contact.phone}
+                        </a>
+                        <a href={waLink(contact.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white shadow transition hover:bg-emerald-600">
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp
+                        </a>
+                    </>
+                )}
+                {contact.email && (
+                    <a href={`mailto:${contact.email}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10">
+                        <Mail className="h-4 w-4 text-indigo-700" />
+                        {contact.email}
+                    </a>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function EventDetailSingle() {
     const { event } = usePage<{ event: Detail }>().props;
-    const [tab, setTab] = useState<'info' | 'peserta' | 'kontak'>('info');
+    const [tabRaw, setTab] = useState<'kegiatan' | 'info' | 'hadiah' | 'peserta' | 'kontak'>(event.children.length > 0 ? 'kegiatan' : 'info');
     const [copied, setCopied] = useState(false);
     const st = STATUS[event.status.key];
     const single = !event.ends_at || event.ends_at === event.starts_at;
     const days = dayCount(event.starts_at, event.ends_at);
-    const cal = calendarUrl(event);
+    const parts = (event as unknown as { participants?: Participants }).participants;
+    const hasHadiah = !!(event as unknown as { has_competition?: boolean }).has_competition && (parts?.branches ?? []).some((b) => b.info);
+    const tab = tabRaw === 'hadiah' && !hasHadiah ? 'info' : tabRaw;
+    const { user } = useAuth();
 
     // Tujuan sementara: ganti dua href ini setelah form pembelian tiket / pendaftaran dibuat.
     const cta =
-        event.registration_method === 'transfer_manual'
-            ? { label: 'Daftar', Icon: ClipboardList, href: `/events/${event.id}/daftar` }
+        event.children.length > 0
+            ? event.children.some((c) => c.ticket_open)
+                ? { label: 'Beli Tiket', Icon: Ticket, href: `/events/${event.id}/tiket` }
+                : { label: 'Pilih kegiatan', Icon: Layers, href: '#kegiatan' }
+            : event.registration_method === 'transfer_manual'
+            ? { label: 'Daftar', Icon: ClipboardList, href: user ? `/events/${event.id}/daftar` : `/events/${event.id}/masuk` }
             : { label: 'Beli Tiket', Icon: Ticket, href: `/events/${event.id}/tiket` };
 
     const share = async () => {
@@ -366,6 +548,18 @@ export default function EventDetail() {
                             <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
                             Semua Event
                         </Link>
+                        {event.parent && (
+                            <div className="mt-4 rounded-2xl border border-white/70 bg-white/60 p-4 text-sm shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
+                                <p className="text-slate-600 dark:text-slate-300">Bagian dari rangkaian <Link href={`/events/${event.parent.slug}`} className="font-bold text-indigo-700 hover:underline dark:text-indigo-300">{event.parent.title}</Link></p>
+                                {(event.siblings?.length ?? 0) > 1 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {event.siblings!.map((x) => (
+                                            <Link key={x.id} href={`/events/${x.slug}`} className={`rounded-full px-4 py-1.5 text-xs font-bold ${x.id === event.id ? 'bg-indigo-900 text-white' : 'bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:bg-white/10 dark:text-slate-200'}`}>{x.title}</Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Kartu utama */}
                         <section className="mt-6 rounded-[2rem] border border-white/70 bg-white/60 p-6 shadow-sm backdrop-blur md:p-10 dark:border-white/10 dark:bg-slate-900/40">
@@ -459,15 +653,54 @@ export default function EventDetail() {
                             </div>
                         </section>
 
+                        {event.children.length > 0 && !event.children.some((c) => c.ticket_price != null) && (
+                            <section id="kegiatan" className="mt-6 scroll-mt-28">
+                                <h2 className="text-2xl font-black">Pilih Kegiatan</h2>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Event ini terdiri dari beberapa kegiatan. Pilih salah satu untuk melihat detail dan mendaftar.</p>
+                                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                                    {event.children.map((c) => {
+                                        const left = Math.max(0, c.quota - c.registered);
+                                        return (
+                                            <Link key={c.id} href={`/events/${c.slug}`} className="group overflow-hidden rounded-3xl border border-white/70 bg-white/70 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-slate-900/50">
+                                                {c.poster ? (
+                                                    <img src={c.poster} alt={c.title} className="aspect-[16/9] w-full object-cover object-top" />
+                                                ) : (
+                                                    <div className="aspect-[16/9] w-full bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500" />
+                                                )}
+                                                <div className="space-y-3 p-5">
+                                                    {c.category && <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{c.category}</span>}
+                                                    <h3 className="text-xl font-bold">{c.title}</h3>
+                                                    <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                                                        {c.starts_at && (
+                                                            <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{shortDate(c.starts_at)}{c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}</p>
+                                                        )}
+                                                        {c.location && <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{c.location}</p>}
+                                                        <p className="flex items-center gap-2"><Ticket className="h-4 w-4" />{(c.ticket_price ?? c.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format((c.ticket_price ?? c.registration_fee))}` : 'Gratis'}{c.ticket_left != null ? ` · sisa ${c.ticket_left} tiket` : c.quota > 0 ? ` · sisa ${left} slot` : ''}</p>
+                                                    </div>
+                                                    <span className="inline-flex rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg">Lihat detail</span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
                         {/* Tab */}
                         <div className="mt-6 flex gap-1 rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/40">
+                            {event.children.length > 0 && <button onClick={() => setTab('kegiatan')} className={tabBtn(tab === 'kegiatan')}>Kegiatan · {event.children.length}</button>}
                             <button onClick={() => setTab('info')} className={tabBtn(tab === 'info')}>Informasi</button>
+                            {hasHadiah && <button onClick={() => setTab('hadiah')} className={tabBtn(tab === 'hadiah')}>Hadiah</button>}
                             <button onClick={() => setTab('peserta')} className={tabBtn(tab === 'peserta')}>Peserta</button>
                             <button onClick={() => setTab('kontak')} className={tabBtn(tab === 'kontak')}>Kontak Panitia</button>
                         </div>
 
                         <div className="mt-6 space-y-6">
-                            {tab === 'peserta' ? (
+                            {tab === 'kegiatan' ? (
+                                <KegiatanTab event={event} />
+                            ) : tab === 'hadiah' ? (
+                                <HadiahTab data={parts} />
+                            ) : tab === 'peserta' ? (
                                 <PesertaTab data={(event as unknown as { participants?: Participants }).participants} />
                             ) : tab === 'info' ? (
                                 <>
@@ -502,49 +735,7 @@ export default function EventDetail() {
                                     )}
 
 
-                                    {event.children.length > 0 && (
-                                        <section className={card}>
-                                            <SectionTitle icon={Layers}>Rangkaian Kegiatan</SectionTitle>
-                                            <ul className="mt-6 space-y-3">
-                                                {event.children.map((c, i) => (
-                                                    <li key={c.id} className="flex items-start gap-4 rounded-2xl bg-white/80 p-4 shadow-sm dark:bg-white/5">
-                                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-200">
-                                                            {i + 1}
-                                                        </span>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="font-bold">{c.title}</p>
-                                                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-                                                                {c.starts_at && (
-                                                                    <span className="inline-flex items-center gap-1.5">
-                                                                        <CalendarDays className="h-3.5 w-3.5" />
-                                                                        {shortDate(c.starts_at)}
-                                                                        {c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}
-                                                                    </span>
-                                                                )}
-                                                                {c.location && (
-                                                                    <span className="inline-flex items-center gap-1.5">
-                                                                        <MapPin className="h-3.5 w-3.5" />
-                                                                        {c.location}
-                                                                    </span>
-                                                                )}
-                                                                {c.juknis && (
-                                                                    <a href={c.juknis} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-indigo-700 hover:underline dark:text-indigo-300">
-                                                                        <FileText className="h-3.5 w-3.5" />
-                                                                        Juknis
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        {c.category && (
-                                                            <span className="hidden shrink-0 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 sm:inline dark:bg-blue-500/20 dark:text-blue-200">
-                                                                {c.category}
-                                                            </span>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </section>
-                                    )}
+
 
                                     <section className={card}>
                                         <SectionTitle icon={CalendarDays}>Waktu & Tempat</SectionTitle>
@@ -559,7 +750,17 @@ export default function EventDetail() {
                                                 <Fact icon={Clock} label="Durasi" value={days === 1 ? '1 hari' : `${days} hari`} tone="bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200" />
                                             )}
                                             {event.location && (
-                                                <Fact icon={MapPin} label="Lokasi" value={event.location} tone="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200" />
+                                                <Fact
+                                                    icon={MapPin}
+                                                    label="Lokasi"
+                                                    value={event.location}
+                                                    tone="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200"
+                                                    action={
+                                                        <a href={mapUrl(event.location)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:underline dark:text-indigo-300">
+                                                            <Navigation className="h-4 w-4" /> Buka di Peta
+                                                        </a>
+                                                    }
+                                                />
                                             )}
                                             {event.organizer && (
                                                 <Fact icon={Building2} label="Penyelenggara" value={event.organizer} tone="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200" />
@@ -568,39 +769,24 @@ export default function EventDetail() {
                                                 <Fact icon={Tag} label="Kategori" value={event.category} tone="bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200" />
                                             )}
                                         </div>
-
-                                        {(event.location || (cal && event.status.key !== 'selesai')) && (
-                                            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                                                {cal && event.status.key !== 'selesai' && (
-                                                    <a
-                                                        href={cal}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10"
-                                                    >
-                                                        <CalendarPlus className="h-5 w-5 text-indigo-700 dark:text-indigo-300" />
-                                                        Tambah ke Kalender
-                                                    </a>
-                                                )}
-                                                {event.location && (
-                                                    <a
-                                                        href={mapUrl(event.location)}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/10"
-                                                    >
-                                                        <Navigation className="h-5 w-5 text-indigo-700 dark:text-indigo-300" />
-                                                        Buka di Peta
-                                                    </a>
-                                                )}
-                                            </div>
-                                        )}
                                     </section>
                                 </>
                             ) : (
                                 <section className={card}>
                                     <SectionTitle icon={Phone}>Kontak Panitia</SectionTitle>
-                                    {event.contact ? (
+                                    {event.children.some((c) => c.contact) ? (
+                                        <div className="mt-6 space-y-8">
+                                            {event.contact && <ContactBlock contact={event.contact} />}
+                                            {event.children.map((c) =>
+                                                c.contact ? (
+                                                    <div key={c.id} className="border-t border-slate-200 pt-6 first:border-t-0 first:pt-0 dark:border-white/10">
+                                                        <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{c.title}</p>
+                                                        <ContactBlock contact={c.contact} />
+                                                    </div>
+                                                ) : null,
+                                            )}
+                                        </div>
+                                    ) : event.contact ? (
                                         <div className="mt-6 space-y-5">
                                             {(event.contact.name || event.contact.position) && (
                                                 <div>
@@ -644,3 +830,18 @@ export default function EventDetail() {
         </>
     );
 }
+
+
+export default function EventDetail() {
+    return <EventDetailSingle />; // patch-249: rangkaian memakai halaman detail biasa
+}
+
+// patch-248
+
+// patch-249
+
+// patch-250
+
+// patch-251
+
+// patch-253

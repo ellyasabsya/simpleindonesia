@@ -1,0 +1,116 @@
+import { Link } from '@inertiajs/react';
+import { ArrowLeft, CalendarDays, Check, MapPin, Ticket } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import UserLayout from '@/components/user/user-layout';
+
+type Holder = { code: string; holder_name: string; checked_in: boolean };
+type Row = {
+    id: number; code: string; quantity: number; total_price: number; status: string;
+    title: string | null; location: string | null; starts_at: string | null; poster?: string | null;
+    tickets?: Holder[];
+};
+
+const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-');
+const rp = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
+const label = 'text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500';
+
+function TicketCard({ r, h, index, total }: { r: Row; h: Holder; index: number; total: number }) {
+    return (
+        <a
+            href={`/tiket/${h.code}`}
+            className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-xl shadow-indigo-900/10 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-indigo-900/20 md:flex-row dark:border-white/10 dark:bg-slate-900/70"
+        >
+            {/* Poster */}
+            <div className="relative h-48 shrink-0 md:h-auto md:w-64">
+                {r.poster ? (
+                    <img src={r.poster} alt={r.title ?? 'Event'} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-600" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
+                {!r.poster && <Ticket className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 text-white/30" />}
+                <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-extrabold capitalize text-emerald-700 shadow">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {r.status}
+                </span>
+                <span className="absolute bottom-4 left-4 text-[11px] font-extrabold uppercase tracking-[0.3em] text-white/90">E-Ticket</span>
+            </div>
+
+            {/* Detail */}
+            <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 p-6 md:p-8">
+                <div>
+                    <p className={label}>Tiket {index + 1} dari {total}</p>
+                    <h2 className="mt-1.5 text-2xl font-extrabold leading-tight md:text-3xl">{r.title ?? '(event dihapus)'}</h2>
+                    <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                        <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />{fmt(r.starts_at)}</span>
+                        {r.location && <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4 text-rose-500" />{r.location}</span>}
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-end justify-between gap-4 border-t border-dashed border-slate-200 pt-5 dark:border-white/10">
+                    <div className="min-w-0">
+                        <p className={label}>Pemegang tiket</p>
+                        <p className="mt-1 truncate text-xl font-extrabold">{h.holder_name}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className={label}>Pesanan</p>
+                        <p className="mt-1 font-mono text-sm font-bold tracking-wider">{r.code}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stub QR */}
+            <div className="relative flex shrink-0 flex-col items-center justify-center gap-3 border-t-2 border-dashed border-white/30 bg-gradient-to-br from-indigo-950 via-indigo-900 to-blue-900 p-6 text-white md:w-64 md:border-l-2 md:border-t-0">
+                <div className={`rounded-2xl bg-white p-3 shadow-lg ${h.checked_in ? 'opacity-40 grayscale' : ''}`}>
+                    <QRCodeSVG value={h.code} size={132} />
+                </div>
+                {h.checked_in ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-200"><Check className="h-3.5 w-3.5" /> Sudah check-in</span>
+                ) : (
+                    <span className="text-center text-xs font-semibold text-white/70">Tunjukkan QR ini saat check-in</span>
+                )}
+                <span className="text-xs font-bold text-sky-300 opacity-0 transition group-hover:opacity-100">Buka tiket</span>
+            </div>
+        </a>
+    );
+}
+
+export default function Tiket({ rows = [] }: { rows?: Row[] }) {
+    return (
+        <UserLayout title="Tiket saya" hasPanel={false}>
+            <div className="w-full space-y-6">
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:text-slate-300">
+                    <ArrowLeft className="h-4 w-4" /> Kembali
+                </Link>
+                <div>
+                    <h1 className="text-3xl font-extrabold">Tiket saya</h1>
+                    <p className="mt-1 text-slate-500 dark:text-slate-300">Tiket yang sudah Anda beli. Tunjukkan QR di pintu masuk.</p>
+                </div>
+
+                {rows.length === 0 ? (
+                    <div className="rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-white/10">
+                        <Ticket className="mx-auto h-10 w-10 text-slate-300" />
+                        <p className="mt-3 font-bold">Belum ada tiket</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-300">Tiket yang Anda beli akan muncul di sini setelah pembayaran disetujui.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-10">
+                        {rows.map((r) => (
+                            <section key={r.id} className="space-y-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm">
+                                    <p className="font-bold text-slate-500 dark:text-slate-400">Pesanan <span className="ml-1 font-mono tracking-wider text-slate-800 dark:text-white">{r.code}</span></p>
+                                    <p className="font-semibold text-slate-500 dark:text-slate-400">{r.quantity} tiket · {rp(r.total_price)}</p>
+                                </div>
+                                {r.tickets && r.tickets.length > 0 ? (
+                                    <div className="space-y-5">
+                                        {r.tickets.map((h, i) => <TicketCard key={h.code} r={r} h={h} index={i} total={r.tickets!.length} />)}
+                                    </div>
+                                ) : (
+                                    <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10">Tiket untuk pesanan ini sedang diproses.</p>
+                                )}
+                            </section>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </UserLayout>
+    );
+}

@@ -1,5 +1,6 @@
+import { Toast } from '@/lib/toast';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeft, Layers, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import { eventMenuIcons } from '@/data/event-menu-icons';
@@ -14,13 +15,34 @@ type PageProps = {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const { url } = usePage();
     const path = url.split('?')[0];
-    const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[] } }>().props;
+    const { eventNav } = usePage<{ eventNav?: { title: string; items: { key: string; label: string; href: string }[]; parent?: { title: string; href: string }; subs?: { label: string; href: string }[] } }>().props;
+    const shared = usePage().props as any;
+    const menuPerms: string[] | null = shared.panelPerms ?? null;
+    const menuOwner: boolean = !!shared.panelOwner;
+    const MENU_NEED: Record<string, string[]> = {
+        '/panel/event': ['events', 'checkin'],
+        '/panel/ajukan': ['events'],
+        '/panel/peserta': ['events', 'checkin'],
+        '/panel/tiket': ['events', 'checkin', 'finance'],
+        '/panel/voting': ['events'],
+        '/panel/penilaian': ['events'],
+        '/panel/pendapatan': ['finance', 'withdraw'],
+    };
+    const menuVisible = (href: string) => {
+        if (menuOwner || menuPerms === null) return true;
+        if (href === '/panel/profil') return false;
+        const need = MENU_NEED[href];
+        return !need || need.some((p) => menuPerms.includes(p));
+    };
     const groups: PanelMenuGroup[] = eventNav
         ? [
               {
                   title: eventNav.title,
-                  items: eventNav.items.map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
+                  items: eventNav.items.filter((i) => !(eventNav.parent && (i.href.endsWith('/kalender') || i.href.endsWith('/registrasi')))).map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
               },
+              ...(eventNav.subs?.length
+                  ? [{ title: 'Sub-event', items: eventNav.subs.map((s) => ({ label: s.label, href: s.href, icon: Layers })) }]
+                  : []),
           ]
         : panelMenu;
 
@@ -38,7 +60,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
 
             <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4 [scrollbar-width:none]">
-                {groups.map((group) => (
+                {eventNav?.parent && (
+                    <Link href={eventNav.parent.href} onClick={onNavigate} className="flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-100">
+                        <ArrowLeft className="h-4 w-4" /> {eventNav.parent.title}
+                    </Link>
+                )}
+                {groups.map((g0) => ({ ...g0, items: g0.items.filter((it) => menuVisible(it.href)) })).filter((g0) => g0.items.length > 0).map((group) => (
                     <div key={group.title}>
                         <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{group.title}</p>
                         <div className="space-y-1">
@@ -141,7 +168,8 @@ export default function PanelLayout({ title, children }: { title: string; childr
                     </div>
                 </header>
 
-                <main className="space-y-6 p-5 lg:p-8">{children}</main>
+                <main className="space-y-6 p-5 lg:p-8"><Toast />
+{children}</main>
             </div>
         </>
     );

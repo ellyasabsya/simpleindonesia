@@ -3,6 +3,7 @@ import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import NotificationBell from '@/components/admin/notification-bell';
 import PageBackground from '@/components/page-background';
+import { Toast } from '@/lib/toast';
 import { adminMenu } from '@/data/admin-menu';
 import { useTheme } from '@/hooks/use-theme';
 import type { NotificationsProp } from '@/types';
@@ -12,6 +13,10 @@ type PageProps = {
     notifications?: NotificationsProp;
     pending_lembaga?: number;
     pending_comments?: number;
+    pending_review?: number;
+    pending_tiket?: number;
+    pending_paket?: number;
+    pending_penarikan?: number;
 };
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -19,6 +24,13 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const path = url.split('?')[0];
     const pendingLembaga = usePage<PageProps>().props.pending_lembaga ?? 0;
     const pendingComments = usePage<PageProps>().props.pending_comments ?? 0;
+    const shared = usePage<PageProps>().props;
+    const redBadge: Record<string, number> = {
+        '/admin/review': shared.pending_review ?? 0,
+        '/admin/pesanan-tiket': shared.pending_tiket ?? 0,
+        '/admin/verifikasi-paket': shared.pending_paket ?? 0,
+        '/admin/pendapatan': shared.pending_penarikan ?? 0,
+    };
 
     return (
         <div className="flex h-full flex-col">
@@ -65,6 +77,11 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                     >
                                         <Icon className="h-[18px] w-[18px]" />
                                         {label}
+                                        {(redBadge[href] ?? 0) > 0 && (
+                                            <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                                                {redBadge[href] > 99 ? '99+' : redBadge[href]}
+                                            </span>
+                                        )}
                                         {href === '/admin/lembaga' &&
                                             pendingLembaga > 0 && (
                                                 <span className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
@@ -116,6 +133,7 @@ export default function AdminLayout({
         <>
             <Head title={`${title} - Admin SIMPLE`} />
             <PageBackground />
+            <Toast />
 
             {/* Sidebar desktop */}
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/60 bg-white/60 backdrop-blur-xl lg:block dark:border-white/10 dark:bg-indigo-950/40">

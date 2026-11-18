@@ -1,0 +1,95 @@
+import { Link } from '@inertiajs/react';
+import { ArrowRight, CalendarDays, MapPin } from 'lucide-react';
+
+export type TicketCardProps = {
+    href: string;
+    title: string;
+    poster?: string | null;
+    startsAt: string; // sudah diformat, contoh: "29 Nov 2026"
+    endsAt?: string | null;
+    location: string;
+    ticketName: string; // contoh: "Reguler"
+    price: number;
+    validUntil?: string | null; // contoh: "28 Nov 2026"
+    available?: boolean;
+    category?: string | null;
+};
+
+const R = 12; // jari-jari lekukan (px)
+const notch = (y: '0' | '100%') =>
+    `radial-gradient(${R}px at 0 ${y}, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(${R}px at 100% ${y}, #0000 97%, #000) right / 51% 100% no-repeat`;
+
+const rupiah = (n: number) => (n > 0 ? `Rp ${new Intl.NumberFormat('id-ID').format(n)}` : 'Gratis');
+
+export default function TicketCardVertical(p: TicketCardProps) {
+    const available = p.available ?? true;
+    const topMask = { WebkitMask: notch('100%'), mask: notch('100%') } as React.CSSProperties;
+    const bottomMask = { WebkitMask: notch('0'), mask: notch('0') } as React.CSSProperties;
+
+    return (
+        <Link
+            href={p.href}
+            className="group block drop-shadow-md transition duration-300 hover:-translate-y-1 hover:drop-shadow-xl"
+        >
+            {/* Bagian atas: poster */}
+            <div style={topMask} className="relative overflow-hidden rounded-t-3xl bg-white dark:bg-neutral-900">
+                <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500">
+                    {p.poster && (
+                        <img src={p.poster} alt={p.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                    )}
+                    <span
+                        className={`absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide shadow ${
+                            available ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-500'
+                        }`}
+                    >
+                        <span className={`size-1.5 rounded-full ${available ? 'bg-emerald-500' : 'bg-neutral-400'}`} />
+                        {available ? 'TERSEDIA' : 'HABIS'}
+                    </span>
+                    {p.category && (
+                        <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold tracking-wider text-white uppercase backdrop-blur">
+                            {p.category}
+                        </span>
+                    )}
+                </div>
+                <div className="h-3" />
+            </div>
+
+            {/* Garis sobekan */}
+            <div className="relative h-0 bg-white dark:bg-neutral-900">
+                <div className="absolute inset-x-5 top-0 border-t-2 border-dashed border-neutral-200 dark:border-white/15" />
+            </div>
+
+            {/* Bagian bawah: info */}
+            <div style={bottomMask} className="rounded-b-3xl bg-white px-5 pt-6 pb-5 dark:bg-neutral-900">
+                <h3 className="line-clamp-2 text-lg leading-snug font-extrabold text-neutral-900 dark:text-white">{p.title}</h3>
+
+                <div className="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
+                    <p className="flex items-center gap-2">
+                        <CalendarDays className="size-4 shrink-0 text-neutral-400" />
+                        {p.startsAt}
+                        {p.endsAt && p.endsAt !== p.startsAt ? ` – ${p.endsAt}` : ''}
+                    </p>
+                    <p className="flex items-center gap-2">
+                        <MapPin className="size-4 shrink-0 text-neutral-400" />
+                        <span className="truncate">{p.location}</span>
+                    </p>
+                </div>
+
+                <span className="mt-3 inline-block rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-200">
+                    {p.ticketName} · {rupiah(p.price)}
+                </span>
+
+                <div className="mt-4 flex items-end justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-white/10">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">Mulai dari</p>
+                        <p className="text-xl font-extrabold text-rose-600 dark:text-rose-400">{rupiah(p.price)}</p>
+                        {p.validUntil && <p className="truncate text-[11px] text-neutral-400">Sampai {p.validUntil} · Tanpa akun</p>}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-600 to-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow transition group-hover:shadow-lg">
+                        Beli tiket <ArrowRight className="size-4" />
+                    </span>
+                </div>
+            </div>
+        </Link>
+    );
+}
