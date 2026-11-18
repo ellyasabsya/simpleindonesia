@@ -1,4 +1,3 @@
-import RegistrationIdList from '@/components/panel/registration-id-list';
 import PanelLayout from '@/components/panel/panel-layout';
 import { router } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Check, Download, Paperclip, Plus, Search, Trash2, X } from 'lucide-react';
@@ -254,7 +253,6 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                     </div>
                 )}
             </div>
-            <RegistrationIdList />
         </PanelLayout>
     );
 }
