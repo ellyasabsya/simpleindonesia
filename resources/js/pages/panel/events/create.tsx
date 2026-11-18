@@ -996,16 +996,18 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                         {p.description && <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">{p.description}</span>}
                                         <span className="my-4 h-px bg-slate-200 dark:bg-white/10" />
                                         <span className="flex flex-1 flex-col gap-2">
-                                            {p.features.map((f) => (
+                                            {p.features.slice(0, 3).map((f) => (
                                                 <span key={f} className="flex items-start gap-2 text-sm">
                                                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {f}
                                                 </span>
                                             ))}
+                                            {p.features.length > 3 && <span className="pl-6 text-xs font-semibold text-indigo-600 dark:text-indigo-300">+{p.features.length - 3} fitur lainnya</span>}
                                         </span>
                                     </label>
                                 );
                             })}
                         </div>
+                        <PackageCompare packages={packages} selectedId={data.package_id} />
                         <Err m={err('package_id')} />
 
                         {pkg && c && (
@@ -1027,6 +1029,9 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                     </div>
                                 </div>
 
+                                <ul className="mt-4 grid gap-x-6 gap-y-2 border-t border-indigo-200 pt-4 sm:grid-cols-2 dark:border-white/10">
+                                    {pkg.features.map((f) => (<li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {f}</li>))}
+                                </ul>
                                 {pkg.extra_sub_event_price !== null && (
                                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-indigo-200 pt-4 dark:border-white/10">
                                         <div>
@@ -1282,5 +1287,46 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                 </div>
             </div>
         </UserLayout>
+    );
+}
+
+
+function PackageCompare({ packages, selectedId }: { packages: { id: number | string; name: string; features: string[] }[]; selectedId?: unknown }) {
+    const [open, setOpen] = useState(false);
+    if (packages.length < 2) return null;
+    const norm = (t: string) => t.trim().toLowerCase();
+    const rows = Array.from(new Map(packages.flatMap((p) => p.features).map((f) => [norm(f), f.trim()] as const)).values());
+    return (
+        <div>
+            <button type="button" onClick={() => setOpen((v) => !v)} className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300 dark:hover:bg-white/10">
+                {open ? 'Sembunyikan perbandingan' : 'Bandingkan semua fitur'}
+            </button>
+            {open && (
+                <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 dark:border-white/10 dark:bg-white/5">
+                    <table className="w-full min-w-[560px] text-left text-sm">
+                        <thead>
+                            <tr className="border-b border-slate-200 dark:border-white/10">
+                                <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Fitur</th>
+                                {packages.map((p) => (
+                                    <th key={p.id} className={`px-4 py-3 text-center text-sm font-bold ${p.id === selectedId ? 'text-indigo-700 dark:text-indigo-300' : ''}`}>{p.name}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((f) => (
+                                <tr key={f} className="border-b border-slate-100 last:border-0 dark:border-white/5">
+                                    <td className="px-4 py-2.5">{f}</td>
+                                    {packages.map((p) => (
+                                        <td key={p.id} className={`px-4 py-2.5 text-center ${p.id === selectedId ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : ''}`}>
+                                            {p.features.some((x) => norm(x) === norm(f)) ? <Check className="mx-auto h-4 w-4 text-emerald-500" /> : <span className="text-slate-300 dark:text-white/20">–</span>}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
     );
 }
