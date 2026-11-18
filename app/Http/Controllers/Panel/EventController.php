@@ -435,7 +435,7 @@ class EventController extends Controller
             $payMethod === 'transfer_manual' ? '/admin/verifikasi-paket' : '/admin/review'
         );
 
-        return redirect()->route('panel.event');
+        return redirect()->route('panel.event')->with('success', $payMethod === 'transfer_manual' ? 'Event berhasil dibuat dan menunggu verifikasi pembayaran oleh admin.' : 'Event berhasil dibuat dan menunggu review admin sebelum tayang.');
     }
 
     public function detailRules(string $p, int $maxCats): array
