@@ -212,20 +212,20 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                     </div>
 
                     {firstNext?.next ? (
-                        <Link href={firstNext.next.href} className="group relative flex items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-xl">
+                        <Link href={firstNext.next.href} className="group relative flex items-center justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-600/25 transition hover:shadow-xl">
                             <span className="absolute -top-12 -right-10 h-40 w-40 rounded-full bg-white/10" />
                             <span className="relative min-w-0">
                                 <span className="block text-[11px] font-extrabold tracking-[0.22em] text-blue-100 uppercase">Langkah berikutnya · {firstNext.label}</span>
-                                <span className="mt-1.5 block text-xl leading-snug font-extrabold">{firstNext.next.label}</span>
+                                <span className="mt-1.5 block text-base leading-snug font-bold">{firstNext.next.label}</span>
                             </span>
-                            <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 transition group-hover:translate-x-1 group-hover:bg-white/30">
-                                <ArrowRight className="h-5 w-5" />
+                            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 transition group-hover:translate-x-1 group-hover:bg-white/30">
+                                <ArrowRight className="h-4 w-4" />
                             </span>
                         </Link>
                     ) : (
-                        <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 p-6 text-white shadow-lg shadow-emerald-500/25">
-                            <CheckCircle2 className="h-10 w-10 shrink-0" />
-                            <span><span className="block text-xl font-extrabold">Semua langkah selesai</span><span className="text-sm text-emerald-50">Event Anda siap berjalan.</span></span>
+                        <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 p-5 text-white shadow-lg shadow-emerald-500/25">
+                            <CheckCircle2 className="h-8 w-8 shrink-0" />
+                            <span><span className="block text-base font-bold">Semua langkah selesai</span><span className="text-sm text-emerald-50">Event Anda siap berjalan.</span></span>
                         </div>
                     )}
                 </section>
@@ -239,9 +239,9 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{c.label}</div>
-                                        <div className="mt-2 truncate text-3xl font-extrabold leading-none">{c.value}</div>
+                                        <div className="mt-2 truncate text-2xl font-extrabold leading-none">{c.value}</div>
                                     </div>
-                                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${c.tone}`}><c.Icon className="h-5 w-5" /></span>
+                                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.tone}`}><c.Icon className="h-5 w-5" /></span>
                                 </div>
                                 <div className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{c.sub}</div>
                                 {c.spark && <div className={c.sparkTone}><Spark data={c.spark} /></div>}
@@ -257,7 +257,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                     <section className="grid items-stretch gap-5 lg:grid-cols-2">
                         <div className={card}>
                             <div className="flex items-center justify-between gap-3">
-                                <h3 className="text-lg font-extrabold">Tren pendaftaran</h3>
+                                <h3 className="text-base font-bold">Tren pendaftaran</h3>
                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">14 hari terakhir</span>
                             </div>
                             {trend.every((t) => t.n === 0) ? (
@@ -276,7 +276,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                         </div>
 
                         <div className={card}>
-                            <h3 className="text-lg font-extrabold">Aktivitas terbaru</h3>
+                            <h3 className="text-base font-bold">Aktivitas terbaru</h3>
                             {stats.recent.length === 0 ? (
                                 <p className="py-12 text-center text-sm font-semibold text-slate-500">Belum ada pendaftaran atau pesanan.</p>
                             ) : (
@@ -311,18 +311,18 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                                     return (
                                         <div key={c.id} className={`${card} flex flex-col transition hover:-translate-y-0.5 hover:shadow-lg`}>
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30"><Layers className="h-5 w-5" /></span>
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30"><Layers className="h-5 w-5" /></span>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="truncate text-lg font-extrabold">{c.title}</div>
+                                                    <div className="truncate text-base font-bold">{c.title}</div>
                                                     <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">{ticket ? 'Tiket' : 'Formulir pendaftaran'}</div>
                                                 </div>
                                             </div>
                                             <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                                                 {[['Lunas', c.lunas], ['Menunggu', c.menunggu], ['Batal', c.batal]].map(([l, v]) => (
-                                                    <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-xl font-extrabold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
+                                                    <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-base font-bold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
                                                 ))}
                                             </div>
-                                            <div className="mt-3 flex items-center justify-between rounded-xl bg-violet-50 px-4 py-2.5 dark:bg-violet-500/10"><span className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">Pendapatan</span><span className="text-lg font-extrabold">{rp(c.revenue)}</span></div>
+                                            <div className="mt-3 flex items-center justify-between rounded-xl bg-violet-50 px-4 py-2.5 dark:bg-violet-500/10"><span className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-300">Pendapatan</span><span className="text-base font-bold">{rp(c.revenue)}</span></div>
                                             {fill !== null && (
                                                 <div className="mt-4 mb-5">
                                                     <div className="mb-1.5 flex justify-between text-xs font-bold text-slate-500 dark:text-slate-400"><span>Kuota terisi</span><span>{c.tickets} / {c.quota} ({fill}%)</span></div>
@@ -352,11 +352,11 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                                 <div key={m.key} className={`${card} flex flex-col transition hover:-translate-y-0.5 hover:shadow-lg ${complete ? 'ring-1 ring-emerald-400/40' : ''}`}>
                                     <div className="flex items-center gap-4">
                                         <Link href={m.href} className="flex min-w-0 flex-1 items-center gap-4">
-                                            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg ${ACCENT[m.key] ?? ACCENT_DEFAULT}`}>
-                                                <Icon className="h-6 w-6" />
+                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg ${ACCENT[m.key] ?? ACCENT_DEFAULT}`}>
+                                                <Icon className="h-5 w-5" />
                                             </span>
                                             <span className="min-w-0">
-                                                <span className="block truncate text-lg font-extrabold">{m.label}</span>
+                                                <span className="block truncate text-base font-bold">{m.label}</span>
                                                 {p && <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{p.done} dari {p.total} langkah</span>}
                                             </span>
                                         </Link>
