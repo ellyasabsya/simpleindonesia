@@ -8,7 +8,7 @@ type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date'
 type Field = { key: string; label: string; type: FieldType; required: boolean; options: string[]; archived?: boolean; stage?: 'register' | 'after' };
 type Item = { key?: string; label: string; type: FieldType; required: boolean; optionsText: string; stage: 'register' | 'after' };
 type Row = {
-    id: number; name: string; email: string; phone: string | null; school: string | null; category: string | null;
+    id: number; participant_code: string | null; name: string; email: string; phone: string | null; school: string | null; category: string | null;
     status: string; amount: number; proof: boolean; note: string | null; at: string; followup_done: boolean;
     teams: { name: string; category: string | null }[]; answers: Record<string, unknown>;
 };
@@ -157,6 +157,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                 <thead>
                                     <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 dark:border-white/10">
                                         <th className="py-2 pr-4">{isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
+                                        <th className="py-2 pr-4">ID Peserta</th>
                                         <th className="py-2 pr-4">Sekolah / instansi</th>
                                         <th className="py-2 pr-4">{isTeam ? 'Tim' : 'Kategori'}</th>
                                         {fee > 0 && <th className="py-2 pr-4">Tagihan</th>}
@@ -173,6 +174,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                         return (
                                             <tr key={r.id} className="border-b border-slate-100 align-top dark:border-white/5">
                                                 <td className="py-2 pr-4"><div className="font-semibold">{r.name}</div><div className="text-xs text-slate-500">{r.email}</div><div className="text-xs text-slate-500">{r.phone}</div></td>
+                                                <td className="whitespace-nowrap py-2 pr-4 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.participant_code ?? '-'}</td>
                                                 <td className="py-2 pr-4">{r.school ?? ''}</td>
                                                 <td className="py-2 pr-4">
                                                     {isTeam ? r.teams.map((t, i) => <div key={i}>{t.name}{t.category ? <span className="text-xs text-slate-500"> ({t.category})</span> : null}</div>) : r.category ?? ''}

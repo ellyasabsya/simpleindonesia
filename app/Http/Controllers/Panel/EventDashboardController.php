@@ -743,6 +743,7 @@ class EventDashboardController extends EventScopedController
             return [
                 'id' => $r->id,
                 'reg_code' => $r->reg_code,
+                'participant_code' => $r->participant_code,
                 'name' => $r->contact_name ?: ($u->name ?? '-'),
                 'email' => $r->contact_email ?: ($u->email ?? ''),
                 'phone' => $r->contact_phone,
