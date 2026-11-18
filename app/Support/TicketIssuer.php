@@ -38,7 +38,6 @@ class TicketIssuer
             $__ev = DB::table('ticket_orders')->where('id', $orderId)->value('event_id');
             $__grp = DB::table('ticket_orders')->where('id', $orderId)->value('group_code'); // patch-257
             foreach ($rows as &$__r) {
-                $__r['reg_code'] = $__r['reg_code'] ?? \App\Support\RegistrationCode::make((int) ($__r['event_id'] ?? $__ev), null);
                 // patch-257: orang yang sama dalam satu pembelian gabungan memakai satu ID peserta
                 $__pc = null;
                 if ($__grp) {
@@ -47,7 +46,10 @@ class TicketIssuer
                         ->whereRaw('LOWER(TRIM(h.holder_name)) = ?', [mb_strtolower(trim((string) ($__r['holder_name'] ?? '')))])
                         ->whereNotNull('h.participant_code')->orderBy('h.id')->value('h.participant_code');
                 }
-                $__r['participant_code'] = $__pc ?: $__r['reg_code'];
+                $__eid = (int) ($__r['event_id'] ?? $__ev);
+                $__pc = $__pc ?: \App\Support\RegistrationCode::make($__eid, null);
+                $__r['participant_code'] = $__pc;
+                $__r['reg_code'] = $__r['reg_code'] ?? \App\Support\RegistrationCode::regCode($__pc, $__eid);
             }
             unset($__r);
             DB::table('ticket_holders')->insert($rows);

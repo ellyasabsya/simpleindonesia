@@ -261,6 +261,7 @@ class EventRegistrationFormController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Support\RegistrationCode::assign((int) $id);
 
                 foreach ($teams as $t) {
                     DB::table('registration_teams')->insert([
