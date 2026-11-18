@@ -156,8 +156,8 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                             <table className="w-full min-w-[960px] text-left text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                        <th className="whitespace-nowrap px-4 py-3">{isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
                                         <th className="whitespace-nowrap px-4 py-3">ID Peserta</th>
+                                        <th className="whitespace-nowrap px-4 py-3">{isTeam ? 'Penanggung jawab' : 'Peserta'}</th>
                                         <th className="whitespace-nowrap px-4 py-3">Sekolah / instansi</th>
                                         <th className="whitespace-nowrap px-4 py-3">{isTeam ? 'Tim' : 'Kategori'}</th>
                                         {fee > 0 && <th className="whitespace-nowrap px-4 py-3">Tagihan</th>}
@@ -173,8 +173,8 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                         const s = STATUS[r.status] ?? { label: r.status, style: 'bg-slate-200 text-slate-700' };
                                         return (
                                             <tr key={r.id} className="border-b border-slate-200/70 align-middle transition-colors hover:bg-slate-50/70 dark:border-white/10 dark:hover:bg-white/5">
-                                                <td className="px-4 py-5"><div className="font-semibold">{r.name}</div><div className="mt-1 text-xs text-slate-500">{r.email}</div><div className="mt-0.5 text-xs text-slate-500">{r.phone}</div></td>
                                                 <td className="whitespace-nowrap py-2 pr-4 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.participant_code ?? '-'}</td>
+                                                <td className="px-4 py-5"><div className="font-semibold">{r.name}</div><div className="mt-1 text-xs text-slate-500">{r.email}</div><div className="mt-0.5 text-xs text-slate-500">{r.phone}</div></td>
                                                 <td className="px-4 py-5">{r.school ?? ''}</td>
                                                 <td className="px-4 py-5">
                                                     {isTeam ? r.teams.map((t, i) => <div key={i}>{t.name}{t.category ? <span className="text-xs text-slate-500"> ({t.category})</span> : null}</div>) : r.category ?? ''}
