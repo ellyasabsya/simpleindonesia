@@ -108,6 +108,7 @@ class PanelController extends Controller
                 'title' => $e->title,
                 'category' => EventController::CATEGORIES[$e->category] ?? $e->category,
                 'package' => $e->package_snapshot['name'] ?? '-',
+                'location' => $e->location,
                 'starts_at' => $e->starts_at->toDateString(),
                 'ends_at' => $e->ends_at->toDateString(),
                 'status' => $e->status,

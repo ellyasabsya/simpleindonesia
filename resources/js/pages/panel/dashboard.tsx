@@ -2,14 +2,14 @@ import { usePage as usePanelPage } from '@inertiajs/react';
 import { createPortal } from 'react-dom';
 import UserLayout from '@/components/user/user-layout';
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Banknote, CalendarDays, Check, Clock, Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, Wallet, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Banknote, CalendarDays, Check, MapPin, Clock, Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, Wallet, X } from 'lucide-react';
 import { Fragment, useState, useEffect } from 'react';
 
 type Perm = 'events' | 'checkin' | 'finance' | 'withdraw' | 'members';
 type Inst = { id: number; name: string; email: string; phone: string; status: string; logo_url: string | null };
 type Member = { id: number; name: string | null; email: string | null; avatar?: string | null; role: string; permissions: Perm[]; is_owner?: boolean; status?: string };
 type SubEv = { id: number; title: string; category: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null };
-type Ev = { id: number; title: string; category: string; package: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null; subs?: SubEv[] };
+type Ev = { id: number; title: string; category: string; package: string; starts_at: string; ends_at: string; status: 'pending' | 'published' | 'rejected'; poster_url?: string | null; location?: string | null; subs?: SubEv[] };
 type Props = {
     institution: Inst;
     isOwner: boolean;
@@ -440,47 +440,23 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                                 <Link href="/panel/ajukan" className={`${primary} ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                             </div>
                         ) : (
-                            <ul className="mt-4 divide-y divide-slate-100 dark:divide-white/10">
+                            <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                                 {events.map((e) => (
-                                    <li key={e.id}>
-                                        <Link href={`/panel/event/${e.id}`} className="-mx-3 flex items-center gap-4 rounded-2xl px-3 py-3.5 transition hover:bg-slate-50 dark:hover:bg-white/5">
-                                            <span className="relative flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-sky-50 to-indigo-50 ring-1 ring-slate-200/70 dark:from-white/10 dark:to-white/5 dark:ring-white/10">
-                                                {e.poster_url ? <img src={e.poster_url} alt={e.title} loading="lazy" className="h-full w-full object-cover" /> : <CalendarDays className="h-6 w-6 text-blue-600" />}
-                                                <span className={`absolute left-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${STATUS[e.status].dot}`} />
-                                            </span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="flex items-center gap-2">
-                                                    <span className="truncate font-extrabold">{e.title}</span>
-                                                    {e.subs && e.subs.length > 0 && (
-                                                        <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200">Rangkaian · {e.subs.length} kegiatan</span>
-                                                    )}
-                                                </span>
-                                                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{e.category ? `${e.category} · ` : ''}{tgl(e.starts_at)}{e.ends_at !== e.starts_at && ` – ${tgl(e.ends_at)}`} · Paket {e.package}</span>
-                                            </span>
-                                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS[e.status].badge}`}>{STATUS[e.status].label}</span>
-                                        </Link>
-                                        {e.subs && e.subs.length > 0 && (
-                                            <ul className="mb-3 ml-8 space-y-1 border-l-2 border-indigo-100 pl-4 dark:border-white/10">
-                                                {e.subs.map((c) => (
-                                                    <li key={c.id}>
-                                                        <Link href={`/panel/event/${c.id}`} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-50 dark:hover:bg-white/5">
-                                                            <span className="relative flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-sky-50 to-indigo-50 ring-1 ring-slate-200/70 dark:from-white/10 dark:to-white/5 dark:ring-white/10">
-                                                                {c.poster_url ? <img src={c.poster_url} alt={c.title} loading="lazy" className="h-full w-full object-cover" /> : <CalendarDays className="h-4 w-4 text-blue-600" />}
-                                                                <span className={`absolute left-1 top-1 h-2 w-2 rounded-full ring-2 ring-white ${STATUS[c.status].dot}`} />
-                                                            </span>
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block truncate text-sm font-bold">{c.title}</span>
-                                                                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{c.category ? `${c.category} · ` : ''}{tgl(c.starts_at)}{c.ends_at !== c.starts_at && ` – ${tgl(c.ends_at)}`}</span>
-                                                            </span>
-                                                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS[c.status].badge}`}>{STATUS[c.status].label}</span>
-                                                        </Link>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </li>
+                                    <Link key={e.id} href={`/panel/event/${e.id}`} className="group overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-slate-900/60">
+                                        <div className="relative aspect-[4/5] max-h-56 w-full bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600">
+                                            {e.poster_url && <img src={e.poster_url} alt={e.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />}
+                                            <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${STATUS[e.status].badge}`}>{STATUS[e.status].label}</span>
+                                        </div>
+                                        <div className="space-y-2 p-5">
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">{e.category ? `${e.category} · ` : ''}{e.package}</p>
+                                            <h3 className="text-lg font-extrabold leading-tight">{e.title}</h3>
+                                            {e.location && <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"><MapPin className="h-4 w-4 text-orange-500" />{e.location}</p>}
+                                            <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"><CalendarDays className="h-4 w-4 text-indigo-500" />{tgl(e.starts_at)}{e.ends_at !== e.starts_at && ` – ${tgl(e.ends_at)}`}</p>
+                                            {e.subs && e.subs.length > 0 && <span className="inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200">Rangkaian · {e.subs.length} kegiatan</span>}
+                                        </div>
+                                    </Link>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                         <Pager page={pagination.current} last={pagination.last} total={pagination.total} per={pagination.per_page} onPage={(n) => go({ page: n })} />
                     </div>

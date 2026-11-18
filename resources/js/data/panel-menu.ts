@@ -19,7 +19,7 @@ export const panelMenu: PanelMenuGroup[] = [
     {
         title: 'Event',
         items: [
-            { label: 'Event Saya', href: '/panel/event', icon: CalendarDays },
+            { label: 'Event Lembaga', href: '/panel', icon: CalendarDays },
             { label: 'Ajukan Event', href: '/panel/ajukan', icon: CirclePlus },
             { label: 'Peserta', href: '/panel/peserta', icon: Users },
         ],
