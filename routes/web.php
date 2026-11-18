@@ -263,6 +263,7 @@ Route::middleware(['auth'])->post('/notifikasi/baca', function () { auth()->user
 Route::middleware(['auth'])->post('/notifikasi/{id}/baca', function (string $id) { auth()->user()->unreadNotifications()->whereKey($id)->update(['read_at' => now()]); return response()->noContent(); });
 
 Route::middleware('auth')->group(function () {
+    Route::redirect('/lomba-saya', '/event-saya');
     Route::get('/event-saya', [\App\Http\Controllers\MyActivityController::class, 'lomba'])->name('lomba.saya');
     Route::get('/tiket', [\App\Http\Controllers\MyActivityController::class, 'tiket'])->name('tiket.saya');
 });
