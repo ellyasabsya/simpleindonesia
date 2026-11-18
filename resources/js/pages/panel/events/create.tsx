@@ -157,6 +157,18 @@ const vPj = (d: Detail, pre: string): Errs => {
 };
 
 /* ---------- komponen bagian form ---------- */
+const capFirst = (v: string) => v.replace(/^(\s*)(\p{Ll})/u, (_m, a: string, b: string) => a + b.toUpperCase());
+const capSentences = (v: string) => v.replace(/(^\s*|[.!?]\s+|\n\s*)(\p{Ll})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
+function capInput(e: { target: HTMLInputElement | HTMLTextAreaElement }, apply: (v: string) => void, sentences = false) {
+    const el = e.target;
+    const pos = el.selectionStart;
+    const v = sentences ? capSentences(el.value) : capFirst(el.value);
+    apply(v);
+    if (v !== el.value && pos !== null) {
+        requestAnimationFrame(() => { try { el.setSelectionRange(pos, pos); } catch { /* abaikan */ } });
+    }
+}
+
 const Err = ({ m }: { m?: string }) => (m ? <p className="mt-1.5 text-sm text-rose-500">{m}</p> : null);
 
 type Sec = { d: Detail; set: (p: Partial<Detail>) => void; pre: string; err: (k: string) => string | undefined };
@@ -288,7 +300,7 @@ function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bou
                     </div>
                     <div>
                         <label className={label}>Deskripsi</label>
-                        <textarea rows={6} maxLength={2000} value={d.description} onChange={(e) => set({ description: e.target.value })}
+                        <textarea rows={6} maxLength={2000} value={d.description} onChange={(e) => capInput(e, (v) => set({ description: v }), true)}
                             placeholder="Ceritakan tentang event ini: tujuan, susunan acara, dan siapa yang cocok ikut."
                             className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
                         <p className={help}>{d.description.length}/2000 karakter</p>
@@ -312,7 +324,7 @@ function UtamaSection(props: Sec) {
         <div className="space-y-5">
             <div>
                 <label className={label}>Nama event utama *</label>
-                <input className={input} value={d.title} onChange={(e) => set({ title: e.target.value })} placeholder="Contoh: Festival Batam Bernyanyi 2026" />
+                <input className={input} value={d.title} onChange={(e) => capInput(e, (v) => set({ title: v }))} placeholder="Contoh: Festival Batam Bernyanyi 2026" />
                 <Err m={err(pre + 'title')} />
             </div>
             <Schedule {...props} />
@@ -328,7 +340,7 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
                 <div className="space-y-4">
                     <div>
                         <label className={label}>Nama event *</label>
-                        <input className={input} value={d.title} onChange={(e) => set({ title: e.target.value })} placeholder="Contoh: Seminar Kewirausahaan" />
+                        <input className={input} value={d.title} onChange={(e) => capInput(e, (v) => set({ title: v }))} placeholder="Contoh: Seminar Kewirausahaan" />
                         <Err m={err(pre + 'title')} />
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
