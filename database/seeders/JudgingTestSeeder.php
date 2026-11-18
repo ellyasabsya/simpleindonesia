@@ -40,7 +40,7 @@ class JudgingTestSeeder extends Seeder
             $judges = DB::table('judges')->whereIn('event_id', $ids)->pluck('id')->all();
             DB::table('judging_scores')->whereIn('judge_id', $judges)->delete();
             foreach (['judging_settings', 'judging_criteria', 'judges', 'judging_deductions', 'judging_systems', 'judging_penalties',
-                'judging_tie_decisions', 'judging_result_history', 'judging_sk', 'judging_overall', 'judging_publications',
+                'judging_tie_decisions', 'judging_result_history', 'judging_sk', 'judging_publications',
                 'judging_publication_settings', 'judging_event_publication', 'judging_appeals', 'judge_invitations', 'event_participant_categories', 'event_registrations'] as $tb) {
                 DB::table($tb)->whereIn('event_id', $ids)->delete();
             }

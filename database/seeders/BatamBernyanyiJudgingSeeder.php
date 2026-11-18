@@ -36,7 +36,6 @@ class BatamBernyanyiJudgingSeeder extends Seeder
         }
         DB::table('judging_settings')->whereIn('event_id', self::SUBS)->update(['saved_at' => null, 'saved_by' => null, 'saved_version' => 0, 'finalized_at' => null, 'finalized_by' => null]);
         DB::table('judging_sk')->whereIn('event_id', [1, 2, 3])->delete();
-        DB::table('judging_overall')->where('event_id', 1)->delete();
     }
 
     public function run(): void
