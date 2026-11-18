@@ -975,23 +975,25 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                         {packages.length === 0 && <p className="text-sm text-slate-500">Belum ada paket tersedia. Hubungi admin.</p>}
                         {/* pkg-card-v2 */}
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {packages.map((p) => {
+                            {packages.map((p, pi) => {
                                 const on = data.package_id === p.id;
+                                const th = PKG_THEMES[pi % PKG_THEMES.length];
                                 const m = p.price_label.match(/^(Bayar di muka|Bagi hasil)\s+(.*)$/i);
                                 const big = m ? m[2] : p.price_label;
                                 const small = m ? m[1] : '';
                                 const kind = isSeriesPkg(p) ? 'Rangkaian event' : p.extra_sub_event_price !== null ? 'Tunggal / rangkaian' : 'Event tunggal';
                                 return (
-                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col rounded-2xl border-2 p-4 transition ${on ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/10 dark:bg-indigo-500/15' : 'border-slate-200 bg-white/80 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-white/5'}`}>
+                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 p-4 transition ${on ? th.on : th.off}`}>
                                         <input type="radio" name="package" checked={on} onChange={() => choosePackage(p)} className="sr-only" />
+                                        <span className={`absolute inset-x-0 top-0 h-1.5 ${th.bar}`} />
                                         <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
                                             <Check className="h-4 w-4" />
                                         </span>
-                                        <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{kind}</span>
+                                        <span className={`mt-1 w-fit rounded-full px-3 py-1 text-[11px] font-bold ${th.chip}`}>{kind}</span>
                                         <span className="mt-2 text-base font-bold">{p.name}</span>
                                         <span className="mt-2 block min-h-[3rem]">
                                             {small && <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{small}</span>}
-                                            <span className="block text-2xl font-extrabold leading-tight text-indigo-700 dark:text-indigo-300">{big}</span>
+                                            <span className={`block text-2xl font-extrabold leading-tight ${th.price}`}>{big}</span>
                                         </span>
                                         {p.description && <span className="mt-1 line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{p.description}</span>}
                                         <span className="mt-auto pt-3 text-xs font-semibold text-indigo-600 dark:text-indigo-300">{p.features.length} fitur</span>
@@ -1322,3 +1324,22 @@ function PackageCompare({ packages, selectedId }: { packages: { id: number | str
         </div>
     );
 }
+
+
+const PKG_THEMES = [
+    { on: 'border-indigo-500 bg-gradient-to-b from-indigo-100 to-white shadow-lg shadow-indigo-500/20 dark:from-indigo-500/25 dark:to-transparent',
+      off: 'border-indigo-200 bg-gradient-to-b from-indigo-50 to-white hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md dark:border-indigo-400/20 dark:from-indigo-500/10 dark:to-transparent',
+      bar: 'bg-gradient-to-r from-indigo-500 to-violet-500', chip: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200', price: 'text-indigo-700 dark:text-indigo-300' },
+    { on: 'border-emerald-500 bg-gradient-to-b from-emerald-100 to-white shadow-lg shadow-emerald-500/20 dark:from-emerald-500/25 dark:to-transparent',
+      off: 'border-emerald-200 bg-gradient-to-b from-emerald-50 to-white hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md dark:border-emerald-400/20 dark:from-emerald-500/10 dark:to-transparent',
+      bar: 'bg-gradient-to-r from-emerald-500 to-teal-500', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200', price: 'text-emerald-700 dark:text-emerald-300' },
+    { on: 'border-amber-500 bg-gradient-to-b from-amber-100 to-white shadow-lg shadow-amber-500/20 dark:from-amber-500/25 dark:to-transparent',
+      off: 'border-amber-200 bg-gradient-to-b from-amber-50 to-white hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md dark:border-amber-400/20 dark:from-amber-500/10 dark:to-transparent',
+      bar: 'bg-gradient-to-r from-amber-400 to-orange-500', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200', price: 'text-amber-700 dark:text-amber-300' },
+    { on: 'border-sky-500 bg-gradient-to-b from-sky-100 to-white shadow-lg shadow-sky-500/20 dark:from-sky-500/25 dark:to-transparent',
+      off: 'border-sky-200 bg-gradient-to-b from-sky-50 to-white hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md dark:border-sky-400/20 dark:from-sky-500/10 dark:to-transparent',
+      bar: 'bg-gradient-to-r from-sky-500 to-blue-500', chip: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200', price: 'text-sky-700 dark:text-sky-300' },
+    { on: 'border-rose-500 bg-gradient-to-b from-rose-100 to-white shadow-lg shadow-rose-500/20 dark:from-rose-500/25 dark:to-transparent',
+      off: 'border-rose-200 bg-gradient-to-b from-rose-50 to-white hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-md dark:border-rose-400/20 dark:from-rose-500/10 dark:to-transparent',
+      bar: 'bg-gradient-to-r from-rose-500 to-pink-500', chip: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200', price: 'text-rose-700 dark:text-rose-300' },
+];
