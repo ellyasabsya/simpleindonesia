@@ -246,7 +246,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                                     <table className="w-full min-w-[820px] text-left text-sm">
                                         <thead className="bg-slate-50 dark:bg-white/5">
                                             <tr className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                                                <th className="w-[210px] px-5 py-3">ID registrasi</th><th className={th}>Peserta</th><th className={th}>Sub-event</th><th className={th}>Jenis / kategori</th><th className={th}>Status</th>
+                                                <th className="w-[210px] px-5 py-3">ID Peserta</th><th className={th}>Peserta</th><th className={th}>Sub-event</th><th className={th}>Jenis / kategori</th><th className={th}>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-white/10">
@@ -267,7 +267,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                                     <table className="w-full min-w-[860px] text-left text-sm">
                                         <thead className="bg-slate-50 dark:bg-white/5">
                                             <tr className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                                                <th className="w-[210px] px-5 py-3">ID registrasi</th><th className={th}>Peserta</th><th className={th}>Jenis</th><th className={th}>Pembeli</th><th className={th}>Status</th>
+                                                <th className="w-[210px] px-5 py-3">ID Peserta</th><th className={th}>Peserta</th><th className={th}>Jenis</th><th className={th}>Pembeli</th><th className={th}>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-white/10">
