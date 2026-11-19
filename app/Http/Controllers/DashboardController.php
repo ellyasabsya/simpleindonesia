@@ -91,6 +91,7 @@ class DashboardController extends Controller
             ] : null,
             'recent' => $recent,
             'history' => $history,
+            'isJudge' => \Illuminate\Support\Facades\DB::table('judges')->where('user_id', $user->id)->where('active', 1)->exists(),
             'judgeTasks' => \Illuminate\Support\Facades\DB::table('judges')->where('user_id', $user->id)->where('active', 1)->where('category_id', '!=', -1)->count(),
             'invitations' => collect(\App\Support\JudgeInvites::forUser($user->id))->concat(\App\Models\InstitutionMember::where('user_id', $user->id)
                 ->where('status', 'menunggu')

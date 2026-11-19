@@ -10,7 +10,7 @@ type Role = 'peserta' | 'penyelenggara' | 'juri';
 type Item = { id: number | string; role: Role; title: string; subtitle?: string | null; date: string; status?: string | null; tone?: 'ok' | 'wait' | 'bad'; href?: string };
 type Friend = { username?: string | null; since?: string | null; id: number | string; name: string; avatar?: string | null; city?: string | null; mutual?: number };
 type Invite = { id: number | string; member_id?: number; kind: 'juri' | 'event' | 'teman' | 'lembaga'; from: string; title: string; date?: string | null };
-type Props = { history?: Item[]; friends?: Friend[]; invitations?: Invite[] };
+type Props = { history?: Item[]; friends?: Friend[]; invitations?: Invite[]; isJudge?: boolean; judgeTasks?: number };
 
 const roles: Record<Role, { label: string; verb: string; icon: LucideIcon; grad: string; soft: string; text: string }> = {
     peserta: { label: 'Peserta', verb: 'Event yang diikuti', icon: CalendarCheck, grad: 'from-pink-500 to-rose-500', soft: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-600 dark:text-rose-300' },
@@ -96,7 +96,7 @@ function Scanner({ onResult }: { onResult: (t: string) => void }) {
     );
 }
 
-export default function Dashboard({ history = [], friends = [], invitations = [] }: Props) {
+export default function Dashboard({ history = [], friends = [], invitations = [], isJudge = false, judgeTasks = 0 }: Props) {
     const pg = usePage().props as any;
     const lembagaReady = Boolean(pg.hasPanel);
     const user = { ...(pg.auth?.user ?? {}), ...(pg.profile ?? {}) };
@@ -168,6 +168,19 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                     <div className="relative z-10 -mt-14 flex flex-wrap items-end justify-between gap-4">
                         <Avatar name={name} src={user.avatar} className="h-28 w-28 rounded-[1.8rem] text-4xl shadow-2xl ring-4 ring-white dark:ring-slate-900" />
                         <div className="flex flex-wrap gap-2">
+                            {isJudge && <Link
+                                href="/juri-saya"
+                                className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"
+                            >
+                                <span className="pointer-events-none absolute inset-y-0 -left-full w-1/2 -skew-x-12 bg-white/30 transition-all duration-700 group-hover:left-[150%]" />
+                                <span className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-white/25 ring-1 ring-white/40">
+                                    <Gavel className="h-4 w-4" />
+                                </span>
+                                <span className="relative">{judgeTasks > 0 ? 'Mulai menilai' : 'Panel juri'}</span>
+                                {judgeTasks > 0 && (
+                                    <span className="relative rounded-full bg-white px-2 py-0.5 text-xs font-extrabold text-orange-600">{judgeTasks}</span>
+                                )}
+                            </Link>}
                             <button onClick={() => setModal('qr')} className={ghost}><QrCode className="h-4 w-4" /> Kartu QR</button>
                             <button onClick={() => setModal('scan')} className={ghost}><ScanLine className="h-4 w-4" /> Pindai</button>
                             <Link href="/profil/edit" className={primary}><Pencil className="h-4 w-4" /> Edit profil</Link>
