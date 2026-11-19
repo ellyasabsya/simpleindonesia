@@ -801,6 +801,10 @@ class EventDashboardController extends EventScopedController
             return $this->tiket($request, $event);
         }
 
+        if ($menu === 'tiket') {
+            return $this->render('panel/events/tiket-mandiri', $event, []);
+        }
+
         if ($menu === 'checkin' && $event->registration_method === 'ticket') {
             return $this->checkin($event);
         }
