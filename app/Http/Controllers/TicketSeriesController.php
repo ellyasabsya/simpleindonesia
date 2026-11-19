@@ -246,6 +246,9 @@ class TicketSeriesController extends Controller
                 if ($qty > $type->quota - TicketSettingsController::sold($type->id)) {
                     $fail('quantity', 'Sisa tiket salah satu kegiatan tidak cukup.');
                 }
+                if ($dup = \App\Support\RegistrationCode::duplicateTicketHolder((int) $type->event_id, (string) $data['buyer_email'], $data['holders'], $type->audience ?? null)) {
+                    $fail('holders', 'Peserta '.$dup.' sudah terdaftar di kegiatan ini. Satu peserta hanya boleh punya satu tiket per kegiatan.');
+                }
                 $locked[] = $type;
             }
 

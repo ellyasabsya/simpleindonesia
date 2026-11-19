@@ -98,6 +98,44 @@ class RegistrationCode
             ->orderBy('h.id')->value('h.participant_code') ?: null;
     }
 
+    /** Nama pemegang yang sudah punya tiket aktif (email pembeli sama) di kegiatan ini, atau kembar di pesanan yang sama. Null kalau aman. */
+    public static function duplicateTicketHolder(int $eventId, string $email, array $names, ?string $audience = null): ?string
+    {
+        if ($audience !== null && $audience !== 'peserta') {
+            return null;
+        }
+        $norm = [];
+        foreach ($names as $n) {
+            $k = mb_strtolower(trim((string) $n));
+            if ($k === '') {
+                continue;
+            }
+            if (isset($norm[$k])) {
+                return trim((string) $n);
+            }
+            $norm[$k] = trim((string) $n);
+        }
+        $email = mb_strtolower(trim($email));
+        if ($email === '' || ! $norm) {
+            return null;
+        }
+        $orders = DB::table('ticket_orders')
+            ->where('event_id', $eventId)
+            ->whereIn('status', ['lunas', 'menunggu_verifikasi', 'menunggu'])
+            ->whereRaw('LOWER(TRIM(buyer_email)) = ?', [$email])
+            ->pluck('holders');
+        foreach ($orders as $json) {
+            foreach ((array) json_decode((string) $json, true) as $h) {
+                $k = mb_strtolower(trim((string) $h));
+                if (isset($norm[$k])) {
+                    return $norm[$k];
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** ID Registrasi: ID Peserta + nomor sub-event, contoh BB-UMUM-2026-001-E1. Unik per pendaftaran. */
     public static function regCode(string $participantCode, int $eventId): string
     {

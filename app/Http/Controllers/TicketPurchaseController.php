@@ -148,6 +148,10 @@ class TicketPurchaseController extends Controller
                 $fail('quantity', 'Sisa tiket tidak cukup.');
             }
 
+            if ($dup = \App\Support\RegistrationCode::duplicateTicketHolder((int) $event->id, (string) $data['buyer_email'], $data['holders'], $type->audience ?? null)) {
+                $fail('holders', 'Peserta '.$dup.' sudah terdaftar di kegiatan ini. Satu peserta hanya boleh punya satu tiket per kegiatan.');
+            }
+
             $proof = $free ? null : \App\Support\ImageUploader::store($data['payment_proof'], 'payment-proofs/tiket', 'payment_proof', 1600, 'local');
 
             $subtotal = (int) $type->price * (int) $data['quantity'];
