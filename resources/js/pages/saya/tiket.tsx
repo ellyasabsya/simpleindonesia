@@ -34,55 +34,50 @@ function TicketCard({ r, h, index, total }: Item) {
     return (
         <a
             href={`/tiket/${h.code}`}
-            className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-xl shadow-indigo-900/10 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-indigo-900/20 dark:border-white/10 dark:bg-slate-900"
+            className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white shadow-lg shadow-indigo-900/10 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-900/20 sm:flex-row dark:border-white/10 dark:bg-slate-900"
         >
-            <div className="flex items-stretch">
-                <div className="relative aspect-[4/5] w-[42%] shrink-0 self-start overflow-hidden bg-slate-900">
-                    {r.poster ? (
-                        <>
-                            <img src={r.poster} alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-xl" />
-                            <img src={r.poster} alt={r.title ?? 'Event'} loading="lazy" className="absolute inset-0 h-full w-full object-contain" />
-                        </>
-                    ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-600">
-                            <Ticket className="h-12 w-12 text-white/30" />
-                        </div>
-                    )}
-                    <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold capitalize text-emerald-700 shadow">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {r.status}
-                    </span>
-                </div>
+            <div className="relative h-36 w-full shrink-0 overflow-hidden bg-slate-900 sm:h-auto sm:min-h-[9.5rem] sm:w-32">
+                {r.poster ? (
+                    <img src={r.poster} alt={r.title ?? 'Event'} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-600">
+                        <Ticket className="h-9 w-9 text-white/30" />
+                    </div>
+                )}
+                <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-extrabold capitalize text-emerald-700 shadow">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {r.status}
+                </span>
+            </div>
 
-                <div className="flex min-w-0 flex-1 flex-col justify-between gap-4 p-5">
-                    <div className="min-w-0">
-                        <p className={label}>E-Ticket · {index + 1} dari {total}</p>
-                        <h2 className="mt-1.5 line-clamp-2 text-xl font-extrabold leading-tight">{r.title ?? '(event dihapus)'}</h2>
-                        <div className="mt-3 space-y-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
-                            <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300" />{fmt(r.starts_at)}</p>
-                            {r.location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" /><span className="line-clamp-2">{r.location}</span></p>}
-                        </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-4">
+                <div className="min-w-0">
+                    <p className={label}>E-Ticket · {index + 1} dari {total}</p>
+                    <h2 className="mt-1 line-clamp-1 text-lg font-bold leading-tight">{r.title ?? '(event dihapus)'}</h2>
+                    <div className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                        <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300" />{fmt(r.starts_at)}</p>
+                        {r.location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" /><span className="line-clamp-1">{r.location}</span></p>}
                     </div>
-                    <div className="border-t border-dashed border-slate-200 pt-3 dark:border-white/10">
-                        <p className={label}>Pemegang tiket</p>
-                        <p className="mt-0.5 truncate text-base font-extrabold">{h.holder_name}</p>
-                    </div>
+                </div>
+                <div className="flex items-baseline gap-2 border-t border-dashed border-slate-200 pt-2.5 dark:border-white/10">
+                    <p className={label}>Pemegang</p>
+                    <p className="min-w-0 truncate text-sm font-bold">{h.holder_name}</p>
                 </div>
             </div>
 
-            <div className="flex items-center gap-5 border-t-2 border-dashed border-indigo-300/60 bg-gradient-to-r from-indigo-950 via-indigo-900 to-blue-900 px-5 py-4 text-white">
-                <div className={`shrink-0 rounded-2xl bg-white p-2.5 shadow-lg ${h.checked_in ? 'opacity-40 grayscale' : ''}`}>
-                    <QRCodeSVG value={h.code} size={92} />
+            <div className="flex items-center gap-4 border-t-2 border-dashed border-indigo-300/60 bg-gradient-to-br from-indigo-950 via-indigo-900 to-blue-900 px-4 py-3 text-white sm:w-48 sm:flex-col sm:justify-center sm:gap-2 sm:border-l-2 sm:border-t-0">
+                <div className={`shrink-0 rounded-xl bg-white p-2 shadow ${h.checked_in ? 'opacity-40 grayscale' : ''}`}>
+                    <QRCodeSVG value={h.code} size={76} />
                 </div>
-                <div className="min-w-0 flex-1 space-y-2">
+                <div className="min-w-0 flex-1 space-y-1 sm:flex-none sm:text-center">
                     {h.checked_in ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-2.5 py-1 text-xs font-bold text-emerald-200"><Check className="h-3.5 w-3.5" /> Sudah check-in</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-bold text-emerald-200"><Check className="h-3 w-3" /> Sudah check-in</span>
                     ) : (
-                        <p className="text-sm font-bold">Tunjukkan QR ini saat check-in</p>
+                        <p className="text-xs font-bold">Tunjukkan QR saat check-in</p>
                     )}
-                    <p className="font-mono text-xs tracking-widest text-white/60">{r.code}</p>
+                    <p className="font-mono text-[10px] tracking-widest text-white/60">{r.code}</p>
                 </div>
-                <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-sky-200 transition group-hover:bg-white/20 sm:inline-flex">
-                    <QrCode className="h-3.5 w-3.5" /> Buka tiket
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-sky-200 transition group-hover:bg-white/20">
+                    <QrCode className="h-3 w-3" /> Buka tiket
                 </span>
             </div>
         </a>
@@ -188,7 +183,7 @@ export default function Tiket({ rows = [] }: { rows?: Row[] }) {
                                     <p className="font-bold text-slate-500 dark:text-slate-400">Pesanan <span className="ml-1 font-mono tracking-wider text-slate-800 dark:text-white">{g.r.code}</span></p>
                                     <p className="font-semibold text-slate-500 dark:text-slate-400">{g.r.quantity} tiket · {rp(g.r.total_price)}</p>
                                 </div>
-                                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                                <div className="grid grid-cols-1 gap-4">
                                     {g.list.map((it) => <TicketCard key={it.h.code} {...it} />)}
                                 </div>
                             </section>
