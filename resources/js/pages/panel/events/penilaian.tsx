@@ -291,6 +291,10 @@ type OverallX = Overall & {
     letter?: { number: string; date: string; signer_name: string; signer_position: string; finalized_at: string | null; finalized_by: string | null } | null;
 };
 
+function ovNum(v: any): string {
+    return v === null || v === undefined || v === '' ? '–' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
+
 function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Overall; base: string; title: string; dirty?: boolean }) {
     const ov = ovIn as OverallX;
     const [dirtySet, setDirtySet] = useState(false);
@@ -383,37 +387,57 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                         <span key={k} className="mr-4 inline-block"><b>{r.rank}{r.shared ? ' =' : ''}.</b> {r.name || r.code} <span className="font-black">{lsNf(r.score)}</span></span>
                                     ))}
                             </p>
-                            <details className="group rounded-2xl border border-slate-200 px-4 py-2 dark:border-white/10">
-                                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-indigo-700">
-                                    <span>Tabel lengkap ({x.table.length} tim)</span>
-                                    <span className="text-xs"><span className="group-open:hidden">Lihat</span><span className="hidden group-open:inline">Tutup</span></span>
-                                </summary>
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[760px] text-left text-sm">
-                                    <thead>
-                                        <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                            <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Tim</th><th className="py-3 pr-3">Juri</th>
-                                            <th className="py-3 pr-3 text-right">Dasar</th><th className="py-3 pr-3 text-right">Kurang</th><th className="py-3 pr-3 text-right">Penalti</th>
-                                            <th className="py-3 pr-3 text-right">Nilai bersih</th><th className="py-3">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {x.table.map((r, k) => (
-                                            <tr key={k} className={k % 2 ? 'bg-slate-50/70 dark:bg-white/[0.03]' : ''}>
-                                                <td className="py-3 pr-3 font-black">{r.rank ?? '-'}{r.shared ? ' =' : ''}</td>
-                                                <td className="py-3 pr-3"><div className="font-semibold">{r.name || '-'}{r.order != null ? <span className="ml-2 font-black">#{r.order}</span> : null}</div><div className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">{r.code}</div>{r.school ? <div className="text-xs text-slate-500">{r.school}</div> : null}</td>
-                                                <td className="py-3 pr-3 font-semibold">{r.judges_done}/{x.need}</td>
-                                                <td className="py-3 pr-3 text-right">{lsNf(r.base)}</td>
-                                                <td className="py-3 pr-3 text-right">{lsNf(r.deduction)}</td>
-                                                <td className="py-3 pr-3 text-right">{lsNf(r.penalty)}</td>
-                                                <td className="py-3 pr-3 text-right text-base font-black">{lsNf(r.score)}</td>
-                                                <td className="py-3"><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${lsStatus[r.status].c}`}>{lsStatus[r.status].t}</span></td>
+                            <div className="mt-3">
+                                <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {x.table.length} tim</p>
+                                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5">
+                                    <table className="w-full min-w-[720px] text-sm">
+                                        <thead>
+                                            <tr className="bg-slate-50 text-left text-[11px] font-extrabold uppercase tracking-wide text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                                                <th className="px-4 py-3">Peringkat</th>
+                                                <th className="px-4 py-3">Peserta</th>
+                                                <th className="px-4 py-3">Asal</th>
+                                                <th className="px-4 py-3 text-center">Juri</th>
+                                                <th className="px-4 py-3 text-right">Nilai dasar</th>
+                                                <th className="px-4 py-3 text-right">Potongan</th>
+                                                <th className="px-4 py-3 text-right">Penalti</th>
+                                                <th className="px-4 py-3 text-right">Nilai akhir</th>
+                                                <th className="px-4 py-3">Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                            {(x.table as any[]).map((t: any, ti: number) => (
+                                                <tr key={`${t.code}-${ti}`} className={t.rank !== null && t.rank <= 3 ? 'bg-indigo-50/40 dark:bg-indigo-500/5' : ''}>
+                                                    <td className="px-4 py-3">
+                                                        {t.rank === null ? (
+                                                            <span className="text-slate-400">–</span>
+                                                        ) : (
+                                                            <span className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-extrabold ${t.rank === 1 ? 'bg-amber-400 text-white' : t.rank === 2 ? 'bg-slate-400 text-white' : t.rank === 3 ? 'bg-orange-400 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>
+                                                                {t.rank}{t.shared ? '=' : ''}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-extrabold">{t.code}</span>
+                                                        {t.name ? <span className="block text-xs text-slate-500 dark:text-slate-400">{t.name}</span> : null}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{t.school || '–'}</td>
+                                                    <td className="px-4 py-3 text-center tabular-nums">{t.judges_done}/{(x as any).need}</td>
+                                                    <td className="px-4 py-3 text-right tabular-nums">{ovNum(t.base)}</td>
+                                                    <td className={`px-4 py-3 text-right tabular-nums ${t.deduction ? 'font-bold text-rose-600' : 'text-slate-400'}`}>{t.deduction ? ovNum(t.deduction) : '–'}</td>
+                                                    <td className={`px-4 py-3 text-right tabular-nums ${t.penalty ? 'font-bold text-rose-600' : 'text-slate-400'}`}>{t.penalty ? ovNum(t.penalty) : '–'}</td>
+                                                    <td className="px-4 py-3 text-right text-base font-extrabold tabular-nums">
+                                                        {ovNum(t.score)}
+                                                        {t.provisional ? <sup title="Nilai sementara" className="ml-0.5 text-amber-600">*</sup> : null}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${(lsStatus as any)[t.status]?.c ?? 'bg-slate-100 text-slate-600'}`}>{(lsStatus as any)[t.status]?.t ?? t.status}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            </details>
                         </div>
                     ))}
                 </div>
