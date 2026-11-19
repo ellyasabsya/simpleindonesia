@@ -31,7 +31,7 @@ type Props = {
     system?: string | null;
     systemLock?: string | null;
     skLomba?: LsData | null;
-    skList?: { id: number; sk: LsData }[];
+    overall?: Overall | null;
     isSub?: boolean;
 };
 
@@ -275,6 +275,267 @@ function LsTable({ rows }: { rows: LsRow[] }) {
         </table>
     );
 }
+
+type OverallRow = { rank: number; shared: boolean; school: string; points: number; counts: number[]; categories: number };
+type OverallCat = { sub: string; sub_id: number; category: string; category_id: number; participants: number; locked: boolean; winners: { rank: number; code: string; school: string }[] };
+type OverallCheck = { ok: boolean; title: string; detail: string };
+type Overall = { points: number[]; winner_count: number; locked: boolean; finalized_at: string | null; finalized_by: string | null; provisional: boolean; standings: OverallRow[]; categories: OverallCat[]; checks: OverallCheck[]; ties: boolean };
+
+type PTab = 'sistem' | 'pengaturan' | 'penetapan';
+
+type OvCat = LsCat & { saved?: boolean };
+type OvGroup = { sub_id: number; sub: string; categories: OvCat[] };
+type OverallX = Overall & {
+    institution?: string; title?: string; progress?: { done: number; total: number }; warnings?: string[]; groups?: OvGroup[];
+    letter?: { number: string; date: string; signer_name: string; signer_position: string; finalized_at: string | null; finalized_by: string | null } | null;
+};
+
+function ParentSK({ ov: ovIn, base, title, dirty }: { ov: Overall; base: string; title: string; dirty: boolean }) {
+    const ov = ovIn as OverallX;
+    const groups = ov.groups ?? [];
+    const warnings = ov.warnings ?? [];
+    const progress = ov.progress ?? { done: 0, total: 0 };
+    const [number, setNumber] = useState(ov.letter?.number ?? '');
+    const [date, setDate] = useState(ov.letter?.date?.slice(0, 10) ?? lsToday());
+    const [signer, setSigner] = useState(ov.letter?.signer_name ?? '');
+    const [position, setPosition] = useState(ov.letter?.signer_position ?? '');
+    const [confirmed, setConfirmed] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState('');
+
+    const locked = ov.locked;
+    const filled = number.trim() !== '' && date !== '' && signer.trim() !== '' && position.trim() !== '';
+    const okBlock = ov.checks.length > 0 && ov.checks.every((x) => x.ok);
+    const can = !locked && okBlock && !dirty && filled && confirmed && !busy;
+    const winners = ov.standings.filter((s) => s.rank <= ov.winner_count);
+    const ranked = groups.reduce((a, g) => a + g.categories.reduce((b, x) => b + x.rows.length, 0), 0);
+
+    const submit = () => {
+        if (!confirm(`Tetapkan hasil ${title} dan juara umum? Semua kategori di semua sub-event akan dikunci dan tidak bisa diubah lagi.`)) return;
+        setErr('');
+        setBusy(true);
+        router.post(`${base}/juara-umum/tetapkan`, { number, date, signer_name: signer, signer_position: position, confirm: true } as any, {
+            preserveScroll: true,
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menetapkan SK.')),
+            onFinish: () => setBusy(false),
+        });
+    };
+
+    return (
+        <div className="space-y-5">
+            <style>{`@media print { body * { visibility: hidden !important; } #sk-print, #sk-print * { visibility: visible !important; } #sk-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; } }`}</style>
+
+            <div className={`${card} space-y-4 p-6`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-extrabold text-white">SK</span>
+                        <div>
+                            <h2 className="text-xl font-extrabold">Surat keputusan: {title}</h2>
+                            <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua lomba dan juara umum.</p>
+                        </div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{progress.done}/{progress.total} kategori disimpan</span>
+                </div>
+
+                {locked ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <p className="flex items-center gap-2 text-sm font-extrabold text-emerald-800"><Check className="h-4 w-4" strokeWidth={3} /> SK ditetapkan{ov.finalized_at ? ` pada ${ov.finalized_at}` : ''}{ov.finalized_by ? ` oleh ${ov.finalized_by}` : ''}. Semua kategori dan juara umum terkunci.</p>
+                        <button type="button" onClick={() => window.print()} className={btn}>Cetak / simpan PDF</button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Nomor SK *</span><input className={`${inpSm} mt-1`} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Contoh: 001/SK/2026" /></label>
+                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Tanggal SK *</span><input className={`${inpSm} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
+                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                        </div>
+                        <ul className="space-y-2">
+                            {ov.checks.map((x, i) => (
+                                <li key={`c${i}`} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${x.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-200'}`}>{x.ok ? '✓' : '✕'} {x.title}<span className="ml-2 font-semibold opacity-80">· {x.detail}</span></li>
+                            ))}
+                            {warnings.map((m, i) => <li key={`w${i}`} className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">! {m}</li>)}
+                            {dirty && <li className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">! Ada perubahan pengaturan juara umum yang belum disimpan. Simpan dulu di tab Pengaturan penilaian.</li>}
+                        </ul>
+                    </>
+                )}
+            </div>
+
+            {groups.map((g) => (
+                <div key={g.sub_id} className={`${card} space-y-5 p-6`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-lg font-extrabold">{g.sub}</h3>
+                        <Link href={`/panel/event/${g.sub_id}/penilaian`} className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-slate-200">Buka sub-event</Link>
+                    </div>
+                    {g.categories.map((x) => (
+                        <div key={x.id} className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h4 className="flex items-center gap-2 font-extrabold"><span className={`h-3 w-3 rounded-full ${x.locked ? 'bg-emerald-500' : x.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {x.name ? `Kategori ${x.name}` : g.sub}</h4>
+                                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${x.locked ? 'bg-emerald-100 text-emerald-900' : x.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{x.locked ? 'Ditetapkan' : x.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
+                            </div>
+                            <p className="ringkas-kat text-sm text-slate-700 dark:text-slate-200">
+                                {x.rows.filter((r) => r.rank <= 3).length === 0
+                                    ? <span className="text-slate-500">Belum ada peringkat.</span>
+                                    : x.rows.filter((r) => r.rank <= 3).map((r, k) => (
+                                        <span key={k} className="mr-4 inline-block"><b>{r.rank}{r.shared ? ' =' : ''}.</b> {r.name || r.code} <span className="font-black">{lsNf(r.score)}</span></span>
+                                    ))}
+                            </p>
+                            <details className="group rounded-2xl border border-slate-200 px-4 py-2 dark:border-white/10">
+                                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-indigo-700">
+                                    <span>Tabel lengkap ({x.table.length} tim)</span>
+                                    <span className="text-xs"><span className="group-open:hidden">Lihat</span><span className="hidden group-open:inline">Tutup</span></span>
+                                </summary>
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[760px] text-left text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
+                                            <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Tim</th><th className="py-3 pr-3">Juri</th>
+                                            <th className="py-3 pr-3 text-right">Dasar</th><th className="py-3 pr-3 text-right">Kurang</th><th className="py-3 pr-3 text-right">Penalti</th>
+                                            <th className="py-3 pr-3 text-right">Nilai bersih</th><th className="py-3">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {x.table.map((r, k) => (
+                                            <tr key={k} className={k % 2 ? 'bg-slate-50/70 dark:bg-white/[0.03]' : ''}>
+                                                <td className="py-3 pr-3 font-black">{r.rank ?? '-'}{r.shared ? ' =' : ''}</td>
+                                                <td className="py-3 pr-3"><div className="font-semibold">{r.name || '-'}{r.order != null ? <span className="ml-2 font-black">#{r.order}</span> : null}</div><div className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">{r.code}</div>{r.school ? <div className="text-xs text-slate-500">{r.school}</div> : null}</td>
+                                                <td className="py-3 pr-3 font-semibold">{r.judges_done}/{x.need}</td>
+                                                <td className="py-3 pr-3 text-right">{lsNf(r.base)}</td>
+                                                <td className="py-3 pr-3 text-right">{lsNf(r.deduction)}</td>
+                                                <td className="py-3 pr-3 text-right">{lsNf(r.penalty)}</td>
+                                                <td className="py-3 pr-3 text-right text-base font-black">{lsNf(r.score)}</td>
+                                                <td className="py-3"><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${lsStatus[r.status].c}`}>{lsStatus[r.status].t}</span></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            </details>
+                        </div>
+                    ))}
+                </div>
+            ))}
+
+            <div className={`${card} space-y-4 p-6`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
+                    {ov.provisional && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span>}
+                </div>
+                {ov.standings.length === 0 ? (
+                    <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada peringkat yang bisa dihitung.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[560px] text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
+                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Sekolah / lembaga</th><th className="py-3 pr-3 text-right">Poin</th>
+                                    {ov.points.map((_, i) => <th key={i} className="py-3 pr-3 text-right">Juara {i + 1}</th>)}
+                                    <th className="py-3">Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {ov.standings.map((s, i) => (
+                                    <tr key={i} className={s.rank <= ov.winner_count ? 'bg-emerald-50/60 dark:bg-emerald-500/10' : ''}>
+                                        <td className="py-3 pr-3 pl-1 font-black">{s.rank}{s.shared ? ' =' : ''}</td>
+                                        <td className="py-3 pr-3 font-extrabold">{s.school}</td>
+                                        <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
+                                        {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
+                                        <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {ov.ties && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Ada seri yang tidak terpecahkan di posisi juara umum. Sekolah/lembaga yang seri ditetapkan sebagai juara bersama.</p>}
+            </div>
+
+            <div className="rounded-3xl bg-slate-100/70 p-4 sm:p-6 dark:bg-white/5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-slate-500">Pratinjau surat keputusan</p>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{ranked} peringkat tercantum</span>
+                </div>
+
+                <div id="sk-print" className="mx-auto max-w-3xl rounded-2xl bg-white p-8 font-serif text-[14px] leading-relaxed text-slate-900 shadow-sm sm:p-12">
+                    <div className="border-b-2 border-slate-900 pb-3 text-center text-lg font-bold uppercase">{ov.institution || 'Nama lembaga'}</div>
+                    <div className="mt-6 text-center">
+                        <div className="text-lg font-bold">SURAT KEPUTUSAN</div>
+                        <div>Nomor: {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</div>
+                        <div className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">Tentang</div>
+                        <div className="font-bold uppercase">Penetapan hasil lomba dan juara umum {title}</div>
+                    </div>
+
+                    <p className="mt-6"><b>Menimbang:</b> bahwa seluruh lomba pada {title} telah dilaksanakan, penilaian telah diselesaikan oleh seluruh juri, dan hasilnya telah diperiksa oleh panitia.</p>
+                    <p className="mt-4 text-center font-bold">MEMUTUSKAN</p>
+                    <p className="mt-2"><b>Menetapkan:</b></p>
+                    <p className="mt-2"><b>Pertama:</b> hasil dan peringkat tiap lomba sebagai berikut.</p>
+
+                    {groups.length === 0 && <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
+                    {groups.map((g, gi) => (
+                        <div key={g.sub_id} className="mt-3">
+                            <p className="font-bold">{String.fromCharCode(65 + gi)}. {g.sub}</p>
+                            {g.categories.map((x) => (
+                                <div key={x.id} className="mt-2">
+                                    {x.name && <p className="font-semibold">Kategori {x.name}</p>}
+                                    {x.rows.length === 0
+                                        ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada peringkat yang bisa dicantumkan.</p>
+                                        : <LsTable rows={x.rows} />}
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+
+                    <p className="mt-5"><b>Kedua:</b> juara umum {title} ditetapkan sebagai berikut.</p>
+                    {winners.length === 0
+                        ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada juara umum yang bisa dicantumkan.</p>
+                        : (
+                            <table className="mt-2 w-full border-collapse text-[13px]">
+                                <thead><tr><th className="w-24 border border-slate-400 bg-slate-100 px-2 py-1 text-center font-bold">Juara umum</th><th className="border border-slate-400 bg-slate-100 px-2 py-1 text-left font-bold">Sekolah / lembaga</th><th className="w-24 border border-slate-400 bg-slate-100 px-2 py-1 text-right font-bold">Poin</th></tr></thead>
+                                <tbody>
+                                    {winners.map((s, i) => (
+                                        <tr key={i}>
+                                            <td className="border border-slate-400 px-2 py-1 text-center font-bold">{s.rank}{s.shared ? ' =' : ''}</td>
+                                            <td className="border border-slate-400 px-2 py-1">{s.school}</td>
+                                            <td className="border border-slate-400 px-2 py-1 text-right font-bold">{num(s.points)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+
+                    <p className="mt-5"><b>Ketiga:</b> keputusan ini berlaku sejak tanggal ditetapkan.</p>
+
+                    <div className="ml-auto mt-8 w-1/2 text-center">
+                        <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
+                        <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
+                        <div className="h-20" />
+                        <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
+                    </div>
+                </div>
+            </div>
+
+            {!locked && (
+                <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
+                    <label className="flex cursor-pointer items-center gap-3 text-sm font-bold">
+                        <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="h-5 w-5" />
+                        Saya sudah memeriksa SK dan hasilnya sudah benar
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {err
+                            ? <span className="max-w-xs text-xs font-bold text-rose-700">{err}</span>
+                            : !okBlock
+                                ? <span className="text-xs font-bold text-rose-700">Selesaikan pemeriksaan ✕ di atas</span>
+                                : !filled
+                                    ? <span className="text-xs font-bold text-amber-700">Lengkapi data SK di atas</span>
+                                    : null}
+                        <button type="button" disabled={!can} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"><Lock className="h-4 w-4" /> Tetapkan hasil</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 
 function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     const [number, setNumber] = useState(sk?.letter?.number ?? '');
@@ -576,7 +837,7 @@ function JuriSudahAda({ base, cid, catName, card, btn }: { base: string; cid: nu
     );
 }
 
-function PenilaianInner({ event, isParent, skList = [], subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
+function PenilaianInner({ event, isParent, overall = null, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
     const base = `/panel/event/${event.id}/penilaian`;
     const cfg: Cfg = settings ?? { enabled: false, scale: 100, judge_count: 3, avg_decimals: 2, rounding: 'nearest', deduction_enabled: false };
     const locked = cfg.enabled;
@@ -589,7 +850,7 @@ function PenilaianInner({ event, isParent, skList = [], subs = [], settings, cri
         if (!hasSystem) return 'sistem';
         try {
             const v = sessionStorage.getItem('penilaian-tab');
-            return v === 'sistem' || v === 'nilai' || v === 'juri' || v === 'publikasi' || v === 'rekap' || (v === 'sk' && (!isSub || skList.length > 0)) ? v : 'juri';
+            return v === 'sistem' || v === 'nilai' || v === 'juri' || v === 'publikasi' || v === 'rekap' || (v === 'sk' && (!isSub || !!overall)) ? v : 'juri';
         } catch {
             return 'juri';
         }
@@ -598,7 +859,7 @@ function PenilaianInner({ event, isParent, skList = [], subs = [], settings, cri
         setTabState(t);
         try { sessionStorage.setItem('penilaian-tab', t); } catch { /* abaikan */ }
     };
-    const tab: TabKey = hasSystem ? (isSub && skList.length === 0 && tabRaw === 'sk' ? 'juri' : tabRaw) : 'sistem';
+    const tab: TabKey = hasSystem ? (isSub && !overall && tabRaw === 'sk' ? 'juri' : tabRaw) : 'sistem';
     const [scale, setScale] = useState<number>(cfg.scale);
     const [judgeCount, setJudgeCount] = useState<string>(String(cfg.judge_count));
     const [decimals, setDecimals] = useState<string>(String(cfg.avg_decimals));
@@ -698,7 +959,7 @@ function PenilaianInner({ event, isParent, skList = [], subs = [], settings, cri
         { label: 'Pengesahan', done: cfg.enabled },
     ];
     const steps = rawSteps.map((st, n) => ({ ...st, done: rawSteps.slice(0, n + 1).every((x) => x.done) }));
-    const allTabs = ([{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const).filter((x) => !(isSub && skList.length === 0 && x.k === 'sk'));
+    const allTabs = ([{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const).filter((x) => !(isSub && !overall && x.k === 'sk'));
     const tabs = allTabs.filter((x) => x.k === 'sistem' || hasSystem);
     const choice = (w: number, k: number) => (w / 100) * scale * (k / 5);
 
@@ -761,8 +1022,8 @@ function PenilaianInner({ event, isParent, skList = [], subs = [], settings, cri
 
                 {tab === 'rekap' && <Rekap />}
 
-                {tab === 'sk' && (skList.length > 0
-                    ? <div className="space-y-8">{skList.map((s) => <PenetapanSK key={s.id} sk={s.sk} base={`/panel/event/${s.id}/penilaian`} />)}</div>
+                {tab === 'sk' && (overall
+                    ? <ParentSK ov={overall} base={(overall as any).base} title={(overall as any).title} dirty={false} />
                     : <PenetapanSK sk={skLomba} base={base} />)}
 
                 {tab === 'publikasi' && <Publikasi btn={btn} onGoSettings={(id: number) => { if (id === category.id) setTab('nilai'); else router.get(base, { kategori: id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('nilai') }); }} />}

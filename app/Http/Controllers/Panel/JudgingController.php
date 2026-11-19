@@ -143,7 +143,7 @@ class JudgingController extends EventScopedController
             'system' => $this->systemOf($event),
             'systemLock' => $this->systemLockReason($event),
             'skLomba' => $this->skLombaData($event),
-            'skList' => $frame !== null ? $kids->map(fn ($k) => ['id' => (int) $k->id, 'sk' => $this->skLombaData($k)])->values()->all() : [],
+            'overall' => $frame !== null ? ($this->overallData($frame['parent']) + ['base' => "/panel/event/{$frame['parent']->id}/penilaian"]) : null,
             'category' => ['id' => $cid, 'name' => $this->catName($event, $cid)],
             'categories' => $categories,
             'settings' => [
@@ -1725,6 +1725,269 @@ class JudgingController extends EventScopedController
         return back()->with('success', ($data['system'] ?? null) ? 'Sistem penilaian dipilih.' : 'Pilihan sistem penilaian dibatalkan.');
     }
 
+    /** Juara umum event utama: poin dari peringkat tiap kategori di semua sub-event, dijumlahkan per sekolah/lembaga. */
+    private function overallData(Event $event): array
+    {
+        $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
+        $points = $row ? array_map('intval', json_decode((string) $row->points_json, true) ?: []) : [];
+        if (! $points) {
+            $points = [5, 3, 1];
+        }
+        $winnerCount = $row ? (int) $row->winner_count : 3;
+        $locked = $row && ! empty($row->finalized_at);
+        $n = count($points);
+
+        $subs = $event->children()->orderBy('id')->get();
+        $noSystem = [];
+        $cats = [];
+        $blocking = [];
+        $unit = [];
+        $groups = [];
+        $warnings = [];
+        foreach ($subs as $child) {
+            if ($this->systemOf($child) === null) {
+                $noSystem[] = $child->title;
+
+                continue;
+            }
+            foreach (Judging::categories($child->id) as $k) {
+                $kid = (int) $k['id'];
+                $rec = $this->recapData($child, $kid, Judging::settings($child->id, $kid));
+                if (count($rec['rows']) === 0) {
+                    continue;
+                }
+                $useRows = $rec['rows'];
+                if (! empty($rec['saved'])) {
+                    $snapRows = $this->savedSnapshot($child, $kid)['rows'] ?? null;
+                    if (is_array($snapRows)) {
+                        $useRows = $snapRows;
+                    }
+                }
+                $schools = DB::table('event_registrations')->whereIn('id', array_column($useRows, 'id'))->pluck('school', 'id');
+                $winners = [];
+                foreach ($useRows as $r) {
+                    if ($r['rank'] === null || $r['score'] === null) {
+                        continue;
+                    }
+                    $rk = (int) $r['rank'];
+                    if ($rk < 1 || $rk > $n) {
+                        continue;
+                    }
+                    $school = trim((string) ($schools[$r['id']] ?? '')) ?: 'Tanpa asal';
+                    $key = mb_strtolower($school);
+                    $unit[$key] ??= ['school' => $school, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
+                    $unit[$key]['points'] += $points[$rk - 1];
+                    $unit[$key]['counts'][$rk - 1]++;
+                    $unit[$key]['categories']++;
+                    $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $school];
+                }
+                usort($winners, fn ($a, $b) => $a['rank'] <=> $b['rank']);
+                $isLocked = ! empty($rec['locked']);
+                $kLabel = $child->title.($kid > 0 ? ' · '.$k['name'] : '');
+                $unrankedN = count(array_filter($useRows, fn ($x) => $x['rank'] === null && $x['status'] === 'selesai'));
+                if ($unrankedN > 0) {
+                    $warnings[] = $kLabel.': '.$unrankedN.' tim tidak mendapat peringkat (diskualifikasi atau dibatalkan) dan tidak dicantumkan di SK.';
+                }
+                $tbl = [];
+                $rnk = [];
+                foreach ($useRows as $x) {
+                    $tbl[] = [
+                        'rank' => $x['rank'], 'shared' => (bool) ($x['rank_shared'] ?? false),
+                        'code' => $x['code'], 'name' => (string) ($x['name'] ?? ''), 'school' => (string) ($x['school'] ?? ''),
+                        'order' => $x['order'] ?? null, 'judges_done' => (int) $x['judges_done'],
+                        'base' => $x['base'], 'deduction' => $x['deduction'], 'penalty' => $x['penalty'],
+                        'score' => $x['score'], 'provisional' => (bool) $x['provisional'], 'status' => $x['status'],
+                    ];
+                    if ($x['rank'] !== null && $x['score'] !== null) {
+                        $rnk[] = [
+                            'rank' => (int) $x['rank'], 'shared' => (bool) ($x['rank_shared'] ?? false),
+                            'code' => $x['code'], 'name' => (string) ($x['name'] ?? ''), 'school' => (string) ($x['school'] ?? ''),
+                            'score' => $x['score'],
+                        ];
+                    }
+                }
+                $groups[(int) $child->id] ??= ['sub_id' => (int) $child->id, 'sub' => $child->title, 'categories' => []];
+                $groups[(int) $child->id]['categories'][] = [
+                    'id' => $kid, 'name' => $kid > 0 ? $k['name'] : '', 'locked' => $isLocked, 'saved' => ! empty($rec['saved']),
+                    'need' => (int) $rec['judge_need'], 'unranked' => $unrankedN, 'rows' => $rnk, 'table' => $tbl,
+                ];
+                $cats[] = [
+                    'sub' => $child->title, 'sub_id' => (int) $child->id,
+                    'category' => $kid > 0 ? $k['name'] : '', 'category_id' => $kid,
+                    'participants' => count($rec['rows']), 'locked' => $isLocked, 'saved' => ! empty($rec['saved']), 'winners' => $winners,
+                ];
+                if (! $isLocked && empty($rec['saved'])) {
+                    $blocking[] = $child->title.($kid > 0 ? ' · '.$k['name'] : '');
+                }
+            }
+        }
+
+        $list = array_values($unit);
+        usort($list, function ($a, $b) {
+            if ($a['points'] !== $b['points']) {
+                return $b['points'] <=> $a['points'];
+            }
+            foreach (array_keys($a['counts']) as $i) {
+                if ($a['counts'][$i] !== $b['counts'][$i]) {
+                    return $b['counts'][$i] <=> $a['counts'][$i];
+                }
+            }
+
+            return strcmp($a['school'], $b['school']);
+        });
+        $standings = [];
+        $lastSig = null;
+        $lastRank = 0;
+        foreach ($list as $i => $u) {
+            $sig = $u['points'].'|'.implode(',', $u['counts']);
+            $rank = $sig === $lastSig ? $lastRank : $i + 1;
+            $lastSig = $sig;
+            $lastRank = $rank;
+            $standings[] = ['rank' => $rank, 'shared' => false] + $u;
+        }
+        $freq = array_count_values(array_column($standings, 'rank'));
+        foreach ($standings as &$st) {
+            $st['shared'] = $freq[$st['rank']] > 1;
+        }
+        unset($st);
+        if ($locked && ! empty($row->snapshot_json)) {
+            $standings = json_decode((string) $row->snapshot_json, true) ?: $standings;
+        }
+        $sk = DB::table('judging_sk')->where('event_id', $event->id)->first();
+        if ($locked && $sk && ! empty($sk->snapshot_json)) {
+            $skSnap = json_decode((string) $sk->snapshot_json, true) ?: [];
+            $cats = $skSnap['cats'] ?? $cats;
+            $groups = $skSnap['groups'] ?? $groups;
+            $warnings = [];
+        }
+        $letter = $sk ? [
+            'number' => (string) $sk->number,
+            'date' => \Illuminate\Support\Carbon::parse($sk->sk_date)->toDateString(),
+            'signer_name' => (string) $sk->signer_name,
+            'signer_position' => (string) $sk->signer_position,
+            'finalized_at' => ! empty($sk->finalized_at) ? \Illuminate\Support\Carbon::parse($sk->finalized_at)->format('d/m/Y, H.i') : null,
+            'finalized_by' => $sk->finalized_by,
+        ] : null;
+
+        $checks = [
+            ['ok' => $subs->count() > 0 && ! $noSystem, 'title' => 'Semua sub-event sudah memilih sistem penilaian',
+                'detail' => $subs->count() === 0 ? 'Belum ada sub-event.' : ($noSystem ? 'Belum memilih: '.implode(', ', $noSystem).'.' : 'Semua sub-event sudah memilih sistem.')],
+            ['ok' => count($cats) > 0 && ! $blocking, 'title' => 'Semua kategori yang punya peserta sudah disimpan hasilnya di Rekap nilai',
+                'detail' => count($cats) === 0 ? 'Belum ada kategori dengan peserta.' : ($blocking ? 'Belum disimpan: '.implode('; ', $blocking).'.' : 'Semua kategori sudah disimpan.')],
+            ['ok' => count($standings) > 0, 'title' => 'Ada sekolah/lembaga yang meraih peringkat',
+                'detail' => count($standings) > 0 ? count($standings).' sekolah/lembaga masuk klasemen.' : 'Belum ada peringkat yang bisa dihitung.'],
+        ];
+        $ties = false;
+        foreach ($standings as $st) {
+            if (! empty($st['shared']) && $st['rank'] <= $winnerCount) {
+                $ties = true;
+            }
+        }
+
+        return [
+            'points' => $points,
+            'winner_count' => $winnerCount,
+            'locked' => (bool) $locked,
+            'finalized_at' => $locked ? \Illuminate\Support\Carbon::parse($row->finalized_at)->format('d/m/Y, H.i') : null,
+            'finalized_by' => $locked ? $row->finalized_by : null,
+            'provisional' => ! $locked && (bool) $blocking,
+            'standings' => $standings,
+            'categories' => $cats,
+            'checks' => $checks,
+            'ties' => $ties,
+            'institution' => (string) ($event->institution->name ?? ''),
+            'title' => $event->title,
+            'letter' => $letter,
+            'groups' => array_values($groups),
+            'warnings' => $warnings,
+            'progress' => ['done' => count(array_filter($cats, fn ($x) => ! empty($x['locked']) || ! empty($x['saved']))), 'total' => count($cats)],
+        ];
+    }
+
+    public function saveOverall(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $request->validate([
+            'points' => 'required|array|min:1|max:10',
+            'points.*' => 'required|integer|min:0|max:1000',
+            'winner_count' => 'required|integer|min:1|max:10',
+        ], ['points.*.integer' => 'Poin harus berupa bilangan bulat.', 'points.*.required' => 'Poin tiap juara wajib diisi.']);
+        $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
+        if ($row && ! empty($row->finalized_at)) {
+            return back()->with('error', 'Juara umum sudah ditetapkan. Pengaturan tidak bisa diubah.');
+        }
+        DB::table('judging_overall')->updateOrInsert(
+            ['event_id' => $event->id],
+            ['points_json' => json_encode(array_map('intval', $data['points'])), 'winner_count' => (int) $data['winner_count'], 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        return back()->with('success', 'Pengaturan juara umum disimpan.');
+    }
+
+    public function finalizeOverall(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $data = $request->validate([
+            'number' => 'required|string|max:100',
+            'date' => 'required|date',
+            'signer_name' => 'required|string|max:150',
+            'signer_position' => 'required|string|max:150',
+            'confirm' => 'accepted',
+        ], [
+            'number.required' => 'Nomor SK wajib diisi.', 'date.required' => 'Tanggal SK wajib diisi.',
+            'signer_name.required' => 'Nama penandatangan wajib diisi.', 'signer_position.required' => 'Jabatan penandatangan wajib diisi.',
+            'confirm.accepted' => 'Centang konfirmasi pemeriksaan SK dulu.',
+        ]);
+        $ov = $this->overallData($event);
+        if ($ov['locked']) {
+            return back()->with('error', 'Juara umum sudah ditetapkan.');
+        }
+        $failed = array_values(array_map(fn ($ch) => $ch['title'].' ('.$ch['detail'].')', array_filter($ov['checks'], fn ($ch) => ! $ch['ok'])));
+        if ($failed) {
+            return back()->with('error', 'SK event utama belum bisa ditetapkan: '.implode(' ', $failed));
+        }
+        $by = $request->user()?->name;
+
+        DB::transaction(function () use ($event, $ov, $data, $by) {
+            foreach ($event->children()->orderBy('id')->get() as $child) {
+                if ($this->systemOf($child) === null) {
+                    continue;
+                }
+                foreach (Judging::categories($child->id) as $k) {
+                    $kid = (int) $k['id'];
+                    $s = Judging::settings($child->id, $kid);
+                    if (! empty($s->finalized_at) || empty($s->saved_at)) {
+                        continue;
+                    }
+                    DB::table('judging_settings')->where('event_id', $child->id)->where('category_id', $kid)->update([
+                        'finalized_at' => now(), 'finalized_by' => $by, 'updated_at' => now(),
+                    ]);
+                }
+            }
+            DB::table('judging_overall')->updateOrInsert(
+                ['event_id' => $event->id],
+                [
+                    'points_json' => json_encode($ov['points']), 'winner_count' => $ov['winner_count'],
+                    'snapshot_json' => json_encode($ov['standings']),
+                    'finalized_at' => now(), 'finalized_by' => $by,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]
+            );
+            DB::table('judging_sk')->updateOrInsert(
+                ['event_id' => $event->id],
+                [
+                    'number' => trim($data['number']), 'sk_date' => $data['date'],
+                    'signer_name' => trim($data['signer_name']), 'signer_position' => trim($data['signer_position']),
+                    'snapshot_json' => json_encode(['cats' => $ov['categories'], 'groups' => $ov['groups'], 'progress' => $ov['progress']]),
+                    'finalized_at' => now(), 'finalized_by' => $by,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]
+            );
+        });
+
+        return back()->with('success', 'SK event utama ditetapkan. Semua kategori di semua sub-event dan klasemen juara umum sudah terkunci.');
+    }
+
     /** SK satu lomba (sub-event): memuat semua kategorinya. Kalau sudah ditetapkan, dibaca dari salinan beku. */
     private function skLombaData(Event $event): array
     {
@@ -1821,6 +2084,9 @@ class JudgingController extends EventScopedController
     public function finalizeSkLomba(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event);
+        if ($event->parent_id !== null) {
+            return back()->with('error', 'SK ditetapkan di event utama, bukan di sub-event.');
+        }
         $data = $request->validate([
             'number' => 'required|string|max:100',
             'date' => 'required|date',
