@@ -24,7 +24,13 @@ class MyActivityController extends Controller
     public function lomba(Request $request)
     {
         $rows = EventRegistration::with('event')
-            ->where('user_id', $request->user()->id)->latest()->get()
+            ->where(function ($q) use ($request) {
+                $u = $request->user();
+                $q->where('user_id', $u->id);
+                if ($u->email_verified_at) {
+                    $q->orWhereRaw('LOWER(TRIM(contact_email)) = ?', [mb_strtolower(trim($u->email))]);
+                }
+            })->latest()->get()
             ->map(fn ($r) => ['id' => $r->id, 'status' => $r->status] + $this->eventData($r->event))
             ->all();
 
@@ -34,7 +40,13 @@ class MyActivityController extends Controller
     public function tiket(Request $request)
     {
         $orders = \Illuminate\Support\Facades\DB::table('ticket_orders')
-            ->where('status', 'lunas')->where('user_id', $request->user()->id)
+            ->where('status', 'lunas')->where(function ($q) use ($request) {
+                $u = $request->user();
+                $q->where('user_id', $u->id);
+                if ($u->email_verified_at) {
+                    $q->orWhereRaw('LOWER(TRIM(buyer_email)) = ?', [mb_strtolower(trim($u->email))]);
+                }
+            })
             ->latest('id')->get();
         $holders = \Illuminate\Support\Facades\DB::table('ticket_holders')
             ->whereIn('ticket_order_id', $orders->pluck('id'))->orderBy('id')->get()
