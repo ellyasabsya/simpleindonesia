@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TicketType extends Model
 {
     protected $fillable = [
+        'participant_category_id',
         'audience','event_id', 'name', 'price', 'quota', 'valid_from', 'valid_until', 'max_per_order', 'valid_days', 'custom_sale', 'require_holder_details', 'support_enabled', 'support_options'];
 
     protected function casts(): array

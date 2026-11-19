@@ -44,15 +44,15 @@ class Judging
     /** Event tiket: peserta = pemegang tiket lunas berjenis peserta (tiket umum tidak dinilai). */
     private static function ticketParticipants(int $eventId, int $catId): array
     {
-        if ($catId > 0 && $catId !== (int) (self::categoryIds($eventId)[0] ?? 0)) {
-            return [];
-        }
+        $first = (int) (self::categoryIds($eventId)[0] ?? 0);
 
         return DB::table('ticket_holders as h')
             ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
             ->leftJoin('ticket_types as t', 't.id', '=', 'h.ticket_type_id')
             ->where('h.event_id', $eventId)->where('o.status', 'lunas')
             ->where(fn ($q) => $q->where('t.audience', 'peserta')->orWhereNull('t.audience'))
+            ->when($catId > 0, fn ($q) => $q->where(fn ($w) => $w->where('t.participant_category_id', $catId)
+                ->when($catId === $first, fn ($w2) => $w2->orWhereNull('t.participant_category_id'))))
             ->orderBy('h.id')->get(['h.id', 'h.holder_name', 'h.participant_code', 'h.reg_code'])
             ->map(function ($h) {
                 $c = (string) ($h->participant_code ?: ($h->reg_code ?: ''));
