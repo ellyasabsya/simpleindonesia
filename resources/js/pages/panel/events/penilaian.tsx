@@ -539,6 +539,42 @@ export default function Penilaian(props: Props) {
     return <PenilaianInner key={`${props.event.id}-${props.category?.id ?? 0}`} {...props} />;
 }
 
+function JuriSudahAda({ base, cid, catName, card, btn }: { base: string; cid: number; catName: string; card: string; btn: string }) {
+    const [list, setList] = useState<{ id: number; name: string; contact: string | null; from: string[] }[]>([]);
+    const [n, setN] = useState(0);
+    const [busy, setBusy] = useState(0);
+    useEffect(() => {
+        let off = false;
+        fetch(`${base}/juri-event?kategori=${cid}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((d) => { if (!off) setList(Array.isArray(d) ? d : []); })
+            .catch(() => {});
+        return () => { off = true; };
+    }, [base, cid, n]);
+    if (list.length === 0) return null;
+    const add = (id: number) => {
+        setBusy(id);
+        router.post(`${base}/juri/${id}/kategori`, { category_id: cid }, { preserveScroll: true, onSuccess: () => setN((x) => x + 1), onFinish: () => setBusy(0) });
+    };
+    return (
+        <div className={`${card} p-5`}>
+            <h3 className="text-base font-extrabold">Juri yang sudah ada di event ini</h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Mereka sudah diundang dan bertugas di kategori lain. Tidak perlu diundang lagi, cukup tambahkan ke kategori {catName}.</p>
+            <ul className="mt-4 space-y-2">
+                {list.map((j) => (
+                    <li key={j.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3 dark:border-white/10">
+                        <div className="min-w-0">
+                            <div className="font-extrabold">{j.name}</div>
+                            <div className="text-xs text-slate-500">Juri di: {j.from.join(', ')}{j.contact ? ` · ${j.contact}` : ''}</div>
+                        </div>
+                        <button type="button" disabled={busy === j.id} onClick={() => add(j.id)} className={`${btn} !px-4 !py-2 !text-xs`}>{busy === j.id ? 'Menambahkan…' : `Tambahkan ke ${catName}`}</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
     const base = `/panel/event/${event.id}/penilaian`;
     const cfg: Cfg = settings ?? { enabled: false, scale: 100, judge_count: 3, avg_decimals: 2, rounding: 'nearest', deduction_enabled: false };
@@ -900,6 +936,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                             </div>
                         )}
 <JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
+<JuriSudahAda base={base} cid={cid} catName={category.name || 'ini'} card={card} btn={btn} />
 <JuriTambah card={card} inp={inpSm} btn={btn} />
 <JuriBelumTugas btn={btn} />
 

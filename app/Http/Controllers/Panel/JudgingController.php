@@ -478,6 +478,73 @@ class JudgingController extends EventScopedController
         return back()->with('success', 'Juri ditugaskan.');
     }
 
+    private function judgeKey($j): string
+    {
+        return $j->user_id ? 'u'.$j->user_id : 'n'.mb_strtolower(trim($j->name)).'|'.($j->contact ?? '');
+    }
+
+    /** Juri event ini yang bertugas di kategori lain dan belum ada di kategori yang sedang dibuka. */
+    public function eventJudges(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $this->guard($request, $event);
+        $cid = $this->cat($request, $event);
+
+        $all = DB::table('judges')->where('event_id', $event->id)->where('category_id', '>=', 0)->orderBy('id')->get();
+        $here = $all->where('category_id', $cid)->map(fn ($j) => $this->judgeKey($j))->all();
+
+        $out = [];
+        foreach ($all->where('category_id', '!=', $cid) as $j) {
+            $k = $this->judgeKey($j);
+            if (in_array($k, $here, true)) {
+                continue;
+            }
+            $out[$k] ??= ['id' => $j->id, 'name' => $j->name, 'contact' => $j->contact, 'from' => []];
+            $out[$k]['from'][] = $this->catName($event, (int) $j->category_id);
+        }
+
+        return response()->json(array_values($out));
+    }
+
+    /** Tambahkan juri yang sudah bertugas ke kategori lain (baris baru, token baru). */
+    public function addToCategory(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $this->judgeOwned($event, $item);
+        $data = $request->validate(['category_id' => 'required|integer']);
+        $c = (int) $data['category_id'];
+        abort_unless(in_array($c, Judging::categoryIds($event->id), true), 422);
+
+        $j = DB::table('judges')->where('id', $item)->first();
+        if ((int) $j->category_id === -1 || (int) $j->category_id === $c) {
+            return back()->with('error', 'Juri ini tidak bisa ditambahkan ke kategori tersebut.');
+        }
+        $key = $this->judgeKey($j);
+        foreach (DB::table('judges')->where('event_id', $event->id)->where('category_id', $c)->get() as $x) {
+            if ($this->judgeKey($x) === $key) {
+                return back()->with('error', 'Juri ini sudah ada di kategori tersebut.');
+            }
+        }
+
+        $s = Judging::settings($event->id, $c);
+        if (! empty($s->finalized_at) || ! empty($s->saved_at)) {
+            return back()->with('error', 'Hasil kategori tersebut sudah disimpan atau ditetapkan. Juri tidak bisa ditambahkan.');
+        }
+        if ($s->enabled) {
+            $act = DB::table('judges')->where('event_id', $event->id)->where('category_id', $c)->where('active', 1)->count();
+            if ($act >= (int) $s->judge_count) {
+                return back()->with('error', 'Penilaian kategori tersebut sedang dibuka dan jumlah juri sudah cukup. Tutup penilaian dulu.');
+            }
+        }
+
+        DB::table('judges')->insert([
+            'event_id' => $event->id, 'category_id' => $c, 'user_id' => $j->user_id,
+            'name' => $j->name, 'contact' => $j->contact, 'active' => true,
+            'token' => Str::random(32), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'Juri ditambahkan ke kategori ini.');
+    }
+
     public function destroyJudge(Request $request, Event $event, int $item): RedirectResponse
     {
         $this->guard($request, $event);
