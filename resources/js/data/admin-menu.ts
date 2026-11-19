@@ -11,8 +11,7 @@ import {
     Star,
     Ticket,
     Wallet,
-    type LucideIcon,
-} from 'lucide-react';
+    type LucideIcon, Newspaper } from 'lucide-react';
 
 export type AdminMenuItem = { label: string; href: string; icon: LucideIcon };
 export type AdminMenuGroup = { title: string; items: AdminMenuItem[] };
@@ -29,6 +28,12 @@ export const adminMenu: AdminMenuGroup[] = [
             { label: 'Review Event', href: '/admin/review', icon: ClipboardCheck },
             { label: 'Sistem Penilaian', href: '/admin/penilaian', icon: Star },
             { label: 'Komentar', href: '/admin/komentar', icon: MessageSquare },
+        ],
+    },
+    {
+        title: 'Konten',
+        items: [
+            { label: 'Berita', href: '/admin/berita', icon: Newspaper },
         ],
     },
     {
