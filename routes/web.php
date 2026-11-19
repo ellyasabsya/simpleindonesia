@@ -205,6 +205,7 @@ Route::middleware([
         Route::delete('event/{event}/penilaian/juri/{item}', [\App\Http\Controllers\Panel\JudgingController::class, 'destroyJudge'])->whereNumber(['event', 'item'])->name('event.judging.destroyJudge');
         Route::post('event/{event}/penilaian/juri/{item}/link', [\App\Http\Controllers\Panel\JudgingController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.judging.resetLink');
         Route::post('event/{event}/penilaian/juri/{item}/tugas', [\App\Http\Controllers\Panel\JudgingController::class, 'assignJudge'])->whereNumber(['event', 'item'])->name('event.judging.assignJudge');
+        Route::post('event/{event}/penilaian/juri/{item}/tugas-saudara', [\App\Http\Controllers\Panel\JudgingController::class, 'assignFromSibling'])->whereNumber(['event', 'item'])->name('event.judging.assignFromSibling');
         Route::get('event/{event}/penilaian/juri-event', [\App\Http\Controllers\Panel\JudgingController::class, 'eventJudges'])->whereNumber('event')->name('event.judging.eventJudges');
         Route::post('event/{event}/penilaian/juri/{item}/kategori', [\App\Http\Controllers\Panel\JudgingController::class, 'addToCategory'])->whereNumber(['event', 'item'])->name('event.judging.addToCategory');
         Route::get('event/{event}/penilaian/juri-undangan/cari', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteLookup'])->whereNumber('event')->name('event.judging.inviteLookup');

@@ -160,7 +160,7 @@ class JudgingController extends EventScopedController
             ])->values(),
             'deductions' => DB::table('judging_deductions')->where('event_id', $event->id)->where('category_id', $cid)->orderBy('sort')->orderBy('id')->get()->map(fn ($d) => ['name' => $d->name, 'points' => (float) $d->points])->values(),
             'judges' => $judges,
-            'unassigned' => DB::table('judges')->where('event_id', $event->id)->where('category_id', -1)->orderBy('id')->get()->map(fn ($j) => ['id' => (int) $j->id, 'name' => $j->name, 'contact' => $j->contact])->values(),
+            'unassigned' => $this->unassignedList($event),
             'invites' => DB::table('judge_invitations')->join('users', 'users.id', '=', 'judge_invitations.user_id')->where('judge_invitations.event_id', $event->id)->where('judge_invitations.status', 'menunggu')->orderBy('judge_invitations.id')->get(['judge_invitations.id', 'users.name', 'users.email', 'judge_invitations.status'])->map(fn ($i) => ['id' => (int) $i->id, 'name' => $i->name, 'email' => $i->email, 'status' => $i->status])->values(),
             'inviteBase' => preg_replace('#/event/\d+/penilaian.*$#', '/event/'.$event->id.'/penilaian', $request->url()),
             'siblings' => $siblings,
@@ -479,6 +479,76 @@ class JudgingController extends EventScopedController
                         'token' => Str::random(32), 'created_at' => now(), 'updated_at' => now(),
                     ]);
                 }
+            }
+        });
+
+        return back()->with('success', 'Juri ditugaskan.');
+    }
+
+    /** Juri belum ditugaskan di event ini, ditambah juri dari lomba saudara (satu induk) yang belum ada di sini. */
+    private function unassignedList(Event $event): array
+    {
+        $out = DB::table('judges')->where('event_id', $event->id)->where('category_id', -1)->orderBy('id')->get()
+            ->map(fn ($j) => ['id' => (int) $j->id, 'name' => $j->name, 'contact' => $j->contact, 'sibling' => false])->all();
+        if ($event->parent_id === null) {
+            return $out;
+        }
+        $sibIds = DB::table('events')->where('parent_id', $event->parent_id)->where('id', '!=', $event->id)->pluck('id')->all();
+        if (! $sibIds) {
+            return $out;
+        }
+        $mine = DB::table('judges')->where('event_id', $event->id)->get()->map(fn ($j) => $this->judgeKey($j))->all();
+        $seen = [];
+        foreach (DB::table('judges')->whereIn('event_id', $sibIds)->orderBy('id')->get() as $j) {
+            $k = $this->judgeKey($j);
+            if (in_array($k, $mine, true) || isset($seen[$k])) {
+                continue;
+            }
+            $seen[$k] = true;
+            $out[] = ['id' => (int) $j->id, 'name' => $j->name, 'contact' => $j->contact, 'sibling' => true];
+        }
+
+        return $out;
+    }
+
+    /** Tugaskan juri dari lomba saudara ke kategori di event ini (baris baru, token baru). */
+    public function assignFromSibling(Request $request, Event $event, int $item): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $src = DB::table('judges')->where('id', $item)->first();
+        abort_unless($src && $event->parent_id !== null, 404);
+        $srcEvent = Event::find($src->event_id);
+        abort_unless($srcEvent && (int) $srcEvent->parent_id === (int) $event->parent_id && $srcEvent->institution_id === $event->institution_id, 404);
+        $data = $request->validate(['categories' => 'required|array|min:1', 'categories.*' => 'integer'], ['categories.required' => 'Pilih minimal satu kategori.', 'categories.min' => 'Pilih minimal satu kategori.']);
+
+        $key = $this->judgeKey($src);
+        foreach (DB::table('judges')->where('event_id', $event->id)->get() as $x) {
+            if ($this->judgeKey($x) === $key) {
+                return back()->with('error', 'Juri ini sudah ada di lomba ini.');
+            }
+        }
+        $valid = Judging::categoryIds($event->id);
+        $cats = collect($data['categories'])->map(fn ($v) => (int) $v)->unique()->values();
+        abort_unless($cats->every(fn ($c) => in_array($c, $valid, true)), 422);
+        foreach ($cats as $c) {
+            $s = Judging::settings($event->id, $c);
+            if (! empty($s->finalized_at) || ! empty($s->saved_at)) {
+                return back()->with('error', 'Hasil salah satu kategori sudah disimpan atau ditetapkan. Juri tidak bisa ditugaskan ke sana.');
+            }
+            if ($s->enabled) {
+                $act = DB::table('judges')->where('event_id', $event->id)->where('category_id', $c)->where('active', 1)->count();
+                if ($act >= (int) $s->judge_count) {
+                    return back()->with('error', 'Penilaian salah satu kategori sedang dibuka dan jumlah juri sudah cukup. Tutup penilaian dulu kalau ingin mengganti juri.');
+                }
+            }
+        }
+        DB::transaction(function () use ($cats, $src, $event) {
+            foreach ($cats as $c) {
+                DB::table('judges')->insert([
+                    'event_id' => $event->id, 'category_id' => $c, 'user_id' => $src->user_id,
+                    'name' => $src->name, 'contact' => $src->contact, 'active' => true,
+                    'token' => Str::random(32), 'created_at' => now(), 'updated_at' => now(),
+                ]);
             }
         });
 

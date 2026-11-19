@@ -167,7 +167,7 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
 export function JuriBelumTugas({ btn }: { btn: string }) {
     const page = usePage().props as any;
     const base: string = page.inviteBase;
-    const list: { id: number; name: string; contact: string | null }[] = page.unassigned ?? [];
+    const list: { id: number; name: string; contact: string | null; sibling?: boolean }[] = page.unassigned ?? [];
     const cats: { id: number; name: string }[] = page.categories ?? [];
     const [busy, setBusy] = useState<number | null>(null);
     const [errs, setErrs] = useState<Record<number, string>>({});
@@ -177,7 +177,7 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
         if (sel.length === 0 || busy !== null) return;
         setBusy(jid);
         setErrs((e) => ({ ...e, [jid]: '' }));
-        router.post(`${base}/juri/${jid}/tugas`, { categories: sel } as any, {
+        router.post(`${base}/juri/${jid}/${list.find((x) => x.id === jid)?.sibling ? 'tugas-saudara' : 'tugas'}`, { categories: sel } as any, {
             preserveScroll: true,
             onError: (e) => setErrs((x) => ({ ...x, [jid]: String(Object.values(e)[0] ?? 'Gagal menugaskan juri.') })),
             onFinish: () => setBusy(null),
@@ -201,7 +201,7 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
                                     <div className="truncate font-extrabold text-slate-900 dark:text-white">{j.name}</div>
                                     {j.contact && <div className="truncate text-xs text-slate-600 dark:text-slate-300">{j.contact}</div>}
                                 </div>
-                                <button type="button" onClick={() => remove(j)} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Hapus ${j.name}`}><Trash2 className="h-4 w-4" /></button>
+                                {!j.sibling && <button type="button" onClick={() => remove(j)} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Hapus ${j.name}`}><Trash2 className="h-4 w-4" /></button>}
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                                 {cats.map((c) => (
