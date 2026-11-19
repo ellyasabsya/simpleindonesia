@@ -360,7 +360,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                             <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua lomba dan juara umum.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2"><Link href={klasemenUrl} className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200">Klasemen</Link><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{progress.done}/{progress.total} kategori disimpan</span></div>
+                    <div className="flex items-center gap-2"><Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{progress.done}/{progress.total} kategori disimpan</span></div>
                 </div>
 
                 {locked ? (
@@ -676,7 +676,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua kategori lomba ini{sk.categories.length > 1 ? ` (${sk.categories.map((c) => c.name).filter(Boolean).join(', ')})` : ''}.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2"><Link href={klasemenUrl} className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200">Klasemen</Link><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span></div>
+                    <div className="flex items-center gap-2"><Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span></div>
                 </div>
 
                 {locked ? (
