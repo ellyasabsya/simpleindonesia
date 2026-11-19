@@ -146,7 +146,7 @@ class TransactionController extends Controller
                     'method' => (($snap['payment_method'] ?? null) === 'transfer_manual') ? 'manual' : 'online',
                     'status' => match ($e->payment_status) {
                         'lunas' => 'lunas',
-                        'menunggu_verifikasi' => 'menunggu',
+                        'menunggu_verifikasi', 'menunggu_pembayaran' => 'menunggu',
                         default => 'gagal',
                     },
                     'amount' => $amt,

@@ -345,3 +345,8 @@ Route::post('/midtrans/vote-token/{code}', [\App\Http\Controllers\MidtransContro
 
 Route::post('/midtrans/vote-sync/{code}', [\App\Http\Controllers\MidtransController::class, 'voteSync'])
     ->where('code', '[A-Z0-9]{10}')->middleware('throttle:30,1');
+
+Route::post('/midtrans/event-token/{id}', [\App\Http\Controllers\MidtransController::class, 'eventToken'])
+    ->whereNumber('id')->middleware(['auth', 'throttle:20,1']);
+Route::post('/midtrans/event-sync/{id}', [\App\Http\Controllers\MidtransController::class, 'eventSync'])
+    ->whereNumber('id')->middleware(['auth', 'throttle:30,1']);

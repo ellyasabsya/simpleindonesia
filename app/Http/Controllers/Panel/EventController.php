@@ -393,7 +393,7 @@ class EventController extends Controller
             \Illuminate\Support\Facades\DB::table('events')->where('id', $eventId)->update(['ticket_sales_open' => true]);
         };
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $subJuknis, $n, $series, $addon, $judge, $upfront, $payMethod, $payProof, $posterPath, $juknisPath, $detail, $saveCategories, $saveTickets) {
+        $mainEvent = \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $subJuknis, $n, $series, $addon, $judge, $upfront, $payMethod, $payProof, $posterPath, $juknisPath, $detail, $saveCategories, $saveTickets) {
             $main = Event::create([
                 'institution_id' => $institution->id,
                 'package_id' => $package->id,
@@ -405,7 +405,7 @@ class EventController extends Controller
                 'poster_path' => $posterPath,
                 'juknis_path' => $juknisPath,
                 'status' => Event::PENDING,
-                'payment_status' => $payMethod === 'transfer_manual' ? 'menunggu_verifikasi' : null,
+                'payment_status' => $payMethod === 'transfer_manual' ? 'menunggu_verifikasi' : ($payMethod === 'midtrans' ? 'menunggu_pembayaran' : null),
                 'package_snapshot' => $package->snapshot() + [
                     'options' => ['sub_events' => $n, 'total_events' => max(1, $n), 'assessment_addon' => $addon, 'judge_addon' => $judge],
                     'estimated_upfront' => $upfront,
@@ -440,7 +440,18 @@ class EventController extends Controller
                 $saveTickets($child->id, $sub);
                 \App\Support\TicketCategories::split($child->id);
             }
+
+            return $main;
         });
+
+        if ($payMethod === 'midtrans') {
+            // Admin diberi tahu setelah pembayaran lunas (lihat MidtransController::eventSync).
+            return redirect()->route('panel.dashboard')->with([
+                'success' => 'Event dibuat. Selesaikan pembayaran agar masuk antrean review.',
+                'pay_online' => true,
+                'order_code' => (string) $mainEvent->id,
+            ]);
+        }
 
         \App\Support\AdminNotifier::send(
             $payMethod === 'transfer_manual' ? 'Event baru menunggu verifikasi pembayaran' : 'Event baru menunggu review',

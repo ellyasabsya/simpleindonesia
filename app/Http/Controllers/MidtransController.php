@@ -126,6 +126,57 @@ class MidtransController extends Controller
         return response()->json(['status' => DB::table('voting_orders')->where('id', $o->id)->value('status')]);
     }
 
+    public function eventToken(int $id, MidtransService $midtrans): JsonResponse
+    {
+        abort_unless(\App\Models\Setting::midtransOn() && (string) config('midtrans.server_key') !== '', 503);
+        $e = \App\Models\Event::whereNull('parent_id')->where('payment_status', 'menunggu_pembayaran')->findOrFail($id);
+        $amount = (int) (($e->package_snapshot['estimated_upfront'] ?? 0));
+        abort_unless($amount > 0, 422);
+
+        $orderId = 'PKT-'.$e->id.'-'.time();
+        try {
+            $token = $midtrans->snapToken($orderId, $amount, [
+                'first_name' => $e->institution?->name ?? 'Lembaga',
+            ], [[
+                'id' => 'PKT-'.$e->id,
+                'price' => $amount,
+                'quantity' => 1,
+                'name' => 'Paket event: '.\Illuminate\Support\Str::limit($e->title, 60, ''),
+            ]]);
+        } catch (\Throwable $ex) {
+            report($ex);
+
+            return response()->json(['message' => 'Gagal membuat pembayaran. Coba lagi.'], 502);
+        }
+
+        DB::table('events')->where('id', $e->id)->update(['midtrans_order_id' => $orderId, 'updated_at' => now()]);
+
+        return response()->json(['token' => $token, 'client_key' => config('midtrans.client_key'), 'sandbox' => ! config('midtrans.is_production')]);
+    }
+
+    /** Sinkronisasi pembayaran paket event ke Midtrans (cadangan bila webhook belum masuk). */
+    public function eventSync(int $id, MidtransService $midtrans): JsonResponse
+    {
+        $e = \App\Models\Event::whereNull('parent_id')->findOrFail($id);
+        abort_unless($e->midtrans_order_id, 404);
+
+        try {
+            $p = $midtrans->status($e->midtrans_order_id);
+            $amount = (int) (($e->package_snapshot['estimated_upfront'] ?? 0));
+            if ((int) round((float) ($p['gross_amount'] ?? 0)) === $amount && $midtrans->isPaid($p)) {
+                $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
+                    ->update(['payment_status' => 'lunas', 'updated_at' => now()]);
+                if ($n > 0) {
+                    \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
+                }
+            }
+        } catch (\Throwable $ex) {
+            report($ex);
+        }
+
+        return response()->json(['status' => DB::table('events')->where('id', $e->id)->value('payment_status')]);
+    }
+
     private function votingNotification(object $o, array $p, MidtransService $midtrans)
     {
         if ((int) round((float) ($p['gross_amount'] ?? 0)) !== (int) $o->amount) {
