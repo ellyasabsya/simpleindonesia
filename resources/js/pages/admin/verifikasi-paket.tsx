@@ -45,8 +45,14 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
     const go = (params: Record<string, string>) =>
         router.get('/admin/verifikasi-paket', { status, q: search, ...params }, { preserveState: true, replace: true });
 
-    const act = (o: Order, a: 'setujui' | 'tolak') => {
+    const act = (o: Order, a: 'setujui' | 'tolak' | 'kembalikan') => {
         let data: Record<string, string> = {};
+        if (a === 'kembalikan') {
+            const reason = window.prompt(`Alasan refund paket "${o.title}" (${rp(o.total)}):`);
+            if (!reason || !reason.trim()) return;
+            if (!window.confirm(`Tandai paket "${o.title}" sebagai dikembalikan? Nominal ${rp(o.total)} keluar dari pendapatan platform. Transfer uangnya ke lembaga tetap manual.`)) return;
+            data = { reason: reason.trim().slice(0, 300) };
+        }
         if (a === 'tolak') {
             const reason = window.prompt(`Alasan menolak pembayaran "${o.title}":`);
             if (!reason || !reason.trim()) return;
@@ -197,6 +203,7 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
                                                 <td className={td}>
                                                     <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${st.style}`}>{st.label}</span>
                                                     {o.status === 'ditolak' && o.note && <div className="mt-1 max-w-[200px] text-xs text-rose-600">{o.note}</div>}
+                                                    {o.status === 'dikembalikan' && o.note && <div className="mt-1 max-w-[220px] whitespace-pre-line text-xs text-slate-500">{o.note}</div>}
                                                 </td>
                                                 <td className={`${td} text-right`}>
                                                     {o.status === 'menunggu_verifikasi' ? (
@@ -210,6 +217,11 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
                                                                 Tolak
                                                             </button>
                                                         </div>
+                                                    ) : o.status === 'lunas' ? (
+                                                        <button type="button" disabled={busy === o.id} onClick={() => act(o, 'kembalikan')}
+                                                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+                                                            {busy === o.id ? '...' : 'Tandai dikembalikan'}
+                                                        </button>
                                                     ) : (
                                                         <span className="text-xs text-slate-400">-</span>
                                                     )}
