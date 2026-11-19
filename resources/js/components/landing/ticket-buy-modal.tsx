@@ -19,6 +19,47 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
     const [info, setInfo] = useState<Data | null>(null);
     const [failed, setFailed] = useState(false);
     const [done, setDone] = useState(false);
+    const [paying, setPaying] = useState(false);
+    const [pendingCode, setPendingCode] = useState('');
+    const [payMsg, setPayMsg] = useState('');
+
+    const loadSnap = (clientKey: string, sandbox: boolean) =>
+        new Promise<void>((resolve, reject) => {
+            if ((window as any).snap) return resolve();
+            const sc = document.createElement('script');
+            sc.src = sandbox ? 'https://app.sandbox.midtrans.com/snap/snap.js' : 'https://app.midtrans.com/snap/snap.js';
+            sc.setAttribute('data-client-key', clientKey);
+            sc.onload = () => resolve();
+            sc.onerror = () => reject(new Error('snap'));
+            document.body.appendChild(sc);
+        });
+
+    const pay = async (code: string) => {
+        setPaying(true);
+        setPayMsg('');
+        setPendingCode(code);
+        try {
+            const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+            const r = await fetch(`/midtrans/token/${code}`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
+            });
+            if (!r.ok) throw new Error('token');
+            const d = await r.json();
+            await loadSnap(d.client_key, d.sandbox);
+            (window as any).snap.pay(d.token, {
+                onSuccess: () => { setPendingCode(''); setDone(true); },
+                onPending: () => { setPendingCode(''); setDone(true); },
+                onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),
+                onClose: () => setPayMsg('Pembayaran belum diselesaikan. Pesanan Anda ditahan 60 menit.'),
+            });
+        } catch {
+            setPayMsg('Gagal membuka pembayaran. Silakan coba lagi.');
+        } finally {
+            setPaying(false);
+        }
+    };
     const [same, setSame] = useState(true);
 
     const { data, setData, post, processing, errors, transform } = useForm({
@@ -47,6 +88,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
             .then((d: Data) => {
                 setInfo(d);
                 if (d.ticket_types[0]) setData('ticket_type_id', d.ticket_types[0].id);
+                if (d.payment.methods.length && !d.payment.methods.includes('transfer_manual')) setData('payment_method', d.payment.methods[0]);
             })
             .catch(() => setFailed(true));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +124,16 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
 
     const submit = () => {
         transform((d) => ({ ...d, holders, holder_emails: needDetail ? hEmails : [], holder_phones: needDetail ? hPhones : [], support_choice: type?.support_enabled ? d.support_choice : '' }));
-        post(`/events/${eventId}/beli`, { forceFormData: true, preserveScroll: true, preserveState: true, onSuccess: () => setDone(true) });
+        post(`/events/${eventId}/beli`, {
+            forceFormData: true,
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page) => {
+                const f = ((page.props as any).flash ?? {}) as { pay_online?: boolean; order_code?: string };
+                if (f.pay_online && f.order_code) void pay(f.order_code);
+                else setDone(true);
+            },
+        });
     };
 
     return createPortal(
@@ -198,7 +249,31 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                             {subtotal === 0 ? null : info.payment.methods.length === 0 ? (
                                 <p className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">Pembayaran belum tersedia. Silakan coba lagi nanti.</p>
                             ) : (
-                                <div className="space-y-3 rounded-xl border p-4 text-sm">
+                                <>
+                                    {info.payment.methods.length > 1 && (
+                                        <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                                            {info.payment.methods.map((m) => (
+                                                <button
+                                                    key={m}
+                                                    type="button"
+                                                    onClick={() => setData('payment_method', m)}
+                                                    className={`rounded-xl border p-3 text-left text-sm font-bold ${data.payment_method === m ? 'border-indigo-600 bg-indigo-50 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200' : 'border-slate-200 dark:border-white/10'}`}
+                                                >
+                                                    {m === 'midtrans' ? 'Bayar online (Midtrans)' : 'Transfer manual'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {data.payment_method === 'midtrans' ? (
+                                        <div className="space-y-2 rounded-xl border p-4 text-sm">
+                                            <p className="font-bold">Bayar online</p>
+                                            <p className="text-slate-600 dark:text-slate-300">
+                                                Bayar <b>{rp(subtotal + fee)}</b> lewat QRIS, e-wallet, virtual account, atau kartu. Tiket terbit otomatis setelah pembayaran berhasil.
+                                            </p>
+                                            {err('payment_method') && <p className="text-xs text-red-600">{err('payment_method')}</p>}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3 rounded-xl border p-4 text-sm">
                                     <p className="font-bold">Transfer manual</p>
                                     <p className="text-slate-600 dark:text-slate-300">
                                         Transfer <b>{rp(subtotal + fee)}</b> ke {info.payment.bank.bank_name} <b>{info.payment.bank.bank_account_number}</b> a.n. {info.payment.bank.bank_account_holder}, lalu unggah bukti transfer.
@@ -206,6 +281,16 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                                     <FileDrop compact file={data.payment_proof} accept="image/*,application/pdf" onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)} onClear={() => setData('payment_proof', null)} title="Klik untuk unggah bukti transfer" hint="JPG, PNG, WEBP, atau PDF" />
                                     {err('payment_proof') && <p className="text-xs text-red-600">{err('payment_proof')}</p>}
                                     {err('payment_method') && <p className="text-xs text-red-600">{err('payment_method')}</p>}
+                                </div>
+                                    )}
+                                </>
+                            )}
+                            {pendingCode && !done && (
+                                <div className="mt-3 space-y-2 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                                    <p>{payMsg || 'Pesanan dibuat. Selesaikan pembayaran untuk menerbitkan tiket.'}</p>
+                                    <button type="button" onClick={() => void pay(pendingCode)} disabled={paying} className="rounded-lg bg-amber-600 px-4 py-2 text-white disabled:opacity-60">
+                                        {paying ? 'Membuka...' : 'Lanjutkan pembayaran'}
+                                    </button>
                                 </div>
                             )}
                             {(err('quantity') || err('ticket_type_id') || err('holders')) && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{err('quantity') || err('ticket_type_id') || err('holders')}</p>}
@@ -219,7 +304,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={onClose} className="font-bold text-slate-700 dark:text-slate-200">Batal</button>
-                                <button onClick={submit} disabled={processing || (subtotal > 0 && info.payment.methods.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-pink-600 to-orange-500 px-6 py-3 font-bold text-white disabled:opacity-60">
+                                <button onClick={submit} disabled={processing || paying || !!pendingCode || (subtotal > 0 && info.payment.methods.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-pink-600 to-orange-500 px-6 py-3 font-bold text-white disabled:opacity-60">
                                     {processing && <Loader2 className="h-4 w-4 animate-spin" />} {subtotal === 0 ? 'Ambil Tiket Gratis' : 'Beli Tiket'}
                                 </button>
                             </div>

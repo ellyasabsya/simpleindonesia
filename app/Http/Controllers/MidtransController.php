@@ -19,7 +19,7 @@ class MidtransController extends Controller
         try {
             $token = $midtrans->snapToken($orderId, (int) $o->total, [
                 'first_name' => $o->buyer_name,
-                'email' => $o->buyer_email,
+                'email' => filter_var($o->buyer_email, FILTER_VALIDATE_EMAIL) ? $o->buyer_email : null,
                 'phone' => $o->buyer_phone,
             ], [[
                 'id' => 'TIKET-'.$o->ticket_type_id,
