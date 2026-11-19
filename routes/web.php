@@ -15,7 +15,7 @@ Route::get('/events/{event}/tiket', function (\App\Models\Event $event) {
     if ($event->status !== \App\Models\Event::PUBLISHED) {
         abort(404);
     }
-    if ($event->registration_method === 'ticket' && $event->ticket_sales_open) {
+    if (in_array($event->registration_method, ['ticket', 'transfer_manual'], true) && $event->ticket_sales_open) {
         return redirect('/tickets?beli='.$event->id);
     }
     return redirect('/events/'.$event->slug);

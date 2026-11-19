@@ -18,7 +18,7 @@ class TicketPurchaseController extends Controller
     {
         abort_unless(
             $event->status === Event::PUBLISHED
-            && $event->registration_method === 'ticket'
+            && in_array($event->registration_method, ['ticket', 'transfer_manual'], true)
             && $event->ticket_sales_open,
             404
         );
