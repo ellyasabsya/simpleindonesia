@@ -2005,6 +2005,43 @@ class JudgingController extends EventScopedController
         ];
     }
 
+    /** Klasemen boleh dibagikan setelah hasilnya disimpan (event induk: juara umum, event tunggal: semua kategori). */
+    private function klasemenReady(Event $parent): bool
+    {
+        if (! $parent->children()->exists()) {
+            $d = $this->skLombaData($parent);
+
+            return ! empty($d['finalized']) || ((($d['progress']['total'] ?? 0) > 0) && empty($d['blockers']));
+        }
+        $o = $this->overallData($parent);
+
+        return ! empty($o['locked']) || ! empty($o['saved']);
+    }
+
+    /** Kirim pemberitahuan klasemen ke semua peserta yang terdaftar di event ini (dan sub-event-nya). */
+    public function shareKlasemen(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $parent = $event->parent_id ? Event::findOrFail($event->parent_id) : $event;
+        $this->guard($request, $parent);
+        if (! $this->klasemenReady($parent)) {
+            return response()->json(['message' => 'Klasemen baru bisa dibagikan setelah hasil disimpan.'], 422);
+        }
+        $ids = $parent->children()->pluck('id')->push($parent->id)->all();
+        $userIds = DB::table('event_registrations')->whereIn('event_id', $ids)->where('status', 'terdaftar')->whereNotNull('user_id')->distinct()->pluck('user_id');
+        $url = url("/klasemen/{$parent->id}");
+        $sent = 0;
+        foreach (\App\Models\User::whereIn('id', $userIds)->get() as $u) {
+            try {
+                $u->notify(new \App\Notifications\AdminAlert('Klasemen '.$parent->title.' sudah diumumkan', 'Lihat hasil dan klasemen lomba di sini.', $url));
+                $sent++;
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return response()->json(['sent' => $sent, 'total' => $userIds->count()]);
+    }
+
     public function saveOverall(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event);
@@ -2031,10 +2068,12 @@ class JudgingController extends EventScopedController
         return back()->with('success', 'Pengaturan juara umum disimpan.');
     }
 
-    public function klasemen(Request $request, Event $event)
+    public function klasemen(Request $request, Event $event, bool $public = false)
     {
         $parent = $event->parent_id ? Event::findOrFail($event->parent_id) : $event;
-        $this->guard($request, $parent);
+        if (! $public) {
+            $this->guard($request, $parent);
+        }
         $single = ! $parent->children()->exists();
         if ($single) {
             $skd = $this->skLombaData($parent);
@@ -2063,11 +2102,15 @@ class JudgingController extends EventScopedController
             }
         }
         abort_if($sub !== null && $kid !== null && $cat === null, 404);
+        $ready = $this->klasemenReady($parent);
+        if ($public) {
+            abort_unless($ready, 404);
+        }
 
         return \Inertia\Inertia::render('panel/events/klasemen', [
             'title' => $parent->title,
-            'back' => "/panel/event/{$parent->id}/penilaian",
-            'self' => "/panel/event/{$parent->id}/klasemen",
+            'back' => $public ? '/' : "/panel/event/{$parent->id}/penilaian",
+            'self' => $public ? "/klasemen/{$parent->id}" : "/panel/event/{$parent->id}/klasemen",
             'ov' => [
                 'points' => $ov['points'], 'winner_count' => $ov['winner_count'], 'standings' => $ov['standings'],
                 'locked' => (bool) $ov['locked'], 'saved' => (bool) ($ov['saved'] ?? false), 'saved_at' => $ov['saved_at'] ?? null,
@@ -2076,6 +2119,10 @@ class JudgingController extends EventScopedController
             'category' => $cat,
             'nav' => $nav,
             'single' => $single,
+            'isPublic' => $public,
+            'shareReady' => $ready,
+            'shareUrl' => url("/klasemen/{$parent->id}"),
+            'shareApi' => "/panel/event/{$parent->id}/klasemen/bagikan",
         ]);
     }
 

@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { ChevronDown, Star, Trophy } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Check, ChevronDown, Copy, MessageCircle, Send, Share2, Star, Trophy, Users, X } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 
 type Row = { rank: number | null; shared?: boolean; code: string; name?: string; school?: string; judges_done: number; base: number | null; deduction: number | null; penalty: number | null; score: number | null; provisional?: boolean; status?: string };
@@ -14,6 +15,10 @@ type Props = {
     category: Cat | null;
     nav: Nav[];
     single?: boolean;
+    isPublic?: boolean;
+    shareUrl?: string;
+    shareApi?: string;
+    shareReady?: boolean;
 };
 type Box = [number, number, number, number];
 
@@ -147,6 +152,113 @@ function RankDot({ g, r, shared, size }: { g: G; r: number | null; shared?: bool
 
 const tint = (r: number | null) => (r === 1 ? '#fbe9b4' : r === 2 ? '#edf1fa' : r === 3 ? '#fbe8de' : '#f7f9fd');
 
+
+function ShareButton({ g, onClick, ready }: { g: G; onClick: () => void; ready?: boolean }) {
+    return (
+        <div className="print:hidden" style={{ ...g.box([420, 26, 700, 72]), zIndex: 30 }}>
+            <button
+                type="button"
+                onClick={onClick}
+                title={ready ? 'Bagikan klasemen' : 'Klasemen belum bisa dibagikan'}
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full font-extrabold ring-2 ring-white/80 transition hover:-translate-y-0.5"
+                style={{
+                    gap: g.cq(10),
+                    fontSize: g.cq(18),
+                    color: ready ? '#3b1d00' : '#64748b',
+                    background: ready ? 'linear-gradient(135deg,#fff3b0 0%,#fbbf24 38%,#d97706 100%)' : 'linear-gradient(135deg,#f1f5f9,#cbd5e1)',
+                    boxShadow: ready ? '0 6px 22px rgba(245,158,11,.65), inset 0 1px 0 rgba(255,255,255,.7)' : '0 2px 8px rgba(0,0,0,.15)',
+                }}
+            >
+                {ready && <span style={{ position: 'absolute', top: 0, bottom: 0, left: '-60%', width: '40%', background: 'linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent)', transform: 'skewX(-20deg)', animation: 'shine 2.8s ease-in-out infinite' }} />}
+                <Share2 style={{ width: g.cq(22), height: g.cq(22), position: 'relative' }} />
+                <span style={{ position: 'relative' }}>Bagikan klasemen</span>
+            </button>
+        </div>
+    );
+}
+
+function ShareModal({ title, link, api, ready, onClose }: { title: string; link: string; api: string; ready: boolean; onClose: () => void }) {
+    const [copied, setCopied] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState('');
+    const text = `Klasemen ${title}`;
+    const copy = () => {
+        navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }).catch(() => {});
+    };
+    const nativeShare = () => {
+        if (typeof navigator.share === 'function') navigator.share({ title: text, url: link }).catch(() => {});
+        else copy();
+    };
+    const sendPeserta = async () => {
+        setBusy(true);
+        setMsg('');
+        try {
+            const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+            const r = await fetch(api, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': xsrf } });
+            const d = await r.json().catch(() => ({}));
+            setMsg(r.ok ? `Terkirim ke ${d.sent ?? 0} dari ${d.total ?? 0} peserta terdaftar.` : (d.message ?? 'Gagal mengirim.'));
+        } catch {
+            setMsg('Gagal mengirim.');
+        }
+        setBusy(false);
+    };
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm print:hidden" onClick={onClose}>
+            <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-amber-200" style={{ fontFamily: FONT }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500 px-5 py-4">
+                    <div className="flex items-center gap-2.5 text-amber-950">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/40 ring-1 ring-white/60"><Share2 className="h-5 w-5" /></span>
+                        <div>
+                            <p className="text-base font-black leading-tight">Bagikan klasemen</p>
+                            <p className="max-w-[16rem] truncate text-xs font-semibold text-amber-950/70">{title}</p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/40 text-amber-950 hover:bg-white/60"><X className="h-4 w-4" /></button>
+                </div>
+
+                <div className="space-y-5 p-5">
+                    {!ready && <p className="rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-800">Klasemen baru bisa dibagikan setelah hasil disimpan.</p>}
+
+                    <div className="flex items-center gap-4">
+                        <div className="shrink-0 rounded-2xl bg-white p-2.5 shadow ring-1 ring-slate-200"><QRCodeSVG value={link} size={104} level="M" /></div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Link publik</p>
+                            <p className="mt-1 break-all rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">{link}</p>
+                            <button type="button" onClick={copy} disabled={!ready} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-40">
+                                {copied ? <><Check className="h-3.5 w-3.5" /> Tersalin</> : <><Copy className="h-3.5 w-3.5" /> Salin link</>}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <a
+                            href={ready ? `https://wa.me/?text=${encodeURIComponent(`${text}\n${link}`)}` : undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-disabled={!ready}
+                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-extrabold text-white shadow ${ready ? 'hover:bg-emerald-600' : 'pointer-events-none opacity-40'}`}
+                        >
+                            <MessageCircle className="h-4 w-4" /> WhatsApp
+                        </a>
+                        <button type="button" onClick={nativeShare} disabled={!ready} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-extrabold text-white shadow hover:bg-indigo-700 disabled:opacity-40">
+                            <Share2 className="h-4 w-4" /> Bagikan…
+                        </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                        <p className="flex items-center gap-2 text-sm font-extrabold text-amber-900"><Users className="h-4 w-4" /> Peserta terdaftar</p>
+                        <p className="mt-1 text-xs font-semibold text-amber-900/70">Kirim pemberitahuan berisi link klasemen ke semua peserta yang sudah terdaftar di lomba ini.</p>
+                        <button type="button" onClick={sendPeserta} disabled={!ready || busy} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-orange-500/30 disabled:opacity-40">
+                            <Send className="h-4 w-4" /> {busy ? 'Mengirim…' : 'Kirim ke peserta terdaftar'}
+                        </button>
+                        {msg && <p className="mt-2 text-center text-xs font-bold text-slate-700">{msg}</p>}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ===================== HALAMAN PODIUM (juara umum 2+ pemenang & per kategori) ===================== */
 type Pod = { name: string; value: string; line: string };
 const SLOT: { name: Box; nw: number; nc: string; box: Box; ns: number; ps: number; ls: number }[] = [
@@ -173,7 +285,7 @@ function PodCard({ g, b, value, line, ps, ls }: { g: G; b: Box; value: string; l
     );
 }
 
-function PodiumPage({ title, back, self, ov, category, nav, status, single }: Props & { status: string }) {
+function PodiumPage({ title, back, self, ov, category, nav, status, single, isPublic, onShare, shareReady }: Props & { status: string; onShare?: () => void }) {
     const g = geo(W, H);
     const pods: Pod[] = category
         ? category.table
@@ -202,10 +314,11 @@ function PodiumPage({ title, back, self, ov, category, nav, status, single }: Pr
     return (
         <Stage g={g} src="/images/klasemen-podium.jpg">
             <Hit g={g} b={[40, 10, 350, 95]} href="/" label="SIMPLE" />
-            <Hit g={g} b={[1040, 28, 1170, 70]} href="/panel" label="Beranda" />
+            <Hit g={g} b={[1040, 28, 1170, 70]} href={isPublic ? '/' : '/panel'} label="Beranda" />
             <Hit g={g} b={[1175, 28, 1312, 70]} href={self} label="Klasemen juara umum" />
             <NavMenu g={g} b={[1336, 28, 1632, 70]} self={self} nav={nav} category={category} bare single={single} />
             <StatusPill g={g} b={[1336, 78, 1632, 106]} text={status} />
+            {onShare && <ShareButton g={g} onClick={onShare} ready={shareReady} />}
 
             <GoldText g={g} b={[600, 98, 1072, 168]} size={ts}>{titleText}</GoldText>
 
@@ -269,7 +382,7 @@ function PodiumPage({ title, back, self, ov, category, nav, status, single }: Pr
                 </div>
             </div>
 
-            <T g={g} b={[92, 884, 250, 910]} size={14} color="#0f2c78" weight={800} justify="flex-start">Kembali ke penilaian</T>
+            <T g={g} b={[92, 884, 250, 910]} size={14} color="#0f2c78" weight={800} justify="flex-start">{isPublic ? 'Kembali ke beranda' : 'Kembali ke penilaian'}</T>
             <Hit g={g} b={[32, 868, 258, 922]} href={back} label="Kembali ke penilaian" />
             <PrintHit g={g} b={[1430, 868, 1640, 918]} label="Cetak klasemen" />
         </Stage>
@@ -277,7 +390,7 @@ function PodiumPage({ title, back, self, ov, category, nav, status, single }: Pr
 }
 
 /* ===================== HALAMAN JUARA UMUM TUNGGAL (jumlah juara umum = 1) ===================== */
-function HeroPage({ title, back, self, category, nav, status, s }: Props & { status: string; s: Standing }) {
+function HeroPage({ title, back, self, category, nav, status, s, isPublic, onShare, shareReady }: Props & { status: string; s: Standing; onShare?: () => void }) {
     const g = geo(W, H);
     const sub = title;
     const ss = Math.min(31, 470 / (sub.length * 0.55));
@@ -287,6 +400,7 @@ function HeroPage({ title, back, self, category, nav, status, s }: Props & { sta
             <Hit g={g} b={[50, 20, 390, 105]} href="/" label="SIMPLE" />
             <NavMenu g={g} b={[1180, 24, 1632, 68]} self={self} nav={nav} category={category} />
             <StatusPill g={g} b={[1336, 78, 1632, 106]} text={status} />
+            {onShare && <ShareButton g={g} onClick={onShare} ready={shareReady} />}
 
             <svg viewBox={`0 0 ${W} ${H}`} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
                 <defs>
@@ -304,7 +418,7 @@ function HeroPage({ title, back, self, category, nav, status, s }: Props & { sta
                 <T key={i} g={g} b={[1498, cy - 30, 1566, cy + 30]} size={46} color="#1f2937" weight={800}>{s.counts[i] ?? 0}</T>
             ))}
 
-            <T g={g} b={[590, 853, 812, 888]} size={19} color="#ffffff" weight={800}>Kembali ke penilaian</T>
+            <T g={g} b={[590, 853, 812, 888]} size={19} color="#ffffff" weight={800}>{isPublic ? 'Kembali ke beranda' : 'Kembali ke penilaian'}</T>
             <Hit g={g} b={[500, 835, 820, 903]} href={back} label="Kembali ke penilaian" />
             <PrintHit g={g} b={[852, 835, 1172, 903]} label="Cetak klasemen" />
         </Stage>
@@ -313,6 +427,7 @@ function HeroPage({ title, back, self, category, nav, status, s }: Props & { sta
 
 export default function Klasemen(props: Props) {
     const { ov, category } = props;
+    const [shareOpen, setShareOpen] = useState(false);
     const winners = ov.standings.filter((s) => s.rank <= ov.winner_count);
     const status = category
         ? category.locked ? 'Ditetapkan' : category.saved ? 'Tersimpan' : 'Belum disimpan'
@@ -324,8 +439,17 @@ export default function Klasemen(props: Props) {
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
             </Head>
-            <style>{`html,body{margin:0;overflow:hidden}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:landscape;margin:0}}`}</style>
-            {hero ? <HeroPage {...props} status={status} s={winners[0]} /> : <PodiumPage {...props} status={status} />}
+            <style>{`html,body{margin:0;overflow:hidden}@keyframes shine{0%{left:-60%}60%,100%{left:150%}}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:landscape;margin:0}}`}</style>
+            {hero ? <HeroPage {...props} status={status} s={winners[0]} onShare={props.isPublic ? undefined : () => setShareOpen(true)} /> : <PodiumPage {...props} status={status} onShare={props.isPublic ? undefined : () => setShareOpen(true)} />}
+            {shareOpen && !props.isPublic && (
+                <ShareModal
+                    title={props.title}
+                    link={category ? `${props.shareUrl}?sub=${category.sub_id}&kategori=${category.id}` : (props.shareUrl ?? '')}
+                    api={props.shareApi ?? ''}
+                    ready={!!props.shareReady}
+                    onClose={() => setShareOpen(false)}
+                />
+            )}
         </>
     );
 }

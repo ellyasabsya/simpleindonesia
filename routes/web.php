@@ -220,6 +220,7 @@ Route::middleware([
         Route::post('event/{event}/penilaian/seri', [\App\Http\Controllers\Panel\JudgingController::class, 'storeTie'])->whereNumber('event')->name('event.judging.storeTie');
         Route::post('event/{event}/penilaian/sistem', [\App\Http\Controllers\Panel\JudgingController::class, 'setSystem'])->whereNumber('event')->name('event.judging.setSystem');
         Route::post('event/{event}/penilaian/sk/tetapkan-lomba', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeSkLomba'])->whereNumber('event')->name('event.judging.finalizeSkLomba');
+        Route::post('event/{event}/klasemen/bagikan', [\App\Http\Controllers\Panel\JudgingController::class, 'shareKlasemen'])->whereNumber('event')->name('event.judging.klasemenShare');
         Route::put('event/{event}/penilaian/juara-umum', [\App\Http\Controllers\Panel\JudgingController::class, 'saveOverall'])->whereNumber('event')->name('event.judging.saveOverall');
         Route::post('event/{event}/penilaian/juara-umum/tetapkan', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeOverall'])->whereNumber('event')->name('event.judging.finalizeOverall');
         Route::post('event/{event}/penilaian/juara-umum/simpan', [\App\Http\Controllers\Panel\JudgingController::class, 'saveOverallResult'])->whereNumber('event')->name('event.judging.saveOverallResult');
@@ -308,3 +309,5 @@ Route::get('/tiket/{code}', [\App\Http\Controllers\TicketViewController::class, 
 Route::middleware('auth')->get('/tiket-saya', [\App\Http\Controllers\TicketViewController::class, 'mine'])->name('tiket.saya');
 
 Route::get('/tiket-data', [\App\Http\Controllers\TicketSeriesController::class, 'cards']); // patch-248
+
+Route::get('/klasemen/{event}', fn (\Illuminate\Http\Request $r, \App\Models\Event $event) => app(\App\Http\Controllers\Panel\JudgingController::class)->klasemen($r, $event, true))->whereNumber('event')->name('klasemen.publik');
