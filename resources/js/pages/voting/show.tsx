@@ -1,4 +1,4 @@
-import { snapPay } from '@/lib/snap-backdrop';
+import { openPayScreen } from '@/lib/pay-screen';
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search, Swords, Trophy, Upload, User, Volume2, VolumeX, X, Zap, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -74,46 +74,17 @@ function BuyModal({ p, rank, props, onClose }: { p: P; rank: number; props: Prop
     const [pendingCode, setPendingCode] = useState('');
     const [payMsg, setPayMsg] = useState('');
 
-    const loadSnap = (clientKey: string, sandbox: boolean) =>
-        new Promise<void>((resolve, reject) => {
-            if ((window as any).snap) return resolve();
-            const sc = document.createElement('script');
-            sc.src = sandbox ? 'https://app.sandbox.midtrans.com/snap/snap.js' : 'https://app.midtrans.com/snap/snap.js';
-            sc.setAttribute('data-client-key', clientKey);
-            sc.onload = () => resolve();
-            sc.onerror = () => reject(new Error('snap'));
-            document.body.appendChild(sc);
-        });
-
-    const pay = async (code: string) => {
+    const pay = (code: string) => {
         setPaying(true);
         setPayMsg('');
         setPendingCode(code);
-        try {
-            const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
-            const r = await fetch(`/midtrans/vote-token/${code}`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
-            });
-            if (!r.ok) throw new Error('token');
-            const t = await r.json();
-            await loadSnap(t.client_key, t.sandbox);
-            snapPay(t.token, {
-                onSuccess: () => {
-                    void fetch(`/midtrans/vote-sync/${code}`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf } })
-                        .catch(() => undefined)
-                        .finally(() => { setPendingCode(''); setDone('Pembayaran berhasil. Vote Anda sudah dihitung.'); });
-                },
-                onPending: () => { setPendingCode(''); setDone('Menunggu pembayaran Anda. Vote masuk setelah pembayaran terkonfirmasi.'); },
-                onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),
-                onClose: () => setPayMsg('Pembayaran belum diselesaikan. Klik "Lanjutkan pembayaran" untuk membuka lagi.'),
-            });
-        } catch {
-            setPayMsg('Gagal membuka pembayaran. Silakan coba lagi.');
-        } finally {
-            setPaying(false);
-        }
+        openPayScreen({
+            tokenUrl: `/midtrans/vote-token/${code}`,
+            syncUrl: `/midtrans/vote-sync/${code}`,
+            onSuccess: () => { setPaying(false); setPendingCode(''); setDone('Pembayaran berhasil. Vote Anda sudah dihitung.'); },
+            onPending: () => { setPaying(false); setPendingCode(''); setDone('Menunggu pembayaran Anda. Vote masuk setelah pembayaran terkonfirmasi.'); },
+            onClose: () => { setPaying(false); setPayMsg('Pembayaran belum diselesaikan. Klik "Lanjutkan pembayaran" untuk membuka lagi.'); },
+        });
     };
 
     const err = form.errors as Record<string, string | undefined>;

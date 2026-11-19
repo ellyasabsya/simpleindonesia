@@ -1,4 +1,4 @@
-import { snapPay } from '@/lib/snap-backdrop';
+import { openPayScreen } from '@/lib/pay-screen';
 import { router, useForm } from '@inertiajs/react';
 import { Check, Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -24,42 +24,16 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
     const [pendingCode, setPendingCode] = useState('');
     const [payMsg, setPayMsg] = useState('');
 
-    const loadSnap = (clientKey: string, sandbox: boolean) =>
-        new Promise<void>((resolve, reject) => {
-            if ((window as any).snap) return resolve();
-            const sc = document.createElement('script');
-            sc.src = sandbox ? 'https://app.sandbox.midtrans.com/snap/snap.js' : 'https://app.midtrans.com/snap/snap.js';
-            sc.setAttribute('data-client-key', clientKey);
-            sc.onload = () => resolve();
-            sc.onerror = () => reject(new Error('snap'));
-            document.body.appendChild(sc);
-        });
-
-    const pay = async (code: string) => {
+    const pay = (code: string) => {
         setPaying(true);
         setPayMsg('');
         setPendingCode(code);
-        try {
-            const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
-            const r = await fetch(`/midtrans/token/${code}`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
-            });
-            if (!r.ok) throw new Error('token');
-            const d = await r.json();
-            await loadSnap(d.client_key, d.sandbox);
-            snapPay(d.token, {
-                onSuccess: () => { setPendingCode(''); setDone(true); },
-                onPending: () => { setPendingCode(''); setDone(true); },
-                onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),
-                onClose: () => setPayMsg('Pembayaran belum diselesaikan. Pesanan Anda ditahan 60 menit.'),
-            });
-        } catch {
-            setPayMsg('Gagal membuka pembayaran. Silakan coba lagi.');
-        } finally {
-            setPaying(false);
-        }
+        openPayScreen({
+            tokenUrl: `/midtrans/token/${code}`,
+            onSuccess: () => { setPaying(false); setPendingCode(''); setDone(true); },
+            onPending: () => { setPaying(false); setPendingCode(''); setDone(true); },
+            onClose: () => { setPaying(false); setPayMsg('Pembayaran belum diselesaikan. Pesanan Anda ditahan 60 menit.'); },
+        });
     };
     const [same, setSame] = useState(true);
 
