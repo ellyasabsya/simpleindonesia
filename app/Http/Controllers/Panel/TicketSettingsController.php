@@ -33,6 +33,7 @@ class TicketSettingsController extends Controller
         $end = $event->ends_at->toDateString();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
+            'audience' => ['required', 'in:peserta,umum'],
             'price' => ['required', 'integer', 'min:0', 'max:100000000'],
             'quota' => ['required', 'integer', 'min:1', 'max:1000000'],
             'valid_days' => ['required', 'integer', 'min:1', 'max:365'],
@@ -46,6 +47,7 @@ class TicketSettingsController extends Controller
             'support_options.*' => ['nullable', 'string', 'max:60'],
         ], [
             'name.required' => 'Isi nama jenis tiket.',
+            'audience.in' => 'Pilih tiket untuk peserta atau untuk umum.',
             'price.required' => 'Isi harga tiket (0 untuk gratis).',
             'price.integer' => 'Harga harus berupa angka.',
             'quota.required' => 'Isi kuota tiket.',
@@ -60,6 +62,9 @@ class TicketSettingsController extends Controller
         ]);
 
         $data['name'] = trim($data['name']);
+        if ($event->registration_method !== 'ticket') {
+            $data['audience'] = 'umum';
+        }
 
         $opts = collect($data['support_options'] ?? [])->map(fn ($o) => trim((string) $o))->filter()
             ->unique(fn ($o) => mb_strtolower($o))->values()->all();
@@ -116,6 +121,9 @@ class TicketSettingsController extends Controller
         $hasOrders = DB::table('ticket_orders')->where('ticket_type_id', $type->id)->where('status', '!=', 'batal')->exists();
         if ($hasOrders && (int) $data['price'] !== (int) $type->price) {
             return back()->withErrors(['price' => 'Harga tidak bisa diubah karena sudah ada pesanan untuk jenis ini.']);
+        }
+        if ($hasOrders && $event->registration_method === 'ticket' && $data['audience'] !== ($type->audience ?? 'peserta')) {
+            return back()->withErrors(['audience' => 'Tidak bisa diubah karena sudah ada pesanan untuk jenis ini.']);
         }
         $sold = self::sold($type->id);
         if ((int) $data['quota'] < $sold) {
