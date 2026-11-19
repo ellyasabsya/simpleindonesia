@@ -534,7 +534,12 @@ class EventController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        return back()->with('success', 'Event ditolak.');
+        $msg = 'Event ditolak.';
+        if ($event->payment_status === 'lunas' && (int) ($event->package_snapshot['estimated_upfront'] ?? 0) > 0) {
+            $msg .= ' Paket sudah dibayar dan masih dihitung sebagai pendapatan platform. Kalau uangnya dikembalikan, tandai dengan: php artisan event:refund '.$event->id;
+        }
+
+        return back()->with('success', $msg);
     }
 
     private function list(Request $request, string $default, string $base, string $title, bool $reviewOnly = false): Response
