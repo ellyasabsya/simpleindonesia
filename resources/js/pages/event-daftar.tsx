@@ -5,6 +5,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { CheckCircle2, ClipboardList, Clock, Copy, Lock, Plus, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 
+import FileDrop from '@/components/file-drop';
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
 type Field = { key: string; label: string; type: FieldType; required: boolean; options: string[] };
 type Cat = { id: number; name: string; label: string };
@@ -454,7 +455,7 @@ export default function EventDaftar(p: Props) {
                                     )}
                                     <div>
                                         <label className={lbl}>Bukti transfer *</label>
-                                        <input type="file" accept={FILE_ACCEPT} className={box} onChange={pick('bukti', (file) => set('bukti', file))} />
+                                        <FileDrop file={d.bukti} accept={FILE_ACCEPT} onChange={pick('bukti', (file) => set('bukti', file))} onClear={() => set('bukti', null)} invalid={!!form.errors.bukti} title="Klik untuk unggah bukti transfer" hint="JPG, PNG, WEBP, atau PDF" />
                                         <p className="mt-1 text-xs text-slate-500">JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.</p>
                                         {err('bukti')}
                                     </div>
