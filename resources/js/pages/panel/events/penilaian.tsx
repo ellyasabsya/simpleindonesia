@@ -919,7 +919,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                     <>
 {categories.length > 1 && (
                             <div className={`${card} p-4`}>
-                                <p className="text-sm font-extrabold">Pilih kategori yang ingin diatur juri-nya</p>
+                                <p className="text-sm font-extrabold">Kategori</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {categories.map((c) => (
                                         <button
@@ -932,7 +932,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Juri yang Anda tambahkan di bawah ini khusus untuk kategori <b>{category.name}</b>. Kategori lain punya daftar juri sendiri.</p>
+                                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Daftar juri ini khusus kategori <b>{category.name}</b>.</p>
                             </div>
                         )}
 <JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />

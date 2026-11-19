@@ -24,10 +24,10 @@ export function JuriHeader({ title, category, active, need }: { title: string; c
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                     <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-indigo-600">Juri penilaian</p>
-                    <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">{title}</h2>
-                    {category && <span className="mt-2 inline-block rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{category}</span>}
+                    <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">{title}{category && <span className="text-indigo-600 dark:text-indigo-300"> › {category}</span>}</h2>
+                    
                 </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold ${ok ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold ${ok ? 'bg-emerald-100 text-emerald-900' : 'hidden'}`}>
                     {ok ? <Check className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
                     {ok ? 'Jumlah juri sudah cukup' : `Kurang ${need - active} juri`}
                 </span>
