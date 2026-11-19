@@ -805,7 +805,7 @@ class JudgingController extends EventScopedController
         $items = [];
         foreach ($parts as $p) {
             $reg = $regs->get($p['id']);
-            $code = ($codeCol && $reg && ! empty($reg->{$codeCol})) ? (string) $reg->{$codeCol} : 'REG-'.$p['id'];
+            $code = ($codeCol && $reg && ! empty($reg->{$codeCol})) ? (string) $reg->{$codeCol} : (($p['code'] ?? '') !== '' ? (string) $p['code'] : 'REG-'.$p['id']);
             $codes[$p['id']] = $code;
             $perJudge = [];
             $critSums = [];
