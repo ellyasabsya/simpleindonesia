@@ -70,7 +70,7 @@ Route::middleware('auth')->group(function () {
 
             // Halaman yang belum dibuat: tampil "Segera hadir"
             $pages = [
-                'penilaian' => 'Sistem Penilaian',
+                
                 'tiket' => 'Verifikasi Tiket',
             ];
             foreach ($pages as $slug => $title) {
@@ -90,6 +90,9 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
     ->name('admin.')
     ->group(function () {
         Route::get('paket', [\App\Http\Controllers\Admin\PackageController::class, 'index'])->name('paket.index');
+        Route::get('penilaian', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'index'])->name('penilaian');
+        Route::patch('penilaian/{system}', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'update'])->where('system', '[a-z_]+')->name('penilaian.update');
+        Route::patch('penilaian/{system}/aktif', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'toggle'])->where('system', '[a-z_]+')->name('penilaian.toggle');
         Route::post('paket', [\App\Http\Controllers\Admin\PackageController::class, 'store'])->name('paket.store');
         Route::patch('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'update'])->name('paket.update');
         Route::delete('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'destroy'])->name('paket.destroy');

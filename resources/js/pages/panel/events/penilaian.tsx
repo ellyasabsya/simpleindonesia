@@ -111,7 +111,25 @@ const SYSTEMS = [
     { key: 'match', name: 'Penilaian Pertandingan', desc: 'Untuk event olahraga: skor, babak, dan klasemen.', tag: 'Olahraga', soon: true },
 ];
 
-function SistemPicker({ base, title, system, lockReason, onChosen }: { base: string; title: string; system: string | null; lockReason: string | null; onChosen: () => void }) {
+import { usePage as usePageSys } from '@inertiajs/react';
+
+type SistemPickerProps = { base: string; title: string; system: string | null; lockReason: string | null; onChosen: () => void };
+
+function SistemPicker(p: SistemPickerProps) {
+    const sysActive = ((usePageSys().props as any).systemsActive ?? null) as string[] | null;
+    const hasChoice = sysActive === null || SYSTEMS.some((s) => !s.soon && sysActive.includes(s.key));
+    if (!hasChoice && !p.system) {
+        return (
+            <div className={`${card} p-6 text-center`}>
+                <h3 className="text-base font-extrabold">Belum ada sistem penilaian yang tersedia</h3>
+                <p className="mt-1 text-sm text-slate-500">Sistem penilaian sedang dinonaktifkan oleh admin SIMPLE. Hubungi admin untuk mengaktifkannya.</p>
+            </div>
+        );
+    }
+    return <SistemPickerInner {...p} />;
+}
+
+function SistemPickerInner({ base, title, system, lockReason, onChosen }: { base: string; title: string; system: string | null; lockReason: string | null; onChosen: () => void }) {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
     const canChange = !lockReason;

@@ -142,6 +142,7 @@ class JudgingController extends EventScopedController
             'eventNav' => $this->nav($parentEvent ?? $event),
             'system' => $this->systemOf($event),
             'systemLock' => $this->systemLockReason($event),
+            'systemsActive' => $this->activeSystemKeys(),
             'skLomba' => $this->skLombaData($event),
             'overall' => $frame !== null ? ($this->overallData($frame['parent']) + ['base' => "/panel/event/{$frame['parent']->id}/penilaian"]) : null,
             'category' => ['id' => $cid, 'name' => $this->catName($event, $cid)],
@@ -1671,6 +1672,16 @@ class JudgingController extends EventScopedController
         return back()->with('success', $label);
     }
 
+    /** Kunci sistem penilaian yang diaktifkan admin. Kalau tabel katalog belum ada, anggap semua aktif. */
+    private function activeSystemKeys(): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('scoring_systems')) {
+            return ['weighted'];
+        }
+
+        return DB::table('scoring_systems')->where('is_active', 1)->pluck('system_key')->all();
+    }
+
     /** Sistem penilaian terpilih untuk satu event. Event lama yang sudah punya data dianggap 'weighted'. */
     private function systemOf(Event $event): ?string
     {
@@ -1714,6 +1725,9 @@ class JudgingController extends EventScopedController
     {
         $this->guard($request, $event);
         $data = $request->validate(['system' => 'nullable|in:weighted']);
+        if (($data['system'] ?? null) && ! in_array($data['system'], $this->activeSystemKeys(), true) && $this->systemOf($event) !== $data['system']) {
+            return back()->with('error', 'Sistem penilaian ini sedang dinonaktifkan oleh admin.');
+        }
         if ($reason = $this->systemLockReason($event)) {
             return back()->with('error', 'Sistem penilaian tidak bisa diubah karena '.$reason.'.');
         }
