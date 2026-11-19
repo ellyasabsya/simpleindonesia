@@ -1802,12 +1802,12 @@ class JudgingController extends EventScopedController
                         $key = 'n:'.mb_strtolower($who);
                         $label = $who ?: 'Tanpa asal';
                     }
-                    $unit[$key] ??= ['school' => $label, 'pid' => $pcode, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
+                    $unit[$key] ??= ['school' => $label, 'team' => ! empty($r['team']), 'inst' => $school, 'pid' => $pcode, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
                     $unit[$key]['points'] += $points[$rk - 1];
                     $unit[$key]['counts'][$rk - 1]++;
                     $unit[$key]['score_total'] = ($unit[$key]['score_total'] ?? 0) + (float) $r['score'];
                     $unit[$key]['categories']++;
-                    $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $label];
+                    $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $label, 'team' => ! empty($r['team']), 'inst' => $school];
                 }
                 usort($winners, fn ($a, $b) => $a['rank'] <=> $b['rank']);
                 $isLocked = ! empty($rec['locked']);

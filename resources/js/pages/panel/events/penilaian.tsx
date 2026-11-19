@@ -339,6 +339,15 @@ function SkLampiranTable({ cats, fallback }: { cats: { id: number; name?: string
     );
 }
 
+function skWinnerCols(ws: any[]) {
+    const norm = (s: any) => String(s ?? '').trim().toLowerCase();
+    const bySchool = ws.length > 0 && ws.every((w) => norm(w.inst) !== '' && norm(w.inst) === norm(w.school));
+    const teams = ws.filter((w) => w.team).length;
+    const nameHead = bySchool ? 'Sekolah / institusi' : teams === 0 ? 'Nama peserta' : teams === ws.length ? 'Nama tim' : 'Nama peserta / tim';
+    const showInst = !bySchool && ws.some((w) => norm(w.inst) !== '' && norm(w.inst) !== norm(w.school));
+    return { nameHead, showInst };
+}
+
 function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Overall; base: string; title: string; dirty?: boolean }) {
     const ov = ovIn as OverallX;
     const [dirtySet, setDirtySet] = useState(false);
@@ -695,7 +704,8 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                         <tr className="bg-slate-200 text-center font-bold uppercase">
                                             <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
                                             <th className="w-28 border border-slate-900 px-1.5 py-2">Juara umum</th>
-                                            <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
+                                            <th className="border border-slate-900 px-1.5 py-2">{skWinnerCols(winners as any[]).nameHead}</th>
+                                            {skWinnerCols(winners as any[]).showInst && <th className="border border-slate-900 px-1.5 py-2">Sekolah / institusi</th>}
                                             <th className="w-24 border border-slate-900 px-1.5 py-2">Total poin</th>
                                         </tr>
                                     </thead>
@@ -705,6 +715,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                                 <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
                                                 <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{w.rank}{w.shared ? ' =' : ''}</td>
                                                 <td className="border border-slate-900 px-1.5 py-1.5">{w.school}</td>
+                                                {skWinnerCols(winners as any[]).showInst && <td className="border border-slate-900 px-1.5 py-1.5">{(w as any).inst || '-'}</td>}
                                                 <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{num(w.points)}</td>
                                             </tr>
                                         ))}
