@@ -49,9 +49,14 @@ class JudgingController extends EventScopedController
         return '';
     }
 
-    public function index(Request $request, Event $event): Response
+    public function index(Request $request, Event $event): Response|\Illuminate\Http\RedirectResponse
     {
         $this->guard($request, $event);
+
+        // Sub-event tidak punya halaman sendiri: arahkan ke induk dengan ?sub=ID.
+        if ($event->parent_id !== null) {
+            return redirect('/panel/event/'.$event->parent_id.'/penilaian?'.http_build_query(['sub' => $event->id] + $request->query()));
+        }
 
         // patch-264: induk menampilkan halaman Penilaian sub-event terpilih (?sub=ID), atau Juara umum & SK (?sub=umum).
         $frame = null;
