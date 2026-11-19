@@ -876,6 +876,11 @@ class JudgingController extends EventScopedController
         foreach ([5, 4, 3, 2, 1] as $k) {
             $labels[] = "Jumlah level {$k} dari semua juri";
         }
+        foreach ([5, 4, 3, 2, 1] as $k) {
+            foreach ([3, 2, 1] as $t) {
+                $labels[] = "Jumlah level {$k} tingkatan {$t} dari semua juri";
+            }
+        }
 
         $codes = [];
         $rows = [];
@@ -887,6 +892,12 @@ class JudgingController extends EventScopedController
             $perJudge = [];
             $critSums = [];
             $counts = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+            $tiers = [];
+            foreach ([5, 4, 3, 2, 1] as $k) {
+                foreach ([3, 2, 1] as $t) {
+                    $tiers[$k.'-'.$t] = 0;
+                }
+            }
             foreach ($scores->get($p['id'], collect())->groupBy('judge_id') as $cells) {
                 if ($cells->pluck('criterion_id')->unique()->count() < count($leafIds)) {
                     continue;
@@ -903,6 +914,7 @@ class JudgingController extends EventScopedController
                     if ($mx > 0) {
                         $raw = Judging::level((float) $cell->score, $mx);
                         $counts[$raw]++;
+                        $tiers[$raw.'-'.Judging::tier((float) $cell->score, $mx)]++;
                     }
                 }
             }
@@ -921,6 +933,11 @@ class JudgingController extends EventScopedController
                 }
                 foreach ([5, 4, 3, 2, 1] as $k) {
                     $vals[] = (float) $counts[$k];
+                }
+                foreach ([5, 4, 3, 2, 1] as $k) {
+                    foreach ([3, 2, 1] as $t) {
+                        $vals[] = (float) $tiers[$k.'-'.$t];
+                    }
                 }
                 $items[] = ['id' => $p['id'], 'code' => $code, 'v' => $vals];
             }

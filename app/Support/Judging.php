@@ -248,6 +248,24 @@ class Judging
         return (int) max(1, min(5, ceil($score / $max * 5 - 0.000001)));
     }
 
+    /** Tingkat 1-3 di dalam level, sesuai pilihan nilai pada choicesByLevel. */
+    public static function tier(float $score, float $max): int
+    {
+        if ($max <= 0) {
+            return 1;
+        }
+        $k = self::level($score, $max);
+        $lo = $max * ($k - 1) / 5;
+        $hi = $max * $k / 5;
+        foreach ([1, 2] as $n) {
+            if ($score <= round($lo + ($hi - $lo) * $n / 3) + 0.000001) {
+                return $n;
+            }
+        }
+
+        return 3;
+    }
+
     public static function round(float $v, int $decimals, string $mode): float
     {
         $m = 10 ** $decimals;
