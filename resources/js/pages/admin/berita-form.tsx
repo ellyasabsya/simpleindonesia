@@ -54,7 +54,7 @@ export default function BeritaForm({ news }: { news: Item | null }) {
     return (
         <AdminLayout title="Berita">
             <Head title={editing ? 'Ubah berita' : 'Tambah berita'} />
-            <form onSubmit={submit} className="mx-auto max-w-4xl space-y-5">
+            <form onSubmit={submit} className="w-full space-y-5">
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
                     <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
                     <div className="relative flex flex-wrap items-end justify-between gap-4">
