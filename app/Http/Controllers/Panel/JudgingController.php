@@ -2243,7 +2243,7 @@ class JudgingController extends EventScopedController
             'finalized_at' => ! empty($stored->finalized_at) ? \Illuminate\Support\Carbon::parse($stored->finalized_at)->format('d/m/Y, H.i') : null,
             'finalized_by' => $stored->finalized_by,
         ] : null;
-        $logoPath = (string) ($event->institution->logo_path ?? '');
+        $logoPath = (string) (($stored->logo_path ?? null) ?: ($event->institution->logo_path ?? ''));
         $head = ['institution' => $institution, 'title' => $event->title, 'parent_title' => $parentTitle,
             'logo_url' => $logoPath !== '' ? '/storage/'.ltrim($logoPath, '/') : null];
 
@@ -2335,6 +2335,7 @@ class JudgingController extends EventScopedController
             'date' => 'required|date',
             'signer_name' => 'required|string|max:150',
             'signer_position' => 'required|string|max:150',
+            'logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
             'confirm' => 'accepted',
         ], [
             'number.required' => 'Nomor SK wajib diisi.', 'date.required' => 'Tanggal SK wajib diisi.',
@@ -2349,7 +2350,9 @@ class JudgingController extends EventScopedController
             return back()->with('error', 'SK belum bisa ditetapkan: '.implode(' ', $pre['blockers']));
         }
 
-        DB::transaction(function () use ($event, $data, $request) {
+        $skLogo = $request->file('logo') ? $request->file('logo')->store('sk-logo', 'public') : null;
+
+        DB::transaction(function () use ($event, $data, $request, $skLogo) {
             foreach (Judging::categories($event->id) as $k) {
                 $kid = (int) $k['id'];
                 $s = Judging::settings($event->id, $kid);
@@ -2365,7 +2368,7 @@ class JudgingController extends EventScopedController
                 ['event_id' => $event->id],
                 [
                     'number' => trim($data['number']), 'sk_date' => $data['date'],
-                    'signer_name' => trim($data['signer_name']), 'signer_position' => trim($data['signer_position']),
+                    'signer_name' => trim($data['signer_name']), 'signer_position' => trim($data['signer_position']), 'logo_path' => $skLogo,
                     'snapshot_json' => json_encode(['categories' => $live['categories'], 'progress' => $live['progress']]),
                     'finalized_at' => now(), 'finalized_by' => $request->user()?->name,
                     'created_at' => now(), 'updated_at' => now(),

@@ -637,6 +637,9 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     const [date, setDate] = useState(sk?.letter?.date?.slice(0, 10) ?? lsToday());
     const [signer, setSigner] = useState(sk?.letter?.signer_name ?? '');
     const [position, setPosition] = useState(sk?.letter?.signer_position ?? '');
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPrev, setLogoPrev] = useState<string | null>(null);
+    const skLogo = logoPrev ?? (sk as { logo_url?: string | null } | null)?.logo_url ?? null;
     const [confirmed, setConfirmed] = useState(false);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
@@ -656,7 +659,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
         if (!confirm(`Tetapkan hasil ${sk.title}? Hasil semua kategori akan dikunci dan tidak bisa diubah lagi.`)) return;
         setErr('');
         setBusy(true);
-        router.post(`${base}/sk/tetapkan-lomba`, { number, date, signer_name: signer, signer_position: position, confirm: true } as any, {
+        router.post(`${base}/sk/tetapkan-lomba`, { number, date, signer_name: signer, signer_position: position, confirm: true, ...(logoFile ? { logo: logoFile } : {}) } as any, {
             preserveScroll: true,
             onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menetapkan SK.')),
             onFinish: () => setBusy(false),
@@ -691,6 +694,28 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Tanggal SK *</span><input className={`${inpSm} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                            {!locked && (
+                                <div className="sm:col-span-2 lg:col-span-4">
+                                    <span className={`${lbl} !normal-case !tracking-normal`}>Logo kop SK (opsional)</span>
+                                    <div className="mt-1 flex flex-wrap items-center gap-3">
+                                        {skLogo
+                                            ? <img src={skLogo} alt="Logo SK" className="h-14 w-14 rounded-xl border border-slate-200 bg-white object-contain p-1" />
+                                            : <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[10px] font-bold text-slate-400">Logo</div>}
+                                        <input
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp"
+                                            className="block max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-700"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0] ?? null;
+                                                setLogoFile(f);
+                                                setLogoPrev(f ? URL.createObjectURL(f) : null);
+                                            }}
+                                        />
+                                        {logoFile && <button type="button" onClick={() => { setLogoFile(null); setLogoPrev(null); }} className="text-xs font-bold text-rose-600">Batalkan logo baru</button>}
+                                        <span className="text-xs text-slate-500">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {(sk.blockers.length > 0 || sk.warnings.length > 0) && (
                             <ul className="space-y-2">
@@ -772,9 +797,9 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                 <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 print:space-y-0">
                     {/* ===== Halaman 1: Surat Keputusan ===== */}
                     <div className="rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
-                        <div className="border-b-2 border-slate-900 pb-3 text-center">
-                            {(sk as { logo_url?: string | null }).logo_url
-                                ? <img src={(sk as { logo_url?: string | null }).logo_url as string} alt={sk.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
+                        <div className="pb-1 text-center">
+                            {skLogo
+                                ? <img src={skLogo as string} alt={sk.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
                                 : <div className="text-lg font-bold uppercase">{sk.institution || 'Nama lembaga'}</div>}
                         </div>
                         <div className="mt-6 text-center">
@@ -820,7 +845,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
 
                     {/* ===== Halaman 2: Lampiran ===== */}
                     <div className="break-before-page rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
-                        <div className="border-b-2 border-slate-900 pb-3">
+                        <div className="pb-1">
                             <p className="font-bold">LAMPIRAN SURAT KEPUTUSAN</p>
                             <p className="font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
                         </div>
@@ -832,30 +857,34 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
 
                         {sk.categories.length === 0 && <p className="mt-4 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
                         {sk.categories.length > 0 && (
-                            <table className="mt-5 w-full border-collapse border border-slate-900 text-[13px]">
+                            <table className="mt-5 w-full border-collapse border border-slate-900 text-[12.5px]">
                                 <thead>
                                     <tr className="bg-slate-200 text-center font-bold uppercase">
-                                        <th className="w-10 border border-slate-900 px-2 py-2">No</th>
-                                        <th className="w-36 border border-slate-900 px-2 py-2">Kategori</th>
-                                        <th className="w-16 border border-slate-900 px-2 py-2">Juara</th>
-                                        <th className="border border-slate-900 px-2 py-2">Nama</th>
-                                        <th className="border border-slate-900 px-2 py-2">Asal sekolah / lembaga</th>
+                                        <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
+                                        <th className="w-24 border border-slate-900 px-1.5 py-2">Kategori</th>
+                                        <th className="w-14 border border-slate-900 px-1.5 py-2">Juara</th>
+                                        <th className="w-32 border border-slate-900 px-1.5 py-2">Kode peserta</th>
+                                        <th className="border border-slate-900 px-1.5 py-2">Nama</th>
+                                        <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
+                                        <th className="w-20 border border-slate-900 px-1.5 py-2">Nilai akhir</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sk.categories.map((c, i) => c.rows.length === 0 ? (
                                         <tr key={`c${c.id}`}>
-                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{i + 1}</td>
-                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{c.name || sk.title}</td>
-                                            <td colSpan={3} className="border border-slate-900 px-2 py-1.5 text-center italic">Belum ada peringkat yang bisa dicantumkan.</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center">{c.name || sk.title}</td>
+                                            <td colSpan={5} className="border border-slate-900 px-1.5 py-1.5 text-center italic">Belum ada peringkat yang bisa dicantumkan.</td>
                                         </tr>
                                     ) : c.rows.map((r, k) => (
                                         <tr key={`c${c.id}-${k}`}>
-                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-2 py-1.5 text-center align-middle">{i + 1}</td>}
-                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-2 py-1.5 text-center align-middle">{c.name || sk.title}</td>}
-                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{r.rank}{r.shared ? ' =' : ''}</td>
-                                            <td className="border border-slate-900 px-2 py-1.5">{r.name || '-'}</td>
-                                            <td className="border border-slate-900 px-2 py-1.5">{r.school || '-'}</td>
+                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{i + 1}</td>}
+                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{c.name || sk.title}</td>}
+                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{r.rank}{r.shared ? ' =' : ''}</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center font-mono text-[11.5px]">{r.code}</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5">{r.name || '-'}</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5">{r.school || '-'}</td>
+                                            <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{lsNf(r.score)}</td>
                                         </tr>
                                     )))}
                                 </tbody>
