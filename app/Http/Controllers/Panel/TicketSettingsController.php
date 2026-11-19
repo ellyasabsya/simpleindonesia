@@ -33,7 +33,7 @@ class TicketSettingsController extends Controller
         $end = $event->ends_at->toDateString();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
-            'audience' => ['required', 'in:peserta,umum'],
+            'audience' => ['sometimes', 'in:peserta,umum'],
             'price' => ['required', 'integer', 'min:0', 'max:100000000'],
             'quota' => ['required', 'integer', 'min:1', 'max:1000000'],
             'valid_days' => ['required', 'integer', 'min:1', 'max:365'],
@@ -62,9 +62,9 @@ class TicketSettingsController extends Controller
         ]);
 
         $data['name'] = trim($data['name']);
-        if ($event->registration_method !== 'ticket') {
-            $data['audience'] = 'umum';
-        }
+        $data['audience'] = $event->registration_method !== 'ticket'
+            ? 'umum'
+            : ($data['audience'] ?? ($type->audience ?? 'peserta'));
 
         $opts = collect($data['support_options'] ?? [])->map(fn ($o) => trim((string) $o))->filter()
             ->unique(fn ($o) => mb_strtolower($o))->values()->all();
