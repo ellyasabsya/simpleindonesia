@@ -34,6 +34,10 @@ class EventDetailController extends Controller
         $userId = $request->user()?->id;
 
         $all = collect([$event])->concat($event->children);
+        $feeSources = $event->children->isNotEmpty() ? $event->children : collect([$event]);
+        $feeList = $feeSources->flatMap(fn ($c) => $c->registration_method === 'ticket' && $c->ticketTypes->isNotEmpty()
+            ? $c->ticketTypes->pluck('price')
+            : collect([$c->registration_fee]))->map(fn ($v) => (int) $v)->values();
         $eventIds = $all->pluck('id')->all();
         $cats = \Illuminate\Support\Facades\DB::table('event_participant_categories')->whereIn('event_id', $eventIds)->get()->groupBy('event_id');
         $regs = \App\Models\EventRegistration::query()->with('user:id,name')->whereIn('event_id', $eventIds)->get();
@@ -89,6 +93,8 @@ class EventDetailController extends Controller
                 'parent' => $parent ? ['title' => $parent->title, 'slug' => $parent->slug] : null,
                 'siblings' => $parent ? $parent->children()->orderBy('sub_order')->orderBy('id')->get()
                     ->map(fn (Event $x) => ['id' => $x->id, 'title' => $x->title, 'slug' => $x->slug])->values() : [],
+                'registration_fee_min' => (int) ($feeList->min() ?? 0),
+                'registration_fee_max' => (int) ($feeList->max() ?? 0),
                 'registration_fee' => (int) ($event->registration_fee ?: ($event->children->flatMap(fn ($c) => $c->registration_method === 'ticket' && $c->ticketTypes->isNotEmpty() ? $c->ticketTypes->pluck('price') : collect([$c->registration_fee]))->filter()->min() ?? 0)),
                 'registration_method' => $event->registration_method
                     ?: (($m = $event->children->pluck('registration_method')->filter()->unique())->count() === 1 ? $m->first() : null),
