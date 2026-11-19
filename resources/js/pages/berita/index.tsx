@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { CalendarDays, Newspaper, Search } from 'lucide-react';
+import { Newspaper, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
@@ -78,14 +78,14 @@ export default function BeritaIndex({ news }: Props) {
                                 <p className="mt-10 text-sm font-semibold text-slate-500 dark:text-slate-400">
                                     {q.trim() ? `Menemukan ${items.length} berita` : `Menampilkan ${from}–${to} dari ${total} berita`}
                                 </p>
-                                <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                     {items.map((n) => (
                                         <Link
                                             key={n.id}
                                             href={`/berita/${n.slug}`}
-                                            className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-neutral-900"
+                                            className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-neutral-900"
                                         >
-                                            <div className="relative aspect-[4/5] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                                            <div className="aspect-video overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                                                 {n.cover_url ? (
                                                     <img
                                                         src={n.cover_url}
@@ -94,21 +94,15 @@ export default function BeritaIndex({ news }: Props) {
                                                     />
                                                 ) : (
                                                     <div className="flex h-full w-full items-center justify-center text-neutral-400">
-                                                        <Newspaper className="size-12" />
+                                                        <Newspaper className="size-10" />
                                                     </div>
                                                 )}
-                                                {n.date && (
-                                                    <span className="absolute inset-x-3 bottom-3 inline-flex items-center gap-2 rounded-2xl bg-black/70 px-4 py-3 text-sm font-semibold text-white backdrop-blur">
-                                                        <CalendarDays className="h-5 w-5" /> {n.date}
-                                                    </span>
-                                                )}
                                             </div>
-                                            <div className="flex flex-1 flex-col p-6">
-                                                <h2 className="line-clamp-2 text-xl font-bold group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
-                                                    {n.title}
-                                                </h2>
+                                            <div className="flex flex-1 flex-col p-5">
+                                                {n.date && <div className="text-xs text-neutral-500 dark:text-neutral-400">{n.date}</div>}
+                                                <h3 className="mt-1 line-clamp-2 font-semibold group-hover:underline">{n.title}</h3>
                                                 {n.summary && (
-                                                    <p className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{n.summary}</p>
+                                                    <p className="mt-2 line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">{n.summary}</p>
                                                 )}
                                             </div>
                                         </Link>
