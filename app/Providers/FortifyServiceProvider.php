@@ -27,6 +27,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::loginView(fn () => Inertia::render('auth/login'));
         Fortify::registerView(fn () => Inertia::render('auth/register'));
+        Fortify::verifyEmailView(fn () => Inertia::render('auth/verify-email'));
 
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->input('email'))->first();
