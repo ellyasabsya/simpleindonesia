@@ -31,6 +31,7 @@ type Props = {
     system?: string | null;
     systemLock?: string | null;
     skLomba?: LsData | null;
+    skList?: { id: number; sk: LsData }[];
     isSub?: boolean;
 };
 
@@ -575,7 +576,7 @@ function JuriSudahAda({ base, cid, catName, card, btn }: { base: string; cid: nu
     );
 }
 
-function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
+function PenilaianInner({ event, isParent, skList = [], subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
     const base = `/panel/event/${event.id}/penilaian`;
     const cfg: Cfg = settings ?? { enabled: false, scale: 100, judge_count: 3, avg_decimals: 2, rounding: 'nearest', deduction_enabled: false };
     const locked = cfg.enabled;
@@ -588,7 +589,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
         if (!hasSystem) return 'sistem';
         try {
             const v = sessionStorage.getItem('penilaian-tab');
-            return v === 'sistem' || v === 'nilai' || v === 'juri' || v === 'publikasi' || v === 'rekap' || (v === 'sk' && !isSub) ? v : 'juri';
+            return v === 'sistem' || v === 'nilai' || v === 'juri' || v === 'publikasi' || v === 'rekap' || (v === 'sk' && (!isSub || skList.length > 0)) ? v : 'juri';
         } catch {
             return 'juri';
         }
@@ -597,7 +598,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
         setTabState(t);
         try { sessionStorage.setItem('penilaian-tab', t); } catch { /* abaikan */ }
     };
-    const tab: TabKey = hasSystem ? (isSub && tabRaw === 'sk' ? 'juri' : tabRaw) : 'sistem';
+    const tab: TabKey = hasSystem ? (isSub && skList.length === 0 && tabRaw === 'sk' ? 'juri' : tabRaw) : 'sistem';
     const [scale, setScale] = useState<number>(cfg.scale);
     const [judgeCount, setJudgeCount] = useState<string>(String(cfg.judge_count));
     const [decimals, setDecimals] = useState<string>(String(cfg.avg_decimals));
@@ -697,7 +698,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
         { label: 'Pengesahan', done: cfg.enabled },
     ];
     const steps = rawSteps.map((st, n) => ({ ...st, done: rawSteps.slice(0, n + 1).every((x) => x.done) }));
-    const allTabs = ([{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const).filter((x) => !(isSub && x.k === 'sk'));
+    const allTabs = ([{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const).filter((x) => !(isSub && skList.length === 0 && x.k === 'sk'));
     const tabs = allTabs.filter((x) => x.k === 'sistem' || hasSystem);
     const choice = (w: number, k: number) => (w / 100) * scale * (k / 5);
 
@@ -760,7 +761,9 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
 
                 {tab === 'rekap' && <Rekap />}
 
-                {tab === 'sk' && <PenetapanSK sk={skLomba} base={base} />}
+                {tab === 'sk' && (skList.length > 0
+                    ? <div className="space-y-8">{skList.map((s) => <PenetapanSK key={s.id} sk={s.sk} base={`/panel/event/${s.id}/penilaian`} />)}</div>
+                    : <PenetapanSK sk={skLomba} base={base} />)}
 
                 {tab === 'publikasi' && <Publikasi btn={btn} onGoSettings={(id: number) => { if (id === category.id) setTab('nilai'); else router.get(base, { kategori: id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('nilai') }); }} />}
 

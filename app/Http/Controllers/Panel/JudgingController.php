@@ -143,6 +143,7 @@ class JudgingController extends EventScopedController
             'system' => $this->systemOf($event),
             'systemLock' => $this->systemLockReason($event),
             'skLomba' => $this->skLombaData($event),
+            'skList' => $frame !== null ? $kids->map(fn ($k) => ['id' => (int) $k->id, 'sk' => $this->skLombaData($k)])->values()->all() : [],
             'category' => ['id' => $cid, 'name' => $this->catName($event, $cid)],
             'categories' => $categories,
             'settings' => [
@@ -1820,9 +1821,6 @@ class JudgingController extends EventScopedController
     public function finalizeSkLomba(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event);
-        if ($event->parent_id !== null) {
-            return back()->with('error', 'SK ditetapkan di event utama, bukan di sub-event.');
-        }
         $data = $request->validate([
             'number' => 'required|string|max:100',
             'date' => 'required|date',
