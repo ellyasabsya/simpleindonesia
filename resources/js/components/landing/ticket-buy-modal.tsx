@@ -30,6 +30,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
         setPendingCode(code);
         openPayScreen({
             tokenUrl: `/midtrans/token/${code}`,
+            syncUrl: `/midtrans/ticket-sync/${code}`,
             onSuccess: () => { setPaying(false); setPendingCode(''); setDone(true); },
             onPending: () => { setPaying(false); setPendingCode(''); setDone(true); },
             onClose: () => { setPaying(false); setPayMsg('Pembayaran belum diselesaikan. Pesanan Anda ditahan 60 menit.'); },

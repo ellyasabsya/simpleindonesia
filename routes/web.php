@@ -350,3 +350,6 @@ Route::post('/midtrans/event-token/{id}', [\App\Http\Controllers\MidtransControl
     ->whereNumber('id')->middleware(['auth', 'throttle:20,1']);
 Route::post('/midtrans/event-sync/{id}', [\App\Http\Controllers\MidtransController::class, 'eventSync'])
     ->whereNumber('id')->middleware(['auth', 'throttle:30,1']);
+
+Route::post('/midtrans/ticket-sync/{code}', [\App\Http\Controllers\MidtransController::class, 'ticketSync'])
+    ->where('code', 'TKT-[A-Z0-9]{8}')->middleware('throttle:30,1');
