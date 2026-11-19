@@ -77,6 +77,26 @@ class RegistrationCode
         return $existing ?: self::make($eventId, $category);
     }
 
+    /** Tiket: pakai ID peserta lama untuk akun pembeli + nama pemegang yang sama di seluruh rangkaian. */
+    public static function existingTicketCode(int $eventId, ?int $userId, string $holderName): ?string
+    {
+        $name = mb_strtolower(trim($holderName));
+        if (! $userId || $name === '') {
+            return null;
+        }
+        $ev = DB::table('events')->where('id', $eventId)->first(['id', 'parent_id']);
+        $rootId = (int) ($ev->parent_id ?: $ev->id);
+
+        return DB::table('ticket_holders as h')
+            ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
+            ->join('events as e', 'e.id', '=', 'o.event_id')
+            ->where('o.user_id', $userId)
+            ->where(fn ($q) => $q->where('e.id', $rootId)->orWhere('e.parent_id', $rootId))
+            ->whereRaw('LOWER(TRIM(h.holder_name)) = ?', [$name])
+            ->whereNotNull('h.participant_code')
+            ->orderBy('h.id')->value('h.participant_code') ?: null;
+    }
+
     /** ID Registrasi: ID Peserta + nomor sub-event, contoh BB-UMUM-2026-001-E1. Unik per pendaftaran. */
     public static function regCode(string $participantCode, int $eventId): string
     {
