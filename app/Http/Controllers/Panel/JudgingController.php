@@ -157,7 +157,7 @@ class JudgingController extends EventScopedController
             'judges' => $judges,
             'unassigned' => DB::table('judges')->where('event_id', $event->id)->where('category_id', -1)->orderBy('id')->get()->map(fn ($j) => ['id' => (int) $j->id, 'name' => $j->name, 'contact' => $j->contact])->values(),
             'invites' => DB::table('judge_invitations')->join('users', 'users.id', '=', 'judge_invitations.user_id')->where('judge_invitations.event_id', $event->id)->where('judge_invitations.status', 'menunggu')->orderBy('judge_invitations.id')->get(['judge_invitations.id', 'users.name', 'users.email', 'judge_invitations.status'])->map(fn ($i) => ['id' => (int) $i->id, 'name' => $i->name, 'email' => $i->email, 'status' => $i->status])->values(),
-            'inviteBase' => preg_replace('#/penilaian.*$#', '/penilaian', $request->url()),
+            'inviteBase' => preg_replace('#/event/\d+/penilaian.*$#', '/event/'.$event->id.'/penilaian', $request->url()),
             'siblings' => $siblings,
             'participants' => count(Judging::participants($event->id, $cid)),
             'ranking' => Judging::ranking($event->id, $cid),
