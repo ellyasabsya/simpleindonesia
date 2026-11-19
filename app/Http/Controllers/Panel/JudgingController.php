@@ -17,6 +17,11 @@ class JudgingController extends EventScopedController
     {
         $inst = $request->attributes->get('institution');
         abort_unless($inst && $event->institution_id === $inst->id, 404);
+        $hook = self::ACTION_HOOK[$request->route()?->getActionMethod() ?? ''] ?? null;
+        if ($hook) {
+            $sys = $this->systemOf($event);
+            abort_if($sys !== null && ! in_array($hook, $this->enabledHooks($sys), true), 403, 'Fitur ini dimatikan untuk sistem penilaian ini.');
+        }
     }
 
     private function judgeOwned(Event $event, int $id): void
@@ -143,6 +148,7 @@ class JudgingController extends EventScopedController
             'system' => $this->systemOf($event),
             'systemLock' => $this->systemLockReason($event),
             'systemsActive' => $this->activeSystemKeys(),
+            'systemHooks' => $this->enabledHooks($this->systemOf($event)),
             'skLomba' => $this->skLombaData($event),
             'overall' => $frame !== null ? ($this->overallData($frame['parent']) + ['base' => "/panel/event/{$frame['parent']->id}/penilaian"]) : null,
             'category' => ['id' => $cid, 'name' => $this->catName($event, $cid)],
@@ -1679,7 +1685,44 @@ class JudgingController extends EventScopedController
             return ['weighted'];
         }
 
-        return DB::table('scoring_systems')->where('is_active', 1)->pluck('system_key')->all();
+        $keys = DB::table('scoring_systems')->where('is_active', 1)->pluck('system_key')->all();
+        if (! \Illuminate\Support\Facades\Schema::hasTable('scoring_system_hooks')) {
+            return $keys;
+        }
+
+        // Sistem yang semua cantolannya dimatikan dianggap lumpuh: pilihannya tidak ditawarkan.
+        return array_values(array_filter($keys, fn ($k) => DB::table('scoring_system_hooks')->where('system_key', $k)->where('is_enabled', 1)->exists()));
+    }
+
+    private const ALL_HOOKS = ['juri', 'nilai', 'publikasi', 'rekap', 'sk'];
+
+    /** Aksi controller yang dikunci oleh satu cantolan. Aksi di luar daftar ini tidak dibatasi. */
+    private const ACTION_HOOK = [
+        'storeJudge' => 'juri', 'updateJudge' => 'juri', 'destroyJudge' => 'juri', 'resetLink' => 'juri',
+        'assignJudge' => 'juri', 'assignFromSibling' => 'juri', 'addToCategory' => 'juri',
+        'inviteStore' => 'juri', 'inviteCancel' => 'juri',
+        'saveCriteria' => 'nilai', 'toggle' => 'nilai',
+        'publish' => 'publikasi', 'savePublication' => 'publikasi',
+        'rekapExcel' => 'rekap', 'rekapLembar' => 'rekap', 'rekapLembarKosong' => 'rekap',
+        'finalizeResult' => 'sk', 'saveResult' => 'sk', 'reopenResult' => 'sk', 'finalizeSkLomba' => 'sk',
+        'finalizeOverall' => 'sk', 'saveOverallResult' => 'sk', 'reopenOverall' => 'sk',
+    ];
+
+    /** Cantolan (tab) yang aktif untuk satu sistem. Kalau daftarnya belum ada di database, semua dianggap aktif. */
+    private function enabledHooks(?string $system): array
+    {
+        if (! $system) {
+            return [];
+        }
+        if (! \Illuminate\Support\Facades\Schema::hasTable('scoring_system_hooks')) {
+            return self::ALL_HOOKS;
+        }
+        $q = DB::table('scoring_system_hooks')->where('system_key', $system);
+        if (! (clone $q)->exists()) {
+            return self::ALL_HOOKS;
+        }
+
+        return $q->where('is_enabled', 1)->pluck('hook_key')->all();
     }
 
     /** Sistem penilaian terpilih untuk satu event. Event lama yang sudah punya data dianggap 'weighted'. */

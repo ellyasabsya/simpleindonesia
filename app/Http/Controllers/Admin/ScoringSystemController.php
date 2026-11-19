@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,47 +12,35 @@ class ScoringSystemController extends Controller
 {
     public function index(): Response
     {
-        $systems = DB::table('scoring_systems')->orderBy('id')->get()->map(function ($r) {
+        $hooks = DB::table('scoring_system_hooks')->orderBy('sort')->orderBy('id')->get()->groupBy('system_key');
+
+        $systems = DB::table('scoring_systems')->orderBy('id')->get()->map(function ($r) use ($hooks) {
             return [
                 'key' => $r->system_key,
                 'name' => $r->name,
                 'description' => (string) $r->description,
                 'tag' => (string) $r->tag,
                 'version' => (int) $r->version,
-                'active' => (bool) $r->is_active,
                 'used' => DB::table('judging_systems')->where('category_id', 0)->where('system', $r->system_key)->count(),
+                'hooks' => ($hooks[$r->system_key] ?? collect())->map(fn ($h) => [
+                    'key' => $h->hook_key,
+                    'label' => $h->label,
+                    'description' => (string) $h->description,
+                    'enabled' => (bool) $h->is_enabled,
+                ])->values(),
             ];
         })->values();
 
         return Inertia::render('admin/sistem-penilaian', ['systems' => $systems]);
     }
 
-    public function update(Request $request, string $system): RedirectResponse
+    public function toggleHook(string $system, string $hook): RedirectResponse
     {
-        $row = DB::table('scoring_systems')->where('system_key', $system)->first();
+        $row = DB::table('scoring_system_hooks')->where('system_key', $system)->where('hook_key', $hook)->first();
         abort_unless($row, 404);
-        $data = $request->validate([
-            'name' => 'required|string|max:120',
-            'description' => 'nullable|string|max:500',
-        ]);
-        DB::table('scoring_systems')->where('system_key', $system)->update([
-            'name' => trim($data['name']),
-            'description' => trim((string) ($data['description'] ?? '')),
-            'updated_at' => now(),
-        ]);
+        $on = ! $row->is_enabled;
+        DB::table('scoring_system_hooks')->where('id', $row->id)->update(['is_enabled' => $on, 'updated_at' => now()]);
 
-        return back()->with('success', 'Sistem penilaian diperbarui.');
-    }
-
-    public function toggle(string $system): RedirectResponse
-    {
-        $row = DB::table('scoring_systems')->where('system_key', $system)->first();
-        abort_unless($row, 404);
-        $on = ! $row->is_active;
-        DB::table('scoring_systems')->where('system_key', $system)->update(['is_active' => $on, 'updated_at' => now()]);
-
-        return back()->with('success', $on
-            ? 'Sistem penilaian diaktifkan. Panitia bisa memilihnya lagi.'
-            : 'Sistem penilaian dinonaktifkan. Event yang sudah memakainya tetap berjalan.');
+        return back()->with('success', $row->label.($on ? ' diaktifkan.' : ' dimatikan.'));
     }
 }

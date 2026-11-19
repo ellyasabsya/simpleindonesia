@@ -31,6 +31,7 @@ type Props = {
     category?: { id: number; name: string };
     system?: string | null;
     systemLock?: string | null;
+    systemHooks?: string[] | null;
     skLomba?: LsData | null;
     overall?: Overall | null;
     isSub?: boolean;
@@ -1131,7 +1132,12 @@ function JuriSudahAda({ base, cid, catName, card, btn }: { base: string; cid: nu
     );
 }
 
-function PenilaianInner({ event, isParent, overall = null, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
+function PenilaianInner(props: any) {
+    const systemHooks = ((usePageSys().props as any).systemHooks ?? null) as string[] | null;
+    return <PenilaianInnerBase {...props} systemHooks={systemHooks} />;
+}
+
+function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = null, subs = [], settings, criteria = [], deductions = [], judges = [], participants = 0, hasScores = false, categories = [], category = { id: 0, name: '' }, system = null, systemLock = null, skLomba = null, isSub = false }: Props) {
     const base = `/panel/event/${event.id}/penilaian`;
     const cfg: Cfg = settings ?? { enabled: false, scale: 100, judge_count: 3, avg_decimals: 2, rounding: 'nearest', deduction_enabled: false };
     const locked = cfg.enabled;
@@ -1254,7 +1260,8 @@ function PenilaianInner({ event, isParent, overall = null, subs = [], settings, 
     ];
     const steps = rawSteps.map((st, n) => ({ ...st, done: rawSteps.slice(0, n + 1).every((x) => x.done) }));
     const allTabs = ([{ k: 'sistem', t: 'Sistem penilaian', i: Trophy }, { k: 'juri', t: 'Juri', i: Users }, { k: 'nilai', t: 'Pengaturan penilaian', i: ClipboardList }, { k: 'publikasi', t: 'Publikasi', i: Megaphone }, { k: 'rekap', t: 'Rekap nilai', i: BarChart3 }, { k: 'sk', t: 'Penetapan & SK', i: Gavel }] as const).filter((x) => !(isSub && !overall && x.k === 'sk'));
-    const tabs = allTabs.filter((x) => x.k === 'sistem' || hasSystem);
+    const tabs = allTabs.filter((x) => x.k === 'sistem' || (hasSystem && (systemHooks === null || systemHooks.includes(x.k))));
+    if (tabs.length > 0 && !tabs.some((x) => x.k === tab)) setTimeout(() => setTab(tabs[0].k), 0);
     const choice = (w: number, k: number) => (w / 100) * scale * (k / 5);
 
     return (
