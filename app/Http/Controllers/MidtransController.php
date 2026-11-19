@@ -188,8 +188,16 @@ class MidtransController extends Controller
 
         if ($midtrans->isPaid($p)) {
             // Idempotent: hanya berubah sekali, notifikasi ganda tidak menambah vote.
-            DB::table('voting_orders')->where('id', $o->id)->whereIn('status', ['menunggu', 'batal'])
+            $n = DB::table('voting_orders')->where('id', $o->id)->whereIn('status', ['menunggu', 'batal'])
                 ->update(['status' => 'lunas', 'paid_at' => now(), 'updated_at' => now()]);
+            if ($n > 0) {
+                $evTitle = (string) DB::table('events')->where('id', $o->event_id)->value('title');
+                \App\Support\AdminNotifier::send(
+                    'Pembayaran vote berhasil',
+                    $o->buyer_name.' membeli '.number_format((int) $o->votes, 0, ',', '.').' vote (Rp '.number_format((int) $o->amount, 0, ',', '.').') untuk event "'.$evTitle.'".',
+                    '/admin/transaksi'
+                );
+            }
         } elseif (in_array($ts, ['expire', 'cancel', 'deny'], true)) {
             DB::table('voting_orders')->where('id', $o->id)->where('status', 'menunggu')
                 ->update(['status' => 'batal', 'updated_at' => now()]);
