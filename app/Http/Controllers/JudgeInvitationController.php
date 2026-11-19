@@ -24,7 +24,10 @@ class JudgeInvitationController extends Controller
     {
         try {
             $event = Event::find($eventId);
-            Institution::find($event?->institution_id)?->user?->notify(new \App\Notifications\AdminAlert($title, $message, "/panel/event/{$eventId}/penilaian"));
+            $url = $event?->parent_id
+                ? "/panel/event/{$event->parent_id}/penilaian?sub={$eventId}"
+                : "/panel/event/{$eventId}/penilaian";
+            Institution::find($event?->institution_id)?->user?->notify(new \App\Notifications\AdminAlert($title, $message, $url));
         } catch (\Throwable $e) {
             report($e);
         }
