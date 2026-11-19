@@ -12,6 +12,11 @@ type Row = {
     author_email: string | null;
     event_title: string;
     event_key: string | null;
+    type: 'event' | 'berita';
+    source: string;
+    url: string | null;
+    dismiss_url: string;
+    delete_url: string;
     created_at: string | null;
     reported_at: string | null;
 };
@@ -48,12 +53,12 @@ export default function AdminKomentar({ comments, filters, counts }: Props) {
 
     const dismiss = (c: Row) => {
         if (window.confirm('Abaikan laporan pada komentar ini? Komentar tetap tampil.'))
-            router.patch(`/admin/komentar/${c.id}/abaikan`, {}, { preserveScroll: true });
+            router.patch(c.dismiss_url, {}, { preserveScroll: true });
     };
 
     const remove = (c: Row) => {
         if (window.confirm('Hapus komentar ini secara permanen?'))
-            router.delete(`/admin/komentar/${c.id}`, { preserveScroll: true });
+            router.delete(c.delete_url, { preserveScroll: true });
     };
 
     return (
@@ -67,7 +72,7 @@ export default function AdminKomentar({ comments, filters, counts }: Props) {
                         </span>
                         <h2 className="mt-3 text-2xl font-extrabold">Moderasi Komentar</h2>
                         <p className="mt-1 max-w-2xl text-sm text-white/80">
-                            Tinjau komentar yang dilaporkan pengguna, lalu hapus atau abaikan laporannya.
+                            Tinjau komentar event dan berita yang dilaporkan pengguna, lalu hapus atau abaikan laporannya.
                         </p>
                     </div>
                 </div>
@@ -110,7 +115,7 @@ export default function AdminKomentar({ comments, filters, counts }: Props) {
                                 <tr>
                                     <th className={th}>Komentar</th>
                                     <th className={th}>Penulis</th>
-                                    <th className={th}>Event</th>
+                                    <th className={th}>Sumber</th>
                                     <th className={th}>Status</th>
                                     <th className={`${th} text-right`}>Aksi</th>
                                 </tr>
@@ -124,7 +129,7 @@ export default function AdminKomentar({ comments, filters, counts }: Props) {
                                     </tr>
                                 )}
                                 {comments.data.map((c) => (
-                                    <tr key={c.id}>
+                                    <tr key={`${c.type}-${c.id}`}>
                                         <td className={`${td} max-w-xs`}>
                                             <p className="line-clamp-3 break-words whitespace-pre-line text-slate-800 dark:text-slate-100">{c.body}</p>
                                             <p className="mt-1 text-xs text-slate-500">{c.created_at ? dateFmt.format(new Date(c.created_at)) : '-'}</p>
@@ -134,13 +139,24 @@ export default function AdminKomentar({ comments, filters, counts }: Props) {
                                             <p className="text-xs text-slate-500">{c.author_email}</p>
                                         </td>
                                         <td className={td}>
-                                            {c.event_key ? (
-                                                <a href={`/events/${c.event_key}`} target="_blank" rel="noreferrer" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-300">
-                                                    {c.event_title}
-                                                </a>
-                                            ) : (
-                                                c.event_title
-                                            )}
+                                            <span
+                                                className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                                                    c.type === 'berita'
+                                                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200'
+                                                        : 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-200'
+                                                }`}
+                                            >
+                                                {c.source}
+                                            </span>
+                                            <div>
+                                                {c.url ? (
+                                                    <a href={c.url} target="_blank" rel="noreferrer" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-300">
+                                                        {c.event_title}
+                                                    </a>
+                                                ) : (
+                                                    c.event_title
+                                                )}
+                                            </div>
                                         </td>
                                         <td className={td}>
                                             {c.reported_at ? (
