@@ -656,7 +656,7 @@ function EventDetailSingle() {
 
                         {event.children.length > 0 && !event.children.some((c) => c.ticket_price != null) && (
                             <section id="kegiatan" className="mt-6 scroll-mt-28">
-                                <h2 className="text-2xl font-black">Pilih Kegiatan</h2>
+                                <h2 className="text-xl font-bold">Pilih Kegiatan</h2>
                                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Event ini terdiri dari beberapa kegiatan. Pilih salah satu untuk melihat detail dan mendaftar.</p>
                                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                                     {event.children.map((c) => {
@@ -670,7 +670,7 @@ function EventDetailSingle() {
                                                 )}
                                                 <div className="space-y-3 p-5">
                                                     {c.category && <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{c.category}</span>}
-                                                    <h3 className="text-xl font-bold">{c.title}</h3>
+                                                    <h3 className="text-lg font-bold">{c.title}</h3>
                                                     <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
                                                         {c.starts_at && (
                                                             <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{shortDate(c.starts_at)}{c.ends_at && c.ends_at !== c.starts_at ? ` – ${shortDate(c.ends_at)}` : ''}</p>
