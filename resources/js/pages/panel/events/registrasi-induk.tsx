@@ -51,6 +51,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
     const [q, setQ] = useState('');
     const [st, setSt] = useState('');
     const [tp, setTp] = useState('');
+    const [cat, setCat] = useState('');
     const [page, setPage] = useState(1);
     const [items, setItems] = useState<Item[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
@@ -64,6 +65,18 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
     const count = (s: string) => scoped.filter((r) => r.status === s).length;
     const open = (rs: Row[]) => rs.filter((r) => r.status !== 'ditolak' && r.status !== 'batal').length;
     const statuses = useMemo(() => Array.from(new Set(scoped.map((r) => r.status))), [scoped]);
+    const catLabel = (r: Row) => {
+        const c = r.category ?? '';
+        if (!c) return '';
+        const i = c.lastIndexOf(' - ');
+        return r.kind === 'tiket' && i >= 0 ? c.slice(i + 3).trim() : c;
+    };
+    const cats = useMemo(() => {
+        const m = new Map<string, number>();
+        scoped.forEach((r) => { const l = catLabel(r); if (l) m.set(l, (m.get(l) ?? 0) + 1); });
+        return Array.from(m, ([name, n]) => ({ name, n }));
+    }, [scoped]);
+    const catSel = cats.some((c) => c.name === cat) ? cat : '';
     const ticketTypes = useMemo(() => Array.from(new Set(scoped.map((r) => r.type).filter(Boolean) as string[])), [scoped]);
 
     const list = useMemo(() => {
@@ -71,9 +84,10 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
         return scoped.filter((r) =>
             (!st || r.status === st) &&
             (!tp || r.type === tp) &&
+            (!catSel || catLabel(r) === catSel) &&
             (!k || [r.reg_id ?? '', r.name, r.email, r.phone ?? '', r.school ?? '', r.sub, r.category ?? '', r.buyer ?? '', r.order ?? '', r.code ?? '', ...r.teams.map((t) => t.name)].some((v) => v.toLowerCase().includes(k))),
         );
-    }, [scoped, q, st, tp]);
+    }, [scoped, q, st, tp, catSel]);
 
     const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
     const pg = Math.min(page, pages);
@@ -234,6 +248,15 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                                     <button key={c.id} type="button" onClick={() => pickSub(String(c.id))} className={chip(sub === String(c.id))}>{c.title} · {c.count}</button>
                                 ))}
                             </div>
+                            {cats.length > 1 && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="mr-1 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Kategori</span>
+                                    <button type="button" onClick={() => { setCat(''); setPage(1); }} className={chip(catSel === '')}>Semua kategori · {scoped.length}</button>
+                                    {cats.map((c) => (
+                                        <button key={c.name} type="button" onClick={() => { setCat(c.name); setPage(1); }} className={chip(catSel === c.name)}>{c.name} · {c.n}</button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {view.length === 0 ? (
@@ -255,7 +278,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                                                     <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
                                                     <td className="px-3 py-3 font-extrabold">{r.name}</td>
                                                     <td className="px-3 py-3 font-semibold">{r.sub}</td>
-                                                    <td className="px-3 py-3">{r.category ? <span className={pill}>{r.kind === 'tiket' ? `Tiket ${r.category}` : r.category}</span> : r.teams.length > 0 ? `${r.teams.length} tim` : ''}</td>
+                                                    <td className="px-3 py-3">{r.category ? <span className={pill}>{catLabel(r)}</span> : r.teams.length > 0 ? `${r.teams.length} tim` : ''}</td>
                                                     <td className="px-3 py-3">{badge(r.status)}</td>
                                                 </tr>
                                             ))}
