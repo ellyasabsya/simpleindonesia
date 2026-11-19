@@ -602,7 +602,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
             category_id: cid, scale, judge_count: Number(judgeCount), avg_decimals: Number(decimals), rounding, deduction_enabled: dedOn,
             criteria: rows.map((r) => ({ id: r.id, name: r.name, description: r.description, weight: Number(r.weight), subs: (r.subs ?? []).map((x) => ({ id: x.id, name: x.name, description: '', weight: Number(x.weight) })) })),
             deductions: deds.map((d) => ({ name: d.name, points: Number(d.points) || 0 })),
-        } as any, { preserveScroll: true, onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan.')) });
+        } as any, { preserveScroll: true, onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }), onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan.')) });
     };
     const toggle = () => {
         if (locked && !confirm('Tutup penilaian? Juri tidak bisa mengisi nilai sampai Anda mengesahkannya lagi.')) return;
