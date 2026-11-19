@@ -16,31 +16,20 @@ function Avatar({ name, tone = 'indigo' }: { name: string; tone?: 'indigo' | 'am
     );
 }
 
-export function JuriHeader({ title, category, active, need }: { title: string; category?: string; active: number; need: number }) {
+export function JuriHeader({ active, need }: { title?: string; category?: string; active: number; need: number }) {
     const ok = active >= need;
     const pct = need > 0 ? Math.min(100, Math.round((active / need) * 100)) : 0;
     return (
-        <div className={`${solid} p-5 sm:p-6`}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-indigo-600">Juri penilaian</p>
-                    <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">{title}{category && <span className="text-indigo-600 dark:text-indigo-300"> › {category}</span>}</h2>
-                    
-                </div>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold ${ok ? 'bg-emerald-100 text-emerald-900' : 'hidden'}`}>
-                    {ok ? <Check className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                    {ok ? 'Jumlah juri sudah cukup' : `Kurang ${need - active} juri`}
-                </span>
-            </div>
-
-            <div className="mt-5 flex items-end justify-between gap-3">
-                <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black leading-none text-slate-900 dark:text-white">{active}</span>
+        <div className={`${solid} px-5 py-4`}>
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-2xl font-black leading-none text-slate-900 dark:text-white">{active}</span>
                     <span className="text-sm font-bold text-slate-500 dark:text-slate-400">dari {need} juri aktif</span>
+                    {ok && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-extrabold text-emerald-900"><Check className="h-3 w-3" /> Cukup</span>}
                 </div>
                 <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{pct}%</span>
             </div>
-            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
                 <div className={`h-full rounded-full transition-all ${ok ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-violet-600'}`} style={{ width: `${pct}%` }} />
             </div>
         </div>

@@ -508,7 +508,7 @@ function PanelLayout(props: React.ComponentProps<typeof BasePanelLayout>) {
         `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
 
     const bar = pb ? (
-        <div className={`${card} flex flex-wrap items-center gap-2 p-4`}>
+        <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`}>
             <span className={`${lbl} mr-1`}>Sub-event</span>
             {pb.subs.map((s) => (
                 <Link key={s.id} href={`${pb.base}?sub=${s.id}`} className={chip(pb.current === s.id)}>{s.title}</Link>
@@ -918,9 +918,9 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                 {tab === 'juri' && (
                     <>
 {categories.length > 1 && (
-                            <div className={`${card} p-4`}>
-                                <p className="text-sm font-extrabold">Kategori</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
+                            <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`}>
+<span className="mr-1 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Kategori</span>
+<div className="flex flex-wrap gap-2">
                                     {categories.map((c) => (
                                         <button
                                             key={c.id}
@@ -933,7 +933,6 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Daftar juri ini khusus kategori <b>{category.name}</b>.</p>
                             </div>
                         )}
 <JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
