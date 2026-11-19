@@ -109,7 +109,7 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
                 const r = await fetch(`${base}/juri-undangan/cari?email=${encodeURIComponent(v)}&kategori=${categoryId}`, { headers: { Accept: 'application/json' } });
                 const d = await r.json();
                 if (d.status === 'ok') setFound(d.user);
-                else setError(({ invalid: 'Format email tidak valid.', not_found: 'Belum ada akun SIMPLE dengan email ini. Minta calon juri mendaftar terlebih dahulu.', invited: 'Akun ini sudah diundang atau sudah menjadi juri di event ini.' } as Record<string, string>)[d.status] ?? 'Akun ini tidak bisa diundang.');
+                else setError(({ invalid: 'Format email tidak valid.', not_found: 'Belum ada akun SIMPLE dengan email ini. Minta calon juri mendaftar terlebih dahulu.', invited: 'Akun ini sudah diundang atau sudah menjadi juri di event ini.' } as Record<string, string>)[d.status] ?? `Akun ini tidak bisa diundang. (HTTP ${r.status}${d.message ? ': ' + d.message : ''})`);
             } catch {
                 setError('Gagal memeriksa email. Coba lagi.');
             } finally {
