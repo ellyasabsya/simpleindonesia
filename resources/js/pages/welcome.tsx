@@ -8,7 +8,6 @@ import PackageSection from '@/components/landing/package-section';
 import TicketSection from '@/components/landing/ticket-section';
 import VotingSection from '@/components/landing/voting-section';
 import PageBackground from '@/components/page-background';
-import NewsLatest from '../components/news-latest';
 
 export default function Welcome() {
     return (
@@ -25,7 +24,6 @@ export default function Welcome() {
                         <VotingSection />
                         <PackageSection />
                         <NewsSection />
-                        <NewsLatest />
 </main>
                     <Footer />
                 </div>
