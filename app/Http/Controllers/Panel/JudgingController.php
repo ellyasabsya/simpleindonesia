@@ -1793,6 +1793,7 @@ class JudgingController extends EventScopedController
                     $unit[$key] ??= ['school' => $label, 'pid' => $pcode, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
                     $unit[$key]['points'] += $points[$rk - 1];
                     $unit[$key]['counts'][$rk - 1]++;
+                    $unit[$key]['score_total'] = ($unit[$key]['score_total'] ?? 0) + (float) $r['score'];
                     $unit[$key]['categories']++;
                     $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $label];
                 }
@@ -1837,34 +1838,80 @@ class JudgingController extends EventScopedController
             }
         }
 
+        $tbRow = $row && ! empty($row->tiebreak_json) ? (json_decode((string) $row->tiebreak_json, true) ?: []) : [];
+        $tbOrder = array_values(array_unique(array_filter((array) ($tbRow['order'] ?? ['medals']), fn ($k) => in_array($k, ['medals', 'score', 'wins'], true))));
+        $tbShared = (bool) ($tbRow['shared'] ?? true);
+        $crit = function (array $a, array $b) use ($tbOrder): array {
+            foreach ($tbOrder as $k) {
+                if ($k === 'medals') {
+                    foreach (array_keys($a['counts']) as $i) {
+                        if ($a['counts'][$i] !== $b['counts'][$i]) {
+                            return [$b['counts'][$i] <=> $a['counts'][$i], $k];
+                        }
+                    }
+                } elseif ($k === 'score') {
+                    $x = round((float) ($a['score_total'] ?? 0), 2);
+                    $y = round((float) ($b['score_total'] ?? 0), 2);
+                    if ($x !== $y) {
+                        return [$y <=> $x, $k];
+                    }
+                } elseif ($k === 'wins') {
+                    if ($a['counts'][0] !== $b['counts'][0]) {
+                        return [$b['counts'][0] <=> $a['counts'][0], $k];
+                    }
+                }
+            }
+
+            return [0, null];
+        };
+        $labels = ['medals' => 'jumlah juara 1, 2, 3', 'score' => 'total poin prestasi', 'wins' => 'jumlah kemenangan'];
+
         $list = array_values($unit);
-        usort($list, function ($a, $b) {
+        usort($list, function ($a, $b) use ($crit) {
             if ($a['points'] !== $b['points']) {
                 return $b['points'] <=> $a['points'];
             }
-            foreach (array_keys($a['counts']) as $i) {
-                if ($a['counts'][$i] !== $b['counts'][$i]) {
-                    return $b['counts'][$i] <=> $a['counts'][$i];
-                }
+            $c = $crit($a, $b)[0];
+            if ($c !== 0) {
+                return $c;
             }
 
             return strcmp($a['school'], $b['school']);
         });
         $standings = [];
-        $lastSig = null;
         $lastRank = 0;
         foreach ($list as $i => $u) {
-            $sig = $u['points'].'|'.implode(',', $u['counts']);
-            $rank = $sig === $lastSig ? $lastRank : $i + 1;
-            $lastSig = $sig;
+            $by = null;
+            $equal = false;
+            if ($i > 0 && $list[$i - 1]['points'] === $u['points']) {
+                [$c, $kk] = $crit($list[$i - 1], $u);
+                if ($c === 0) {
+                    $equal = true;
+                } else {
+                    $by = $labels[$kk] ?? null;
+                }
+            }
+            $rank = ($equal && $tbShared) ? $lastRank : $i + 1;
             $lastRank = $rank;
-            $standings[] = ['rank' => $rank, 'shared' => false] + $u;
+            $st = ['rank' => $rank, 'shared' => false, 'by' => $by, 'tie' => false] + $u;
+            if ($equal && ! $tbShared) {
+                $st['tie'] = true;
+                $standings[$i - 1]['tie'] = true;
+            }
+            $standings[] = $st;
         }
         $freq = array_count_values(array_column($standings, 'rank'));
         foreach ($standings as &$st) {
             $st['shared'] = $freq[$st['rank']] > 1;
+            $st['score_total'] = round((float) ($st['score_total'] ?? 0), 2);
         }
         unset($st);
+        $unresolved = false;
+        foreach ($standings as $st) {
+            if (! empty($st['tie']) && $st['rank'] <= $winnerCount) {
+                $unresolved = true;
+            }
+        }
         if ($locked && ! empty($row->snapshot_json)) {
             $standings = json_decode((string) $row->snapshot_json, true) ?: $standings;
         }
@@ -1892,6 +1939,10 @@ class JudgingController extends EventScopedController
             ['ok' => count($standings) > 0, 'title' => 'Ada sekolah/lembaga yang meraih peringkat',
                 'detail' => count($standings) > 0 ? count($standings).' sekolah/lembaga masuk klasemen.' : 'Belum ada peringkat yang bisa dihitung.'],
         ];
+        if (! $tbShared) {
+            $checks[] = ['ok' => ! $unresolved, 'title' => 'Tidak ada seri yang belum terpecahkan di batas juara umum',
+                'detail' => $unresolved ? 'Ada peserta dengan hasil sama di batas juara umum. Ubah metode pemecah seri atau aktifkan juara bersama.' : 'Tidak ada seri di batas juara umum.'];
+        }
         $ties = false;
         foreach ($standings as $st) {
             if (! empty($st['shared']) && $st['rank'] <= $winnerCount) {
@@ -1902,6 +1953,7 @@ class JudgingController extends EventScopedController
         return [
             'points' => $points,
             'winner_count' => $winnerCount,
+            'tiebreak' => ['order' => $tbOrder, 'shared' => $tbShared],
             'locked' => (bool) $locked,
             'finalized_at' => $locked ? \Illuminate\Support\Carbon::parse($row->finalized_at)->format('d/m/Y, H.i') : null,
             'finalized_by' => $locked ? $row->finalized_by : null,
@@ -1926,6 +1978,9 @@ class JudgingController extends EventScopedController
             'points' => 'required|array|min:1|max:10',
             'points.*' => 'required|integer|min:0|max:1000',
             'winner_count' => 'required|integer|min:1|max:10',
+            'tiebreak' => 'present|array|max:3',
+            'tiebreak.*' => 'in:medals,score,wins|distinct',
+            'tie_shared' => 'required|boolean',
         ], ['points.*.integer' => 'Poin harus berupa bilangan bulat.', 'points.*.required' => 'Poin tiap juara wajib diisi.']);
         $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
         if ($row && ! empty($row->finalized_at)) {
@@ -1933,7 +1988,7 @@ class JudgingController extends EventScopedController
         }
         DB::table('judging_overall')->updateOrInsert(
             ['event_id' => $event->id],
-            ['points_json' => json_encode(array_map('intval', $data['points'])), 'winner_count' => (int) $data['winner_count'], 'created_at' => now(), 'updated_at' => now()]
+            ['points_json' => json_encode(array_map('intval', $data['points'])), 'winner_count' => (int) $data['winner_count'], 'tiebreak_json' => json_encode(['order' => array_values($data['tiebreak']), 'shared' => (bool) $data['tie_shared']]), 'created_at' => now(), 'updated_at' => now()]
         );
 
         return back()->with('success', 'Pengaturan juara umum disimpan.');

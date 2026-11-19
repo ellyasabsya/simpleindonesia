@@ -436,7 +436,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                 </div>
             ))}
 
-            <OverallSettings points={ov.points} winnerCount={ov.winner_count} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
+            <OverallSettings points={ov.points} winnerCount={ov.winner_count} tiebreak={(ov as any).tiebreak?.order ?? ['medals']} tieShared={(ov as any).tiebreak?.shared ?? true} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
 
             <div className={`${card} space-y-4 p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -462,7 +462,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                         <td className="py-3 pr-3 font-extrabold">{s.school}{(s as any).pid ? <span className="block text-xs font-semibold text-slate-400">ID {(s as any).pid}</span> : null}</td>
                                         <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
                                         {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
-                                        <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}</td>
+                                        <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}{s.shared ? <span className="ml-2 text-xs font-bold text-amber-700">Juara bersama</span> : (s as any).by ? <span className="ml-2 text-xs font-semibold text-slate-500">Dipecah: {(s as any).by}</span> : null}{(s as any).tie ? <span className="ml-2 text-xs font-bold text-rose-600">Seri belum terpecahkan</span> : null}</td>
                                     </tr>
                                 ))}
                             </tbody>
