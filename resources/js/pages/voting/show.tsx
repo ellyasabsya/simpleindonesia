@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search, Swords, Trophy, Upload, User, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search, Swords, Trophy, Upload, User, Volume2, VolumeX, X, Zap, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type P = { id: number; name: string; description: string | null; category_id: number | null; photo: string | null; votes: number | null };
@@ -10,7 +10,7 @@ type Props = {
     event: { id: number; title: string; description: string | null; location: string | null; date: string; organizer: string | null; poster: string | null };
     period: { start: string | null; end: string };
     settings: { price: number; min_votes: number; message_enabled: boolean; message_max: number; show_sender: boolean; show_ranking: boolean; show_votes: boolean };
-    categories: { id: number; name: string }[]; gifts: Gift[]; bank: Record<string, string>; online: boolean; live: Live;
+    categories: { id: number; name: string }[]; gifts: Gift[]; bank: Record<string, string>; online: boolean; fee_percent: number; live: Live;
 };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
@@ -46,15 +46,28 @@ function Avatar({ p, cls }: { p: P; cls: string }) {
     return p.photo ? <img src={p.photo} alt={p.name} className={`${cls} object-cover`} /> : <div className={`${cls} flex items-center justify-center bg-white/5 text-3xl font-black text-white/30`}>{p.name.charAt(0).toUpperCase()}</div>;
 }
 
-function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => void }) {
-    const { settings: s, gifts, online, event } = props;
-    const form = useForm<{ participant_id: number; gift_id: number | null; votes: string; buyer_name: string; buyer_email: string; message: string }>({
-        participant_id: p.id, gift_id: null, votes: String(s.min_votes), buyer_name: '', buyer_email: '', message: '',
+const MAX_VOTES = 9990;
+
+function Sec({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="flex items-center gap-2.5 text-[12px] font-extrabold tracking-[0.3em] text-white uppercase">
+            <span className="h-4 w-1 rounded-full bg-gradient-to-b from-fuchsia-500 to-cyan-400" />
+            {children}
+        </div>
+    );
+}
+
+function BuyModal({ p, rank, props, onClose }: { p: P; rank: number; props: Props; onClose: () => void }) {
+    const { settings: s, gifts, online, event, fee_percent } = props;
+    const form = useForm<{ participant_id: number; gift_id: number | null; votes: string; buyer_name: string; message: string }>({
+        participant_id: p.id, gift_id: null, votes: String(s.min_votes), buyer_name: '', message: '',
     });
     const d = form.data;
     const gift = gifts.find((g) => g.id === d.gift_id);
-    const votes = gift ? gift.votes : Number(d.votes) || 0;
-    const amount = gift ? gift.price : votes * s.price;
+    const votes = gift ? gift.votes : Math.min(MAX_VOTES, Number(d.votes) || 0);
+    const base = gift ? gift.price : votes * s.price;
+    const fee = Math.round((base * fee_percent) / 100);
+    const total = base + fee;
     const [done, setDone] = useState('');
     const [paying, setPaying] = useState(false);
     const [pendingCode, setPendingCode] = useState('');
@@ -101,9 +114,10 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
             setPaying(false);
         }
     };
+
     const err = form.errors as Record<string, string | undefined>;
-    const ok = votes >= (gift ? 1 : s.min_votes) && d.buyer_name.trim() !== '' && d.buyer_email.trim() !== '';
-    const hasBank = !!online;
+    const ok = votes >= (gift ? 1 : s.min_votes) && d.buyer_name.trim() !== '';
+    const setVotes = (n: number) => form.setData({ ...d, gift_id: null, votes: String(Math.max(s.min_votes, Math.min(MAX_VOTES, n))) });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,11 +134,15 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-            <form onSubmit={submit} className="flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#0a0f2a] text-white shadow-2xl sm:rounded-3xl">
-                <div className="flex items-center gap-4 border-b border-white/10 px-5 py-4">
-                    <Avatar p={p} cls="h-14 w-14 rounded-2xl" />
-                    <div className="min-w-0 flex-1"><div className={label}>Beli vote untuk</div><div className="truncate text-lg font-black uppercase">{p.name}</div></div>
-                    <button type="button" aria-label="Tutup" onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-white/10"><X className="h-5 w-5" /></button>
+            <form onSubmit={submit} className="flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-cyan-300/20 bg-[#070b22] text-white shadow-2xl shadow-violet-900/40 sm:rounded-3xl">
+                <div className="flex items-center gap-4 border-b border-white/10 px-6 py-5">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600"><Zap className="h-7 w-7" /></div>
+                    <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-extrabold tracking-[0.3em] text-cyan-300 uppercase">Power-up loadout</div>
+                        <div className="truncate text-2xl font-black">Boost Vote Arena</div>
+                        <div className="truncate text-sm text-slate-300">{event.title}</div>
+                    </div>
+                    <button type="button" aria-label="Tutup" onClick={onClose} className="rounded-full border border-white/10 p-2.5 text-slate-300 hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
 
                 {done ? (
@@ -136,54 +154,115 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
                     </div>
                 ) : (
                     <>
-                        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                            <div className="flex items-center gap-4 rounded-2xl border border-violet-400/40 bg-gradient-to-r from-violet-950/80 to-indigo-950/60 p-3.5">
+                                <Avatar p={p} cls="h-16 w-16 shrink-0 rounded-xl" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-[11px] font-extrabold tracking-[0.3em] text-cyan-300 uppercase">Target boost</div>
+                                    <div className="truncate text-xl font-black uppercase">{p.name}</div>
+                                </div>
+                                {rank > 0 && <span className="rounded-2xl bg-amber-300 px-4 py-2.5 text-xl font-black text-black">#{rank}</span>}
+                            </div>
+
+                            {rank > 0 && (
+                                <div className="flex items-center gap-3 rounded-2xl border border-dashed border-emerald-400/40 bg-emerald-400/5 px-4 py-3.5 text-sm text-emerald-200">
+                                    <Trophy className="h-5 w-5 shrink-0 text-amber-300" />
+                                    {rank > 1 ? 'Tambah vote untuk naik peringkat.' : 'Tambah vote untuk mempertahankan posisi puncak.'}
+                                </div>
+                            )}
+
+                            {!online && <p className="rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">Voting sedang dijeda sementara. Pembayaran online belum tersedia.</p>}
+
+                            <div>
+                                <Sec>Nama pengirim</Sec>
+                                <div className="mt-3 flex items-center gap-2 text-[11px] font-extrabold tracking-[0.25em] text-slate-300 uppercase"><User className="h-4 w-4" /> Nama <span className="text-rose-400">*</span></div>
+                                <input value={d.buyer_name} maxLength={80} onChange={(e) => form.setData('buyer_name', e.target.value)} placeholder="Nama lengkap (tampil di daftar dukungan langsung)" className={`${field} !mt-2`} />
+                                {err.buyer_name && <span className="text-xs text-rose-400">{err.buyer_name}</span>}
+                            </div>
+
+                            {s.message_enabled && (
+                                <>
+                                    <div className="flex items-start gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/5 px-4 py-3.5 text-sm text-slate-100">
+                                        <Zap className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" />
+                                        Dukung favoritmu sekarang dan tampilkan pesan dukungan terbaikmu di live voting!
+                                    </div>
+                                    <div>
+                                        <Sec>Pesan dukungan (opsional)</Sec>
+                                        <textarea value={d.message} rows={3} maxLength={s.message_max} onChange={(e) => form.setData('message', e.target.value)} placeholder={`Contoh: Semangat terus untuk ${p.name}!`} className={`${field} !mt-3 resize-none`} />
+                                        <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
+                                            <span>Maks. {s.message_max} karakter, tampil di daftar dukungan langsung.</span>
+                                            <b className="text-cyan-300">{d.message.length}/{s.message_max}</b>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
                             {gifts.length > 0 && (
                                 <div>
-                                    <span className={label}>Pilih gift power-up</span>
-                                    <div className="mt-2 grid grid-cols-2 gap-2.5">
+                                    <Sec>Pilih gift power-up</Sec>
+                                    <div className="mt-3 grid grid-cols-4 gap-2.5">
                                         {gifts.map((g) => (
-                                            <button key={g.id} type="button" onClick={() => form.setData('gift_id', d.gift_id === g.id ? null : g.id)} className={`rounded-2xl border p-3 text-left transition ${d.gift_id === g.id ? 'border-cyan-300 bg-cyan-300/10 ring-2 ring-cyan-300/30' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
-                                                <div className="text-2xl">{g.emoji}</div>
-                                                <div className="mt-1 text-sm font-extrabold">{g.name}</div>
-                                                <div className="text-xs text-slate-300">+{nf(g.votes)} vote · {rp(g.price)}</div>
+                                            <button
+                                                key={g.id}
+                                                type="button"
+                                                onClick={() => form.setData({ ...d, gift_id: d.gift_id === g.id ? null : g.id, votes: String(g.votes) })}
+                                                className={`rounded-2xl border px-1 py-3 text-center transition ${d.gift_id === g.id ? 'border-cyan-300 bg-cyan-300/10 ring-2 ring-cyan-300/30' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                                            >
+                                                <div className="text-3xl">{g.emoji}</div>
+                                                <div className="mt-1.5 truncate text-[11px] font-extrabold tracking-widest uppercase">{g.name}</div>
+                                                <div className="mt-1 text-base font-black text-amber-300">+{nf(g.votes)}</div>
                                             </button>
                                         ))}
                                     </div>
+                                    <p className="mt-2 text-xs text-slate-400">Tap gift untuk mengisi jumlah otomatis, atau atur sendiri di bawah.</p>
                                 </div>
                             )}
-                            {!gift && (
-                                <label className="block"><span className={label}>Atau isi jumlah vote ({rp(s.price)} / vote)</span>
-                                    <input type="number" inputMode="numeric" min={s.min_votes} value={d.votes} onChange={(e) => form.setData('votes', e.target.value)} className={field} />
-                                    {err.votes && <span className="text-xs text-rose-400">{err.votes}</span>}
-                                </label>
-                            )}
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <label className="block"><span className={label}>Nama</span><input value={d.buyer_name} maxLength={80} onChange={(e) => form.setData('buyer_name', e.target.value)} placeholder="Nama Anda" className={field} />{err.buyer_name && <span className="text-xs text-rose-400">{err.buyer_name}</span>}</label>
-                                <label className="block"><span className={label}>Email</span><input value={d.buyer_email} onChange={(e) => form.setData('buyer_email', e.target.value)} placeholder="email@contoh.com" className={field} />{err.buyer_email && <span className="text-xs text-rose-400">{err.buyer_email}</span>}</label>
+
+                            <div>
+                                <Sec>Atur jumlah vote</Sec>
+                                <div className="mt-3 flex items-stretch gap-3">
+                                    <button type="button" onClick={() => setVotes(votes - 1)} disabled={votes <= s.min_votes} className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 disabled:opacity-40"><Minus className="h-5 w-5" /></button>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        min={s.min_votes}
+                                        max={MAX_VOTES}
+                                        value={gift ? String(gift.votes) : d.votes}
+                                        onChange={(e) => form.setData({ ...d, gift_id: null, votes: e.target.value.replace(/\D/g, '') })}
+                                        onBlur={() => !gift && setVotes(Number(d.votes) || s.min_votes)}
+                                        className="h-14 min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#050816] text-center text-2xl font-black outline-none focus:border-cyan-300/60"
+                                    />
+                                    <button type="button" onClick={() => setVotes(votes + 1)} disabled={votes >= MAX_VOTES} className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 disabled:opacity-40"><Plus className="h-5 w-5" /></button>
+                                </div>
+                                <p className="mt-2 text-xs text-slate-400">Minimal <b className="text-cyan-300">{nf(s.min_votes)}</b>, maksimal <b className="text-cyan-300">{nf(MAX_VOTES)}</b> vote per pembelian.</p>
+                                {err.votes && <span className="text-xs text-rose-400">{err.votes}</span>}
                             </div>
-                            {s.message_enabled && (
-                                <label className="block"><span className={label}>Pesan dukungan (opsional)</span>
-                                    <input value={d.message} maxLength={s.message_max} onChange={(e) => form.setData('message', e.target.value)} placeholder="Semangat terus!" className={field} />
-                                    <span className="mt-1 block text-right text-[11px] text-slate-500">{d.message.length}/{s.message_max}</span>
-                                </label>
-                            )}
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
-                                <div className="flex items-end justify-between"><span className="text-slate-300">Total pembayaran</span><span className="text-2xl font-black text-cyan-300">{rp(amount)}</span></div>
-                                <div className="mt-0.5 text-xs text-slate-400">{nf(votes)} vote</div>
-                                {hasBank ? (
-                                    <p className="mt-3 text-slate-300">Bayar lewat QRIS, e-wallet, virtual account, atau kartu. Vote masuk otomatis setelah pembayaran berhasil.</p>
-                                ) : <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">Voting sedang dijeda sementara. Pembayaran online belum tersedia.</p>}
-                                {payMsg && <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">{payMsg}</p>}
-                                {pendingCode && (
-                                    <button type="button" onClick={() => void pay(pendingCode)} disabled={paying} className="mt-3 w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-extrabold text-black disabled:opacity-60">
-                                        {paying ? 'Membuka...' : 'Lanjutkan pembayaran'}
-                                    </button>
-                                )}
+
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm">
+                                <div className="flex items-center justify-between"><span className="text-slate-300">Harga / vote</span><b>{rp(votes > 0 ? Math.round(base / votes) : s.price)}</b></div>
+                                <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3"><span className="text-slate-300">Total vote</span><b className="text-xl text-cyan-300">{rp(total)}</b></div>
                             </div>
+
+                            {payMsg && <p className="rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">{payMsg}</p>}
                             {(err.participant_id || err.gift_id) && <p className="rounded-xl bg-rose-400/10 p-3 text-sm font-bold text-rose-300">{err.participant_id ?? err.gift_id}</p>}
                         </div>
-                        <div className="border-t border-white/10 p-4">
-                            <button type="submit" disabled={!ok || !hasBank || form.processing || paying || !!pendingCode} className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 py-3.5 text-sm font-extrabold tracking-[0.25em] uppercase shadow-lg shadow-fuchsia-900/40 transition disabled:cursor-not-allowed disabled:opacity-40">{form.processing ? 'Mengirim…' : 'Kirim pesanan'}</button>
+
+                        <div className="flex flex-wrap items-center gap-3 border-t border-white/10 px-6 py-4">
+                            <div className="min-w-[10rem] flex-1">
+                                <div className="text-[11px] font-extrabold tracking-[0.25em] text-slate-400 uppercase">Total · {nf(votes)} vote</div>
+                                <div className="text-3xl font-black text-cyan-300">{rp(total)}</div>
+                                <div className="text-[11px] text-slate-400">Vote {rp(base)} + biaya layanan {fee_percent}% {rp(fee)}</div>
+                            </div>
+                            <button type="button" onClick={onClose} className="rounded-2xl border border-white/10 px-5 py-3.5 text-xs font-extrabold tracking-[0.25em] uppercase hover:bg-white/10">Batal</button>
+                            {pendingCode ? (
+                                <button type="button" onClick={() => void pay(pendingCode)} disabled={paying} className="rounded-2xl bg-amber-500 px-5 py-3.5 text-xs font-extrabold tracking-[0.2em] text-black uppercase disabled:opacity-60">
+                                    {paying ? 'Membuka...' : 'Lanjutkan pembayaran'}
+                                </button>
+                            ) : (
+                                <button type="submit" disabled={!ok || !online || form.processing || paying} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 py-3.5 text-xs font-extrabold tracking-[0.2em] uppercase shadow-lg shadow-fuchsia-900/40 transition disabled:cursor-not-allowed disabled:opacity-40">
+                                    <Zap className="h-4 w-4" /> {form.processing || paying ? 'Menyiapkan...' : 'Boost sekarang'}
+                                </button>
+                            )}
                         </div>
                     </>
                 )}
@@ -391,7 +470,7 @@ export default function VotingShow(props: Props) {
                 ))}
             </nav>
 
-            {buy && <BuyModal p={buy} props={props} onClose={() => setBuy(null)} />}
+            {buy && <BuyModal p={buy} rank={settings.show_ranking ? live.participants.findIndex((x) => x.id === buy.id) + 1 : 0} props={props} onClose={() => setBuy(null)} />}
         </div>
     );
 }

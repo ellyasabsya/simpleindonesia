@@ -92,7 +92,7 @@ class MidtransController extends Controller
         try {
             $token = $midtrans->snapToken($orderId, (int) $o->amount, [
                 'first_name' => $o->buyer_name,
-                'email' => filter_var($o->buyer_email, FILTER_VALIDATE_EMAIL) ? $o->buyer_email : null,
+                ...(filter_var($o->buyer_email, FILTER_VALIDATE_EMAIL) ? ['email' => $o->buyer_email] : []),
             ], [[
                 'id' => 'VOTE-'.$o->id,
                 'price' => (int) $o->amount,

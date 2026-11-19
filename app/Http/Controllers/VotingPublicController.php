@@ -160,6 +160,7 @@ class VotingPublicController extends Controller
                 ->map(fn ($r) => ['id' => (int) $r->id, 'emoji' => $r->emoji, 'name' => $r->name, 'votes' => (int) $r->votes, 'price' => (int) $r->price])->all(),
             'bank' => (array) \App\Models\Setting::bank(),
             'online' => \App\Models\Setting::votingOpen(),
+            'fee_percent' => \App\Models\Setting::serviceFeePercent(),
             'live' => $this->state($event, $s),
         ]);
     }
@@ -183,9 +184,9 @@ class VotingPublicController extends Controller
         $data = $request->validate([
             'participant_id' => ['required', 'integer'],
             'gift_id' => ['nullable', 'integer'],
-            'votes' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'votes' => ['nullable', 'integer', 'min:1', 'max:9990'],
             'buyer_name' => ['required', 'string', 'max:80'],
-            'buyer_email' => ['required', 'email:rfc,dns', 'max:120'],
+            'buyer_email' => ['nullable', 'email:rfc,dns', 'max:120'],
             'message' => ['nullable', 'string', 'max:200'],
         ], [
             'required' => ':attribute wajib diisi.', 'email' => 'Format email tidak valid.',
@@ -208,13 +209,16 @@ class VotingPublicController extends Controller
             $amount = $votes * (int) $s->price_per_vote;
         }
 
+        $fee = (int) round($amount * \App\Models\Setting::serviceFeePercent() / 100);
+        $amount += $fee;
+
         $msg = $s->message_enabled ? Str::limit(trim((string) ($data['message'] ?? '')), (int) $s->message_max, '') : null;
         $code = strtoupper(Str::random(10));
 
         DB::table('voting_orders')->insert([
             'code' => $code, 'event_id' => $event->id, 'participant_id' => (int) $data['participant_id'],
-            'gift_id' => $data['gift_id'] ?? null, 'buyer_name' => trim($data['buyer_name']), 'buyer_email' => $data['buyer_email'],
-            'votes' => $votes, 'amount' => $amount, 'message' => $msg ?: null, 'status' => 'menunggu',
+            'gift_id' => $data['gift_id'] ?? null, 'buyer_name' => trim($data['buyer_name']), 'buyer_email' => $data['buyer_email'] ?? '',
+            'votes' => $votes, 'amount' => $amount, 'service_fee' => $fee, 'message' => $msg ?: null, 'status' => 'menunggu',
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
