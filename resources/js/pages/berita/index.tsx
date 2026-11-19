@@ -29,6 +29,7 @@ export default function BeritaIndex({ news }: Props) {
     return (
         <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
             <Head title="Semua Berita" />
+            <style>{`@keyframes judulGradasi { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }`}</style>
             <PageBackground />
             <Navbar />
             <div className="relative z-10 pt-24">
@@ -37,7 +38,10 @@ export default function BeritaIndex({ news }: Props) {
                         <div className="h-1.5 w-24 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500" />
                         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
                             <div>
-                                <h1 className="bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 bg-clip-text text-4xl font-semibold tracking-tight text-transparent uppercase">
+                                <h1
+                                    className="bg-gradient-to-r from-rose-500 via-indigo-600 to-orange-500 bg-clip-text text-4xl font-semibold tracking-tight text-transparent uppercase"
+                                    style={{ backgroundSize: '200% auto', animation: 'judulGradasi 6s ease-in-out infinite alternate' }}
+                                >
                                     Semua Berita
                                 </h1>
                                 <p className="mt-4 text-xl text-slate-500 dark:text-slate-300">
