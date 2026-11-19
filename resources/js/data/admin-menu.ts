@@ -27,13 +27,13 @@ export const adminMenu: AdminMenuGroup[] = [
             { label: 'Manajemen Event', href: '/admin/events', icon: CalendarDays },
             { label: 'Review Event', href: '/admin/review', icon: ClipboardCheck },
             { label: 'Sistem Penilaian', href: '/admin/penilaian', icon: Star },
-            { label: 'Komentar', href: '/admin/komentar', icon: MessageSquare },
         ],
     },
     {
         title: 'Konten',
         items: [
             { label: 'Berita', href: '/admin/berita', icon: Newspaper },
+            { label: 'Komentar', href: '/admin/komentar', icon: MessageSquare },
         ],
     },
     {
