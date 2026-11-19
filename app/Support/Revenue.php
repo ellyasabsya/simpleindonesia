@@ -32,6 +32,18 @@ class Revenue
             $agg[$main]['total'] += (int) $s->total;
         }
 
+        // Vote lunas: harga vote = hak penyelenggara, biaya layanan = platform (sama seperti tiket).
+        $votes = DB::table('voting_orders')->where('status', 'lunas')
+            ->selectRaw('event_id, sum(amount - service_fee) as subtotal, sum(service_fee) as fee, sum(amount) as total')
+            ->groupBy('event_id')->get();
+        foreach ($votes as $v) {
+            $main = $parentOf[$v->event_id] ?? $v->event_id;
+            $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0];
+            $agg[$main]['subtotal'] += (int) $v->subtotal;
+            $agg[$main]['fee'] += (int) $v->fee;
+            $agg[$main]['total'] += (int) $v->total;
+        }
+
         $w = [];
         $wd = DB::table('withdrawals')->selectRaw('event_id, status, sum(amount) as amt')->groupBy('event_id', 'status')->get();
         foreach ($wd as $r) {
