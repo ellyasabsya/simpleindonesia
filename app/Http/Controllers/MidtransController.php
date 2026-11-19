@@ -47,13 +47,24 @@ class MidtransController extends Controller
             return response('invalid signature', 403);
         }
 
-        $vo = DB::table('voting_orders')->where('midtrans_order_id', $p['order_id'] ?? '')->first();
+        $oid = (string) ($p['order_id'] ?? '');
+        if (preg_match('/^PKT-(\d+)-\d+$/', $oid, $m)) {
+            return $this->eventNotification((int) $m[1], $p, $midtrans);
+        }
+
+        $vo = preg_match('/^VOT-([A-Z0-9]{10})-\d+$/', $oid, $m)
+            ? DB::table('voting_orders')->where('code', $m[1])->first()
+            : null;
         if ($vo) {
             return $this->votingNotification($vo, $p, $midtrans);
         }
 
-        $o = DB::table('ticket_orders')->where('midtrans_order_id', $p['order_id'] ?? '')->first();
+        $o = preg_match('/^(TKT-[A-Z0-9]{8})-\d+$/', $oid, $m)
+            ? DB::table('ticket_orders')->where('code', $m[1])->where('payment_method', 'midtrans')->first()
+            : null;
         if (! $o) {
+            \Illuminate\Support\Facades\Log::warning('Midtrans: notifikasi tanpa pesanan', ['order_id' => $oid, 'amount' => $p['gross_amount'] ?? null, 'status' => $p['transaction_status'] ?? null]);
+
             return response('ok');
         }
         if ((int) round((float) ($p['gross_amount'] ?? 0)) !== (int) $o->total) {
@@ -109,6 +120,28 @@ class MidtransController extends Controller
         }
 
         return response()->json(['status' => DB::table('ticket_orders')->where('id', $o->id)->value('status')]);
+    }
+
+    private function eventNotification(int $id, array $p, MidtransService $midtrans)
+    {
+        $e = \App\Models\Event::whereNull('parent_id')->find($id);
+        if (! $e) {
+            \Illuminate\Support\Facades\Log::warning('Midtrans: notifikasi paket tanpa event', ['order_id' => $p['order_id'] ?? null, 'amount' => $p['gross_amount'] ?? null]);
+
+            return response('ok');
+        }
+        if ((int) round((float) ($p['gross_amount'] ?? 0)) !== (int) ($e->package_snapshot['estimated_upfront'] ?? 0)) {
+            return response('amount mismatch', 400);
+        }
+        if ($midtrans->isPaid($p)) {
+            $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
+                ->update(['payment_status' => 'lunas', 'updated_at' => now()]);
+            if ($n > 0) {
+                \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
+            }
+        }
+
+        return response('ok');
     }
 
     /** Snap token untuk pesanan vote. */

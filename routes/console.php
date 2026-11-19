@@ -8,3 +8,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 \Illuminate\Support\Facades\Schedule::command('agenda:kirim-pengingat')->everyMinute()->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('midtrans:reconcile')->everyFiveMinutes();
