@@ -1735,6 +1735,7 @@ class JudgingController extends EventScopedController
         }
         $winnerCount = $row ? (int) $row->winner_count : 3;
         $locked = $row && ! empty($row->finalized_at);
+        $saved = $row && ! empty($row->saved_at);
         $n = count($points);
 
         $subs = $event->children()->orderBy('id')->get();
@@ -1846,25 +1847,46 @@ class JudgingController extends EventScopedController
                 if ($k === 'medals') {
                     foreach (array_keys($a['counts']) as $i) {
                         if ($a['counts'][$i] !== $b['counts'][$i]) {
-                            return [$b['counts'][$i] <=> $a['counts'][$i], $k];
+                            return [$b['counts'][$i] <=> $a['counts'][$i], $k, $i];
                         }
                     }
                 } elseif ($k === 'score') {
                     $x = round((float) ($a['score_total'] ?? 0), 2);
                     $y = round((float) ($b['score_total'] ?? 0), 2);
                     if ($x !== $y) {
-                        return [$y <=> $x, $k];
+                        return [$y <=> $x, $k, null];
                     }
                 } elseif ($k === 'wins') {
                     if ($a['counts'][0] !== $b['counts'][0]) {
-                        return [$b['counts'][0] <=> $a['counts'][0], $k];
+                        return [$b['counts'][0] <=> $a['counts'][0], $k, 0];
                     }
                 }
             }
 
-            return [0, null];
+            return [0, null, null];
         };
         $labels = ['medals' => 'jumlah juara 1, 2, 3', 'score' => 'total poin prestasi', 'wins' => 'jumlah kemenangan'];
+        $metric = fn (string $k, ?int $i) => $k === 'medals' ? 'jumlah Juara '.($i + 1) : ($k === 'score' ? 'total poin prestasi' : 'jumlah kemenangan');
+        $val = function (string $k, ?int $i, array $u): string {
+            if ($k === 'medals') {
+                return (string) $u['counts'][$i];
+            }
+            if ($k === 'score') {
+                return number_format((float) ($u['score_total'] ?? 0), 2, ',', '.');
+            }
+
+            return (string) $u['counts'][0];
+        };
+        $explain = function (array $hi, array $lo, bool $win) use ($crit, $metric, $val): ?string {
+            [$c, $k, $i] = $crit($hi, $lo);
+            if ($c === 0 || $k === null) {
+                return null;
+            }
+
+            return $win
+                ? 'Unggul atas '.$lo['school'].' pada '.$metric($k, $i).' ('.$val($k, $i, $hi).' berbanding '.$val($k, $i, $lo).')'
+                : 'Kalah dari '.$hi['school'].' pada '.$metric($k, $i).' ('.$val($k, $i, $lo).' berbanding '.$val($k, $i, $hi).')';
+        };
 
         $list = array_values($unit);
         usort($list, function ($a, $b) use ($crit) {
@@ -1881,19 +1903,26 @@ class JudgingController extends EventScopedController
         $standings = [];
         $lastRank = 0;
         foreach ($list as $i => $u) {
+            $prev = $i > 0 ? $list[$i - 1] : null;
+            $next = $list[$i + 1] ?? null;
             $by = null;
+            $why = null;
             $equal = false;
-            if ($i > 0 && $list[$i - 1]['points'] === $u['points']) {
-                [$c, $kk] = $crit($list[$i - 1], $u);
+            if ($prev && $prev['points'] === $u['points']) {
+                [$c, $kk] = $crit($prev, $u);
                 if ($c === 0) {
                     $equal = true;
+                    $why = 'Seri dengan '.$prev['school'].': seluruh kriteria sama';
                 } else {
                     $by = $labels[$kk] ?? null;
+                    $why = $explain($prev, $u, false);
                 }
+            } elseif ($next && $next['points'] === $u['points']) {
+                $why = $explain($u, $next, true) ?? 'Seri dengan '.$next['school'].': seluruh kriteria sama';
             }
             $rank = ($equal && $tbShared) ? $lastRank : $i + 1;
             $lastRank = $rank;
-            $st = ['rank' => $rank, 'shared' => false, 'by' => $by, 'tie' => false] + $u;
+            $st = ['rank' => $rank, 'shared' => false, 'by' => $by, 'why' => $why, 'tie' => false] + $u;
             if ($equal && ! $tbShared) {
                 $st['tie'] = true;
                 $standings[$i - 1]['tie'] = true;
@@ -1912,7 +1941,7 @@ class JudgingController extends EventScopedController
                 $unresolved = true;
             }
         }
-        if ($locked && ! empty($row->snapshot_json)) {
+        if (($locked || $saved) && ! empty($row->snapshot_json)) {
             $standings = json_decode((string) $row->snapshot_json, true) ?: $standings;
         }
         $sk = DB::table('judging_sk')->where('event_id', $event->id)->first();
@@ -1943,6 +1972,8 @@ class JudgingController extends EventScopedController
             $checks[] = ['ok' => ! $unresolved, 'title' => 'Tidak ada seri yang belum terpecahkan di batas juara umum',
                 'detail' => $unresolved ? 'Ada peserta dengan hasil sama di batas juara umum. Ubah metode pemecah seri atau aktifkan juara bersama.' : 'Tidak ada seri di batas juara umum.'];
         }
+        $checks[] = ['ok' => $saved || $locked, 'saveStep' => true, 'title' => 'Hasil juara umum sudah disimpan',
+            'detail' => ($saved || $locked) ? 'Hasil juara umum sudah disimpan.' : 'Klik Simpan hasil di klasemen juara umum.'];
         $ties = false;
         foreach ($standings as $st) {
             if (! empty($st['shared']) && $st['rank'] <= $winnerCount) {
@@ -1954,6 +1985,9 @@ class JudgingController extends EventScopedController
             'points' => $points,
             'winner_count' => $winnerCount,
             'tiebreak' => ['order' => $tbOrder, 'shared' => $tbShared],
+            'saved' => (bool) $saved,
+            'saved_at' => $saved ? \Illuminate\Support\Carbon::parse($row->saved_at)->format('d/m/Y, H.i') : null,
+            'saved_by' => $saved ? $row->saved_by : null,
             'locked' => (bool) $locked,
             'finalized_at' => $locked ? \Illuminate\Support\Carbon::parse($row->finalized_at)->format('d/m/Y, H.i') : null,
             'finalized_by' => $locked ? $row->finalized_by : null,
@@ -1986,12 +2020,54 @@ class JudgingController extends EventScopedController
         if ($row && ! empty($row->finalized_at)) {
             return back()->with('error', 'Juara umum sudah ditetapkan. Pengaturan tidak bisa diubah.');
         }
+        if ($row && ! empty($row->saved_at)) {
+            return back()->with('error', 'Hasil juara umum sudah disimpan. Buka kembali hasilnya untuk mengubah pengaturan.');
+        }
         DB::table('judging_overall')->updateOrInsert(
             ['event_id' => $event->id],
             ['points_json' => json_encode(array_map('intval', $data['points'])), 'winner_count' => (int) $data['winner_count'], 'tiebreak_json' => json_encode(['order' => array_values($data['tiebreak']), 'shared' => (bool) $data['tie_shared']]), 'created_at' => now(), 'updated_at' => now()]
         );
 
         return back()->with('success', 'Pengaturan juara umum disimpan.');
+    }
+
+    public function saveOverallResult(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $ov = $this->overallData($event);
+        if ($ov['locked']) {
+            return back()->with('error', 'Juara umum sudah ditetapkan.');
+        }
+        $failed = array_values(array_map(fn ($ch) => $ch['title'].' ('.$ch['detail'].')', array_filter($ov['checks'], fn ($ch) => ! $ch['ok'] && empty($ch['saveStep']))));
+        if ($failed) {
+            return back()->with('error', 'Hasil juara umum belum bisa disimpan: '.implode(' ', $failed));
+        }
+        DB::table('judging_overall')->updateOrInsert(
+            ['event_id' => $event->id],
+            [
+                'points_json' => json_encode($ov['points']), 'winner_count' => $ov['winner_count'],
+                'snapshot_json' => json_encode($ov['standings']),
+                'saved_at' => now(), 'saved_by' => $request->user()?->name,
+                'created_at' => now(), 'updated_at' => now(),
+            ]
+        );
+
+        return back()->with('success', 'Hasil juara umum disimpan. SK sekarang bisa ditetapkan.');
+    }
+
+    public function reopenOverall(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
+        if (! $row || empty($row->saved_at)) {
+            return back()->with('error', 'Hasil juara umum belum disimpan.');
+        }
+        if (! empty($row->finalized_at)) {
+            return back()->with('error', 'Juara umum sudah ditetapkan dan tidak bisa dibuka kembali.');
+        }
+        DB::table('judging_overall')->where('event_id', $event->id)->update(['saved_at' => null, 'saved_by' => null, 'snapshot_json' => null, 'updated_at' => now()]);
+
+        return back()->with('success', 'Hasil juara umum dibuka kembali. Simpan ulang sebelum menetapkan SK.');
     }
 
     public function finalizeOverall(Request $request, Event $event): RedirectResponse

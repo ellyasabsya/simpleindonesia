@@ -316,6 +316,24 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
     const can = !locked && okBlock && !dirty && filled && confirmed && !busy;
     const winners = ov.standings.filter((s) => s.rank <= ov.winner_count);
     const ranked = groups.reduce((a, g) => a + g.categories.reduce((b, x) => b + x.rows.length, 0), 0);
+    const saved = !!(ov as any).saved;
+    const blockers = ov.checks.filter((x) => !x.ok && !(x as any).saveStep);
+    const canSaveResult = !locked && !saved && blockers.length === 0 && !dirty && !busy;
+    const saveResult = () => {
+        if (!canSaveResult) return;
+        setErr('');
+        router.post(`${base}/juara-umum/simpan`, {}, {
+            preserveScroll: true,
+            onStart: () => setBusy(true),
+            onFinish: () => setBusy(false),
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan hasil.')),
+        });
+    };
+    const reopenResult = () => {
+        if (locked || !saved || busy) return;
+        if (!confirm('Buka kembali hasil juara umum? Pengaturan bisa diubah lagi dan hasil harus disimpan ulang sebelum SK ditetapkan.')) return;
+        router.post(`${base}/juara-umum/buka`, {}, { preserveScroll: true, onStart: () => setBusy(true), onFinish: () => setBusy(false) });
+    };
 
     const submit = () => {
         if (!confirm(`Tetapkan hasil ${title} dan juara umum? Semua kategori di semua sub-event akan dikunci dan tidak bisa diubah lagi.`)) return;
@@ -436,12 +454,27 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                 </div>
             ))}
 
-            <OverallSettings points={ov.points} winnerCount={ov.winner_count} tiebreak={(ov as any).tiebreak?.order ?? ['medals']} tieShared={(ov as any).tiebreak?.shared ?? true} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
+            <OverallSettings points={ov.points} winnerCount={ov.winner_count} tiebreak={(ov as any).tiebreak?.order ?? ['medals']} tieShared={(ov as any).tiebreak?.shared ?? true} locked={ov.locked || saved} note={saved && !ov.locked ? 'Hasil juara umum sudah disimpan. Klik "Buka kembali" di klasemen untuk mengubah pengaturan.' : null} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
 
             <div className={`${card} space-y-4 p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
-                    {ov.provisional && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span>}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {saved && !locked ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-900">Tersimpan · {(ov as any).saved_at}</span> : ov.provisional ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span> : null}
+                        {!locked && !saved && (
+                            <button type="button" onClick={saveResult} disabled={!canSaveResult} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white shadow transition hover:bg-indigo-700 disabled:opacity-50">
+                                {busy ? 'Menyimpan…' : 'Simpan hasil'}
+                            </button>
+                        )}
+                        {!locked && saved && (
+                            <button type="button" onClick={reopenResult} disabled={busy} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200">
+                                Buka kembali
+                            </button>
+                        )}
+                    </div>
+                    <p className="w-full text-xs font-semibold text-slate-500 dark:text-slate-300">
+                        {locked ? 'Juara umum sudah ditetapkan.' : saved ? 'Hasil sudah disimpan. SK bisa ditetapkan.' : blockers.length > 0 ? 'Belum bisa disimpan: ' + blockers.map((b) => b.title).join('; ') + '.' : dirty ? 'Simpan pengaturan dulu sebelum menyimpan hasil.' : 'Simpan hasil dulu, baru SK bisa ditetapkan.'}
+                    </p>
                 </div>
                 {ov.standings.length === 0 ? (
                     <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada peringkat yang bisa dihitung.</p>
@@ -462,7 +495,14 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                         <td className="py-3 pr-3 font-extrabold">{s.school}{(s as any).pid ? <span className="block text-xs font-semibold text-slate-400">ID {(s as any).pid}</span> : null}</td>
                                         <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
                                         {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
-                                        <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}{s.shared ? <span className="ml-2 text-xs font-bold text-amber-700">Juara bersama</span> : (s as any).by ? <span className="ml-2 text-xs font-semibold text-slate-500">Dipecah: {(s as any).by}</span> : null}{(s as any).tie ? <span className="ml-2 text-xs font-bold text-rose-600">Seri belum terpecahkan</span> : null}</td>
+                                        <td className="py-3">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}
+                                                {s.shared ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">Juara bersama</span> : null}
+                                                {(s as any).tie ? <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700">Seri belum terpecahkan</span> : null}
+                                            </div>
+                                            {(s as any).why ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{(s as any).why}</p> : null}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

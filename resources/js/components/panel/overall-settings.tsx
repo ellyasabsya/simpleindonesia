@@ -23,6 +23,7 @@ type Props = {
     tieShared: boolean;
     locked: boolean;
     finalizedAt: string | null;
+    note?: string | null;
     base: string;
     onDirty?: (dirty: boolean) => void;
 };
@@ -31,7 +32,7 @@ const field = 'w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-c
 const sq = 'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5';
 const sqs = 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-30 dark:border-white/10 dark:hover:bg-white/5';
 
-export default function OverallSettings({ points, winnerCount, tiebreak, tieShared, locked, finalizedAt, base, onDirty }: Props) {
+export default function OverallSettings({ points, winnerCount, tiebreak, tieShared, locked, finalizedAt, note, base, onDirty }: Props) {
     const key = points.join(',') + '|' + winnerCount + '|' + tiebreak.join(',') + '|' + tieShared;
     const [pts, setPts] = useState<string[]>(points.map(String));
     const [wc, setWc] = useState<string>(String(winnerCount));
@@ -104,6 +105,8 @@ export default function OverallSettings({ points, winnerCount, tiebreak, tieShar
                     </span>
                 )}
             </div>
+
+            {note && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">{note}</p>}
 
             <div className="mt-4 grid gap-6 sm:grid-cols-2">
                 <div>

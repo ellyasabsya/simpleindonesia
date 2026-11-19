@@ -222,6 +222,8 @@ Route::middleware([
         Route::post('event/{event}/penilaian/sk/tetapkan-lomba', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeSkLomba'])->whereNumber('event')->name('event.judging.finalizeSkLomba');
         Route::put('event/{event}/penilaian/juara-umum', [\App\Http\Controllers\Panel\JudgingController::class, 'saveOverall'])->whereNumber('event')->name('event.judging.saveOverall');
         Route::post('event/{event}/penilaian/juara-umum/tetapkan', [\App\Http\Controllers\Panel\JudgingController::class, 'finalizeOverall'])->whereNumber('event')->name('event.judging.finalizeOverall');
+        Route::post('event/{event}/penilaian/juara-umum/simpan', [\App\Http\Controllers\Panel\JudgingController::class, 'saveOverallResult'])->whereNumber('event')->name('event.judging.saveOverallResult');
+        Route::post('event/{event}/penilaian/juara-umum/buka', [\App\Http\Controllers\Panel\JudgingController::class, 'reopenOverall'])->whereNumber('event')->name('event.judging.reopenOverall');
         Route::put('event/{event}/penilaian/penalti/{pen}', [\App\Http\Controllers\Panel\JudgingController::class, 'decidePenalty'])->whereNumber(['event', 'pen'])->name('event.judging.decidePenalty');
         Route::get('event/{event}/penilaian/rekap/excel', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapExcel'])->whereNumber('event')->name('event.judging.rekapExcel');
         Route::get('event/{event}/penilaian/rekap/lembar', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembar'])->whereNumber('event')->name('event.judging.rekapLembar');
