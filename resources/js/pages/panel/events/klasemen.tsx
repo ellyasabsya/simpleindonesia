@@ -13,6 +13,7 @@ type Props = {
     ov: { points: number[]; winner_count: number; standings: Standing[]; locked: boolean; saved?: boolean; saved_at?: string | null; provisional?: boolean };
     category: Cat | null;
     nav: Nav[];
+    single?: boolean;
 };
 type Box = [number, number, number, number];
 
@@ -95,7 +96,7 @@ function PrintHit({ g, b, label }: { g: G; b: Box; label: string }) {
     return <button type="button" aria-label={label} onClick={() => window.print()} className="print:hidden" style={{ ...g.box(b), zIndex: 20, borderRadius: g.cq(30) }} />;
 }
 
-function NavMenu({ g, b, self, nav, category, bare }: { g: G; b: Box; self: string; nav: Nav[]; category: Cat | null; bare?: boolean }) {
+function NavMenu({ g, b, self, nav, category, bare, single }: { g: G; b: Box; self: string; nav: Nav[]; category: Cat | null; bare?: boolean; single?: boolean }) {
     const [open, setOpen] = useState(false);
     const label = category ? `${category.sub} · ${category.name || 'Umum'}` : 'Juara umum';
     const item = (on: boolean): CSSProperties => ({ display: 'block', padding: `${g.cq(8)} ${g.cq(16)}`, fontSize: g.cq(16), fontWeight: on ? 800 : 600, color: on ? '#1d4ed8' : '#0f2c78', background: on ? '#eaf1ff' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
@@ -112,7 +113,7 @@ function NavMenu({ g, b, self, nav, category, bare }: { g: G; b: Box; self: stri
             </button>
             {open && (
                 <div className="bg-white/95 shadow-xl ring-1 ring-blue-100" style={{ position: 'absolute', top: '112%', left: 0, right: 0, maxHeight: g.cq(320), overflowY: 'auto', borderRadius: g.cq(16), padding: `${g.cq(4)} 0` }}>
-                    <Link href={self} style={item(!category)}>Juara umum</Link>
+                    {!single && <Link href={self} style={item(!category)}>Juara umum</Link>}
                     {nav.map((n) => (
                         <Link key={`${n.sub_id}-${n.id}`} href={`${self}?sub=${n.sub_id}&kategori=${n.id}`} style={item(!!category && category.sub_id === n.sub_id && category.id === n.id)}>
                             {n.sub} · {n.name ? n.name : 'Umum'}
@@ -172,7 +173,7 @@ function PodCard({ g, b, value, line, ps, ls }: { g: G; b: Box; value: string; l
     );
 }
 
-function PodiumPage({ title, back, self, ov, category, nav, status }: Props & { status: string }) {
+function PodiumPage({ title, back, self, ov, category, nav, status, single }: Props & { status: string }) {
     const g = geo(W, H);
     const pods: Pod[] = category
         ? category.table
@@ -203,7 +204,7 @@ function PodiumPage({ title, back, self, ov, category, nav, status }: Props & { 
             <Hit g={g} b={[40, 10, 350, 95]} href="/" label="SIMPLE" />
             <Hit g={g} b={[1040, 28, 1170, 70]} href="/panel" label="Beranda" />
             <Hit g={g} b={[1175, 28, 1312, 70]} href={self} label="Klasemen juara umum" />
-            <NavMenu g={g} b={[1336, 28, 1632, 70]} self={self} nav={nav} category={category} bare />
+            <NavMenu g={g} b={[1336, 28, 1632, 70]} self={self} nav={nav} category={category} bare single={single} />
             <StatusPill g={g} b={[1336, 78, 1632, 106]} text={status} />
 
             <GoldText g={g} b={[600, 98, 1072, 168]} size={ts}>{titleText}</GoldText>

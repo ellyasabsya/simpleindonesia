@@ -645,6 +645,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     if (!sk) return <div className={`${card} p-6 text-sm`}>Data SK belum tersedia.</div>;
 
     const locked = sk.finalized;
+    const klasemenUrl = base.replace(/\/penilaian\/?$/, '/klasemen');
     const filled = number.trim() !== '' && date !== '' && signer.trim() !== '' && position.trim() !== '';
     const okBlock = sk.blockers.length === 0;
     const can = !locked && okBlock && filled && confirmed && !busy;
@@ -675,7 +676,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua kategori lomba ini{sk.categories.length > 1 ? ` (${sk.categories.map((c) => c.name).filter(Boolean).join(', ')})` : ''}.</p>
                         </div>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span>
+                    <div className="flex items-center gap-2"><Link href={klasemenUrl} className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200">Klasemen</Link><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span></div>
                 </div>
 
                 {locked ? (
@@ -707,7 +708,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                         <h3 className="flex items-center gap-2 text-lg font-extrabold"><span className={`h-3 w-3 rounded-full ${c.locked ? 'bg-emerald-500' : c.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {c.name ? `Kategori ${c.name}` : sk.title}</h3>
                         <div className="flex items-center gap-2">
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${c.locked ? 'bg-emerald-100 text-emerald-900' : c.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{c.locked ? 'Ditetapkan' : c.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
-                            <button type="button" onClick={() => setPodium((p) => ({ ...p, [c.id]: !p[c.id] }))} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-extrabold hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5">{podium[c.id] ? 'Tutup podium' : 'Lihat podium'}</button>
+                            
                         </div>
                     </div>
 
@@ -730,18 +731,9 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                         );
                     })()}
 
-                    <p className="ringkas-kat text-sm text-slate-700 dark:text-slate-200">
-                        {c.rows.filter((r) => r.rank <= 3).length === 0
-                            ? <span className="text-slate-500">Belum ada peringkat.</span>
-                            : c.rows.filter((r) => r.rank <= 3).map((r, k) => (
-                                <span key={k} className="mr-4 inline-block"><b>{r.rank}{r.shared ? ' =' : ''}.</b> {r.name || r.code} <span className="font-black">{lsNf(r.score)}</span></span>
-                            ))}
-                    </p>
-                    <details className="group rounded-2xl border border-slate-200 px-4 py-2 dark:border-white/10">
-                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-indigo-700">
-                            <span>Tabel lengkap ({c.table.length} tim)</span>
-                            <span className="text-xs"><span className="group-open:hidden">Lihat</span><span className="hidden group-open:inline">Tutup</span></span>
-                        </summary>
+                    
+                    <div className="mt-3">
+                        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {c.table.length} tim</p>
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[760px] text-left text-sm">
                             <thead>
@@ -767,7 +759,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             </tbody>
                         </table>
                     </div>
-                    </details>
+                    </div>
                 </div>
             ))}
 

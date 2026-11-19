@@ -2035,10 +2035,23 @@ class JudgingController extends EventScopedController
     {
         $parent = $event->parent_id ? Event::findOrFail($event->parent_id) : $event;
         $this->guard($request, $parent);
-        $ov = $this->overallData($parent);
+        $single = ! $parent->children()->exists();
+        if ($single) {
+            $skd = $this->skLombaData($parent);
+            $ov = [
+                'points' => [], 'winner_count' => 0, 'standings' => [], 'locked' => (bool) $skd['finalized'], 'saved' => false, 'saved_at' => null, 'provisional' => false,
+                'groups' => [['sub_id' => (int) $parent->id, 'sub' => $parent->title, 'categories' => $skd['categories']]],
+            ];
+        } else {
+            $ov = $this->overallData($parent);
+        }
 
         $sub = $request->query('sub');
         $kid = $request->query('kategori');
+        if ($single && $sub === null && $kid === null && ! empty($ov['groups'][0]['categories'])) {
+            $sub = $parent->id;
+            $kid = $ov['groups'][0]['categories'][0]['id'];
+        }
         $nav = [];
         $cat = null;
         foreach ($ov['groups'] as $g) {
@@ -2062,6 +2075,7 @@ class JudgingController extends EventScopedController
             ],
             'category' => $cat,
             'nav' => $nav,
+            'single' => $single,
         ]);
     }
 
