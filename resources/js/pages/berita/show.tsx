@@ -68,7 +68,8 @@ function BeritaShowInner({
     return (
         <div className="mx-auto max-w-5xl p-6">
             <Head title={news.title} />
-            <article className="mx-auto max-w-3xl px-4 py-10">
+            <div className="mx-auto max-w-3xl space-y-6 px-4 py-10">
+            <article className="rounded-2xl border border-neutral-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900 p-6 sm:p-10">
                 <Link href="/berita" className="text-sm text-gray-500 hover:underline">
                     &larr; Semua berita
                 </Link>
@@ -93,7 +94,8 @@ function BeritaShowInner({
                     </button>
                 </div>
 
-                <section className="mt-10">
+                </article>
+            <section className="rounded-2xl border border-neutral-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900 p-6 sm:p-8">
                     <h2 className="text-xl font-semibold">Komentar ({comments.length})</h2>
 
                     {viewer ? (
@@ -126,7 +128,7 @@ function BeritaShowInner({
 
                     <div className="mt-6 space-y-4">
                         {comments.map((c) => (
-                            <div key={c.id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                            <div key={c.id} className="rounded-xl border border-neutral-200/70 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/5">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="font-medium">{c.name}</span>
                                     <span className="text-xs text-gray-500">{c.date}</span>
@@ -149,7 +151,7 @@ function BeritaShowInner({
                         ))}
                     </div>
                 </section>
-            </article>
+            </div>
         </div>
     );
 }
