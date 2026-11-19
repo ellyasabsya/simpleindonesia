@@ -12,7 +12,7 @@ class Event extends Model
     public const PUBLISHED = 'published';
     public const REJECTED = 'rejected';
 
-    protected $fillable = [ 'team_per_row', 'team_leaders',  'team_slots', 'competition_type', 'team_size',  'bank_name', 'bank_account_number', 'bank_account_name', 'parent_id', 'sub_order', 'participant_quota', 'registration_method', 'registration_fee', 'contact_name', 'contact_phone', 'contact_email', 'contact_position', 
+    protected $fillable = [ 'terms_accepted_at', 'revenue_share_accepted_at', 'team_per_row', 'team_leaders',  'team_slots', 'competition_type', 'team_size',  'bank_name', 'bank_account_number', 'bank_account_name', 'parent_id', 'sub_order', 'participant_quota', 'registration_method', 'registration_fee', 'contact_name', 'contact_phone', 'contact_email', 'contact_position', 
         'institution_id', 'package_id', 'title', 'slug', 'category', 'description', 'location',
         'starts_at', 'ends_at', 'poster_path', 'juknis_path', 'status', 'rejection_reason', 'reviewed_at', 'package_snapshot', 'payment_status',
     ];

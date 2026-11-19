@@ -117,7 +117,11 @@ class EventController extends Controller
             'assessment_addon' => ['nullable', 'boolean'],
             'judge_addon' => ['nullable', 'boolean'],
             'subs' => ['nullable', 'array', 'max:50'],
+            'agree_terms' => ['accepted'],
         ];
+        if ($package->payment_type === 'revenue_share') {
+            $rules['agree_revenue'] = ['accepted'];
+        }
         if ($series) {
             $rules += [
                 'subs.*.title' => ['required', 'string', 'max:150'],
@@ -168,6 +172,8 @@ class EventController extends Controller
             'starts_at.after_or_equal' => 'Tanggal mulai tidak boleh di masa lalu.',
             'ends_at.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'subs.*.ends_at.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
+            'agree_terms.accepted' => 'Anda harus menyetujui syarat & ketentuan sebelum mengajukan event.',
+            'agree_revenue.accepted' => 'Anda harus menyetujui skema bagi hasil sebelum mengajukan event.',
         ];
 
         if ($package->payment_type === 'revenue_share') {
@@ -331,6 +337,8 @@ class EventController extends Controller
                 : null,
             'registration_method' => $d['registration_method'],
             'registration_fee' => (int) ($d['registration_fee'] ?? 0),
+            'terms_accepted_at' => now(),
+            'revenue_share_accepted_at' => request()->boolean('agree_revenue') ? now() : null,
             'bank_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_name'] ?? null) : null,
             'bank_account_number' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_number'] ?? null) : null,
             'bank_account_name' => $d['registration_method'] === 'transfer_manual' ? ($d['bank_account_name'] ?? null) : null,
