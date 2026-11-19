@@ -20,28 +20,44 @@ class Revenue
 
         $parentOf = Event::whereNotNull('parent_id')->pluck('parent_id', 'id')->all();
 
+        // Tanggal selesai terakhir per event utama (event utama + semua sub-event).
+        $endOf = [];
+        foreach (Event::select('id', 'parent_id', 'ends_at')->get() as $ev) {
+            if (! $ev->ends_at) {
+                continue;
+            }
+            $t = \Illuminate\Support\Carbon::parse($ev->ends_at);
+            $k = $ev->parent_id ?? $ev->id;
+            if (! isset($endOf[$k]) || $t->gt($endOf[$k])) {
+                $endOf[$k] = $t;
+            }
+        }
+        $holdDays = (int) config('revenue.hold_days', 3);
+
         $agg = [];
         $sales = DB::table('ticket_orders')->where('status', 'lunas')
-            ->selectRaw('event_id, sum(subtotal) as subtotal, sum(fee) as fee, sum(total) as total')
+            ->selectRaw('event_id, sum(subtotal) as subtotal, sum(fee) as fee, sum(total) as total, sum(mdr_fee) as mdr')
             ->groupBy('event_id')->get();
         foreach ($sales as $s) {
             $main = $parentOf[$s->event_id] ?? $s->event_id;
-            $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0];
+            $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0, 'mdr' => 0];
             $agg[$main]['subtotal'] += (int) $s->subtotal;
             $agg[$main]['fee'] += (int) $s->fee;
             $agg[$main]['total'] += (int) $s->total;
+            $agg[$main]['mdr'] += (int) $s->mdr;
         }
 
         // Vote lunas: harga vote = hak penyelenggara, biaya layanan = platform (sama seperti tiket).
         $votes = DB::table('voting_orders')->where('status', 'lunas')
-            ->selectRaw('event_id, sum(amount - service_fee) as subtotal, sum(service_fee) as fee, sum(amount) as total')
+            ->selectRaw('event_id, sum(amount - service_fee) as subtotal, sum(service_fee) as fee, sum(amount) as total, sum(mdr_fee) as mdr')
             ->groupBy('event_id')->get();
         foreach ($votes as $v) {
             $main = $parentOf[$v->event_id] ?? $v->event_id;
-            $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0];
+            $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0, 'mdr' => 0];
             $agg[$main]['subtotal'] += (int) $v->subtotal;
             $agg[$main]['fee'] += (int) $v->fee;
             $agg[$main]['total'] += (int) $v->total;
+            $agg[$main]['mdr'] += (int) $v->mdr;
         }
 
         $w = [];
@@ -53,9 +69,23 @@ class Revenue
         $rows = [];
         $packagePaid = 0;
         $packageCount = 0;
+        $packageMdr = 0;
+        $packageRefunded = 0;
+        $packageRefundedCount = 0;
 
         foreach ($mains as $e) {
             $snap = $e->package_snapshot ?? [];
+
+            if (in_array($e->payment_status, ['lunas', 'dikembalikan'], true)) {
+                $packageMdr += (int) $e->mdr_fee;
+            }
+            if ($e->payment_status === 'dikembalikan') {
+                $refAmt = (int) ($snap['estimated_upfront'] ?? 0);
+                if ($refAmt > 0) {
+                    $packageRefunded += $refAmt;
+                    $packageRefundedCount++;
+                }
+            }
 
             if ($e->payment_status === 'lunas') {
                 $amt = (int) ($snap['estimated_upfront'] ?? 0);
@@ -65,7 +95,7 @@ class Revenue
                 }
             }
 
-            $a = $agg[$e->id] ?? ['subtotal' => 0, 'fee' => 0, 'total' => 0];
+            $a = $agg[$e->id] ?? ['subtotal' => 0, 'fee' => 0, 'total' => 0, 'mdr' => 0];
             $x = $w[$e->id] ?? [];
             if ($a['subtotal'] === 0 && ! $x) {
                 continue;
@@ -77,6 +107,9 @@ class Revenue
             $menunggu = $x['menunggu'] ?? 0;
             $disetujui = $x['disetujui'] ?? 0;
             $ditransfer = $x['ditransfer'] ?? 0;
+            $free = max(0, $entitlement - $menunggu - $disetujui - $ditransfer);
+            $releaseAt = isset($endOf[$e->id]) ? $endOf[$e->id]->copy()->addDays($holdDays) : null;
+            $held = $releaseAt !== null && now()->lt($releaseAt);
 
             $rows[] = [
                 'id' => $e->id,
@@ -88,13 +121,16 @@ class Revenue
                 'subtotal' => $a['subtotal'],
                 'fee' => $a['fee'],
                 'total' => $a['total'],
+                'mdr' => $a['mdr'],
                 'share' => $share,
                 'entitlement' => $entitlement,
                 'transferred' => $ditransfer,
                 'processing' => $menunggu + $disetujui,
                 'pending' => $menunggu,
                 'approved' => $disetujui,
-                'available' => max(0, $entitlement - $menunggu - $disetujui - $ditransfer),
+                'available' => $held ? 0 : $free,
+                'held' => $held ? $free : 0,
+                'release_at' => $releaseAt?->toIso8601String(),
             ];
         }
 
@@ -102,6 +138,7 @@ class Revenue
 
         $fee = (int) $rows->sum('fee');
         $share = (int) $rows->sum('share');
+        $mdr = (int) $rows->sum('mdr') + $packageMdr;
 
         return [
             'balances' => $rows,
@@ -112,6 +149,11 @@ class Revenue
                 'package' => $packagePaid,
                 'package_count' => $packageCount,
                 'platform' => $fee + $share + $packagePaid,
+                'mdr' => $mdr,
+                'platform_net' => $fee + $share + $packagePaid - $mdr,
+                'package_refunded' => $packageRefunded,
+                'package_refunded_count' => $packageRefundedCount,
+                'held' => (int) $rows->sum('held'),
                 'entitlement' => (int) $rows->sum('entitlement'),
                 'transferred' => (int) $rows->sum('transferred'),
                 'processing' => (int) $rows->sum('approved'),
