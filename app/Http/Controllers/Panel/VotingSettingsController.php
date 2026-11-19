@@ -25,7 +25,16 @@ class VotingSettingsController extends Controller
 
     private function settings(int $eventId): object
     {
-        DB::table('voting_settings')->insertOrIgnore(['event_id' => $eventId, 'created_at' => now(), 'updated_at' => now()]);
+        if (DB::table('voting_settings')->insertOrIgnore(['event_id' => $eventId, 'created_at' => now(), 'updated_at' => now()]) > 0) {
+            $ppv = (int) (DB::table('voting_settings')->where('event_id', $eventId)->value('price_per_vote') ?: 1000);
+            foreach ([['🔥', 'Api', 10], ['🐻', 'Beruang', 20], ['🚀', 'Roket', 50], ['🦁', 'Singa', 100]] as [$emoji, $name, $votes]) {
+                DB::table('voting_gifts')->insert([
+                    'event_id' => $eventId, 'emoji' => $emoji, 'name' => $name, 'votes' => $votes,
+                    'price' => $votes * $ppv, 'active' => 1, 'auto_price' => 1,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        }
 
         return DB::table('voting_settings')->where('event_id', $eventId)->first();
     }
@@ -103,6 +112,11 @@ class VotingSettingsController extends Controller
         ]);
         $this->settings($event->id);
         DB::table('voting_settings')->where('event_id', $event->id)->update($data + ['updated_at' => now()]);
+        $ppv = (int) DB::table('voting_settings')->where('event_id', $event->id)->value('price_per_vote');
+        if ($ppv > 0) {
+            DB::table('voting_gifts')->where('event_id', $event->id)->where('auto_price', 1)
+                ->update(['price' => DB::raw('votes * '.$ppv), 'updated_at' => now()]);
+        }
 
         return back()->with('success', 'Pengaturan voting disimpan.');
     }
@@ -255,7 +269,12 @@ class VotingSettingsController extends Controller
     {
         $this->guard($request, $event);
         $this->owned('voting_gifts', $event->id, $item);
-        DB::table('voting_gifts')->where('id', $item)->update($this->giftData($request) + ['updated_at' => now()]);
+        $gd = $this->giftData($request);
+        $old = DB::table('voting_gifts')->where('id', $item)->first();
+        if ($old && isset($gd['price']) && (int) $gd['price'] !== (int) $old->price) {
+            $gd['auto_price'] = 0;
+        }
+        DB::table('voting_gifts')->where('id', $item)->update($gd + ['updated_at' => now()]);
 
         return back()->with('success', 'Gift diperbarui.');
     }
