@@ -61,7 +61,7 @@ class TicketSeriesController extends Controller
     public function cards(): JsonResponse
     {
         $events = Event::where('status', Event::PUBLISHED)
-            ->where('registration_method', 'ticket')
+            ->whereIn('registration_method', ['ticket', 'transfer_manual'])
             ->where('ticket_sales_open', true)
             ->whereHas('ticketTypes')
             ->with('ticketTypes')
