@@ -1,5 +1,5 @@
-import { Head } from '@inertiajs/react';
-import { Moon, Sun } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { ArrowLeft, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import Avatar from '@/components/user/avatar';
@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function JuriLayout({ title, judgeName, children }: { title: string; judgeName: string; children: ReactNode }) {
     const { dark, toggle } = useTheme();
+    const loggedIn = Boolean(usePage<{ auth?: { user?: unknown } }>().props.auth?.user);
 
     return (
         <>
@@ -22,6 +23,15 @@ export default function JuriLayout({ title, judgeName, children }: { title: stri
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {loggedIn && (
+                            <Link
+                                href="/juri-saya"
+                                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-orange-500/30 ring-1 ring-white/30 transition hover:-translate-y-0.5"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                <span className="hidden sm:inline">Panel juri</span>
+                            </Link>
+                        )}
                         <button onClick={toggle} aria-label="Ganti tema" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/70 text-slate-700 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20">
                             {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                         </button>
