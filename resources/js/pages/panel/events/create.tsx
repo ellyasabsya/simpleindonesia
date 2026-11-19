@@ -123,6 +123,8 @@ const vPeserta = (d: Detail, pre: string): Errs => {
             const k = pre + `ticket_types.${i}.`;
             if (!t.name.trim()) e[k + 'name'] = 'Nama tiket wajib diisi.';
             if (t.price === '') e[k + 'price'] = 'Harga tiket wajib diisi (isi 0 jika gratis).';
+            if (t.valid_from && t.valid_until && t.valid_from > t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku tidak boleh lebih awal dari tanggal mulai.';
+            if (t.valid_until && d.ends_at && t.valid_until > d.ends_at.slice(0, 10)) e[k + 'valid_until'] = 'Tanggal akhir berlaku tidak boleh melewati tanggal selesai event.';
             if (!t.quota || Number(t.quota) < 1) e[k + 'quota'] = 'Kuota tiket minimal 1.';
             if (!t.valid_from) e[k + 'valid_from'] = 'Tanggal mulai berlaku wajib diisi.';
             if (!t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku wajib diisi.';
@@ -425,6 +427,8 @@ function CompFields({ c, i, patch, err, pre, kind }: { c: CatRow; i: number; pat
     );
 }
 
+const endOf = (d: { ends_at?: string }) => (d.ends_at || '').slice(0, 10);
+
 function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = true, ticketOnly = false, fixedMethod, hideRegistration = false }: Sec & { max: number; canTicket?: boolean; canTeam?: boolean; ticketOnly?: boolean; fixedMethod?: string; hideRegistration?: boolean }) {
     const [draft, setDraft] = useState('');
     const list = d.participant_categories;
@@ -664,12 +668,12 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                     </div>
                                     <div>
                                         <label className="mb-1 block text-xs font-bold">Berlaku mulai *</label>
-                                        <input type="date" className={inp} value={t.valid_from} onChange={(e) => up({ valid_from: e.target.value })} />
+                                        <input type="date" className={inp} value={t.valid_from} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_from: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_from')} />
                                     </div>
                                     <div>
                                         <label className="mb-1 block text-xs font-bold">Berlaku sampai *</label>
-                                        <input type="date" className={inp} value={t.valid_until} onChange={(e) => up({ valid_until: e.target.value })} />
+                                        <input type="date" className={inp} value={t.valid_until} min={t.valid_from || undefined} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_until: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_until')} />
                                     </div>
                                 </div>
@@ -741,7 +745,7 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                                 <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
                                 <Err m={err(k + 'max_per_order')} />
                             </div>
-                            <p className="text-xs text-slate-500 sm:col-span-2 dark:text-slate-400">Penjualan dibuka setelah event disetujui admin dan ditutup saat event selesai.</p>
+                            <p className="text-xs text-slate-500 sm:col-span-2 dark:text-slate-400">Penjualan dibuka setelah event disetujui admin dan ditutup saat event selesai{d.ends_at ? ` (${endOf(d).split('-').reverse().join('/')})` : ''}.</p>
                         </div>
                     );
                 })}
