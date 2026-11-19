@@ -479,35 +479,67 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                 {ov.standings.length === 0 ? (
                     <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">Belum ada peringkat yang bisa dihitung.</p>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[560px] text-left text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Peserta</th><th className="py-3 pr-3 text-right">Poin</th>
-                                    {ov.points.map((_, i) => <th key={i} className="py-3 pr-3 text-right">Juara {i + 1}</th>)}
-                                    <th className="py-3">Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {ov.standings.map((s, i) => (
-                                    <tr key={i} className={s.rank <= ov.winner_count ? 'bg-emerald-50/60 dark:bg-emerald-500/10' : ''}>
-                                        <td className="py-3 pr-3 pl-1 font-black">{s.rank}{s.shared ? ' =' : ''}</td>
-                                        <td className="py-3 pr-3 font-extrabold">{s.school}{(s as any).pid ? <span className="block text-xs font-semibold text-slate-400">ID {(s as any).pid}</span> : null}</td>
-                                        <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
-                                        {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
-                                        <td className="py-3">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                {s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}
-                                                {s.shared ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">Juara bersama</span> : null}
-                                                {(s as any).tie ? <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700">Seri belum terpecahkan</span> : null}
-                                            </div>
-                                            {(s as any).why ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{(s as any).why}</p> : null}
-                                        </td>
+                    <>
+                        <div className="mb-4 flex flex-wrap gap-3">
+                            {ov.standings.filter((s) => s.rank <= ov.winner_count).map((s, i) => (
+                                <div key={i} className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 ring-1 ring-emerald-200/70 dark:from-emerald-500/10 dark:to-teal-500/10 dark:ring-emerald-400/20">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-sm font-black text-white shadow">{s.rank}</span>
+                                    <div>
+                                        <p className="text-[11px] font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Juara umum {s.rank}{s.shared ? ' (bersama)' : ''}</p>
+                                        <p className="text-lg font-extrabold leading-tight">{s.school}</p>
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{num(s.points)} poin</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+                            <table className="w-full min-w-[760px] text-left text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                                        <th className="px-4 py-3">#</th>
+                                        <th className="px-4 py-3">Peserta</th>
+                                        <th className="px-4 py-3 text-right">Poin</th>
+                                        {ov.points.map((_, i) => <th key={i} className="px-3 py-3 text-center">Juara {i + 1}</th>)}
+                                        <th className="px-4 py-3 text-right">Total nilai</th>
+                                        <th className="px-4 py-3">Keterangan</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                                    {ov.standings.map((s, i) => {
+                                        const win = s.rank <= ov.winner_count;
+                                        return (
+                                            <tr key={i} className={win ? 'bg-emerald-50/60 dark:bg-emerald-500/10' : 'hover:bg-slate-50/60 dark:hover:bg-white/5'}>
+                                                <td className="px-4 py-3 align-top">
+                                                    <span className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-extrabold ${s.rank === 1 ? 'bg-amber-400 text-white' : s.rank === 2 ? 'bg-slate-400 text-white' : s.rank === 3 ? 'bg-orange-400 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{s.rank}{s.shared ? '=' : ''}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-top">
+                                                    <span className="font-extrabold">{s.school}</span>
+                                                    {(s as any).pid ? <span className="block text-xs font-semibold text-slate-400">ID {(s as any).pid}</span> : null}
+                                                </td>
+                                                <td className="px-4 py-3 text-right align-top">
+                                                    <span className="inline-block rounded-lg bg-indigo-50 px-2.5 py-1 text-base font-black text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{num(s.points)}</span>
+                                                </td>
+                                                {s.counts.map((n, k) => (
+                                                    <td key={k} className="px-3 py-3 text-center align-top">
+                                                        {n > 0 ? <span className="font-extrabold">{n}</span> : <span className="text-slate-300 dark:text-slate-600">–</span>}
+                                                    </td>
+                                                ))}
+                                                <td className="px-4 py-3 text-right align-top font-semibold tabular-nums text-slate-600 dark:text-slate-300">{Number((s as any).score_total ?? 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })}</td>
+                                                <td className="px-4 py-3 align-top">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {win && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}
+                                                        {s.shared ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">Juara bersama</span> : null}
+                                                        {(s as any).tie ? <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700">Seri belum terpecahkan</span> : null}
+                                                    </div>
+                                                    {(s as any).why ? <p className="mt-1 max-w-md text-xs leading-snug text-slate-500 dark:text-slate-300">{(s as any).why}</p> : null}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        </>
                 )}
                 {ov.ties && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Ada seri yang tidak terpecahkan di posisi juara umum. Sekolah/lembaga yang seri ditetapkan sebagai juara bersama.</p>}
             </div>
