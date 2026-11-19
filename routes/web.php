@@ -269,6 +269,7 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/lomba-saya', '/event-saya');
     Route::get('/event-saya', [\App\Http\Controllers\MyActivityController::class, 'lomba'])->name('lomba.saya');
     Route::get('/event-saya/{registration}/hasil', [\App\Http\Controllers\MyActivityController::class, 'hasil'])->whereNumber('registration')->name('lomba.hasil');
+    Route::get('/juri-saya', [\App\Http\Controllers\JudgeHomeController::class, 'index'])->name('juri.saya');
     Route::get('/tiket', [\App\Http\Controllers\MyActivityController::class, 'tiket'])->name('tiket.saya');
 });
 
