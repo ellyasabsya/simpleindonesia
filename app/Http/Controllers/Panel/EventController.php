@@ -414,6 +414,7 @@ class EventController extends Controller
             if (! $series) {
                 $saveCategories($main->id, $data['participant_categories'], in_array($data['category'] ?? '', ['perlombaan', 'olahraga'], true));
                 $saveTickets($main->id, $data);
+                \App\Support\TicketCategories::split($main->id);
             }
 
             foreach ($subs as $i => $sub) {
@@ -434,6 +435,7 @@ class EventController extends Controller
                 ] + $detail($sub));
                 $saveCategories($child->id, $sub['participant_categories'], in_array($sub['category'] ?? '', ['perlombaan', 'olahraga'], true));
                 $saveTickets($child->id, $sub);
+                \App\Support\TicketCategories::split($child->id);
             }
         });
 
