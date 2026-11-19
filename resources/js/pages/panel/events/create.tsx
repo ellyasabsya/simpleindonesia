@@ -603,7 +603,15 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 <div className={fixedMethod ? 'hidden' : 'grid gap-3 sm:grid-cols-2'}>
                     {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
-                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({ registration_method: v, ticket_types: v === 'ticket' && d.ticket_types.length === 0 ? [newTicket()] : d.ticket_types })} />
+                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.registration_method === v} onChange={() => set({
+                            registration_method: v,
+                            ticket_types: v === 'ticket'
+                                ? [
+                                    { ...(d.ticket_types[0] ?? newTicket()), name: 'Pendaftaran', price: d.registration_fee || '0', quota: String(totalQuota(d) || ''), max_per_order: '1' },
+                                    ...d.ticket_types.slice(1),
+                                ]
+                                : d.ticket_types,
+                        })} />
                             <span><b className="block text-sm">{t}</b><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
                         </label>
                     ))}
