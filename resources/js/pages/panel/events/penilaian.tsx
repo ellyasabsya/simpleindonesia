@@ -917,25 +917,32 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
 
                 {tab === 'juri' && (
                     <>
-{categories.length > 1 && (
-                            <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`}>
-<span className="mr-1 text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Kategori</span>
-<div className="flex flex-wrap gap-2">
-                                    {categories.map((c) => (
-                                        <button
-                                            key={c.id}
-                                            type="button"
-                                            onClick={() => { if (c.id !== cid) router.get(base, { kategori: c.id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('juri') }); }}
-                                            className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
-                                        >
-                                            {c.name}
-                                            <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.id === cid ? 'bg-white/20 text-white' : ((c as any).judges >= (c as any).need ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}`}>{(c as any).judges ?? 0}/{(c as any).need ?? 0}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-<JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
+<div className={`${card} p-4`}>
+    {categories.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+            {categories.map((c) => (
+                <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { if (c.id !== cid) router.get(base, { kategori: c.id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('juri') }); }}
+                    className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
+                >
+                    {c.name}
+                    <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.id === cid ? 'bg-white/20 text-white' : ((c as any).judges >= (c as any).need ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}`}>{(c as any).judges ?? 0}/{(c as any).need ?? 0}</span>
+                </button>
+            ))}
+        </div>
+    )}
+    <div className={categories.length > 1 ? 'mt-4' : ''}>
+        <div className="flex items-center justify-between text-sm">
+            <span className="font-bold text-slate-700 dark:text-slate-200">{activeJudges} dari {cfg.judge_count} juri aktif</span>
+            <span className={`font-extrabold ${activeJudges >= cfg.judge_count ? 'text-emerald-600' : 'text-slate-500'}`}>{activeJudges >= cfg.judge_count ? 'Cukup' : `Kurang ${cfg.judge_count - activeJudges}`}</span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+            <div className={`h-full rounded-full transition-all ${activeJudges >= cfg.judge_count ? 'bg-emerald-500' : 'bg-indigo-600'}`} style={{ width: `${cfg.judge_count > 0 ? Math.min(100, Math.round((activeJudges / cfg.judge_count) * 100)) : 0}%` }} />
+        </div>
+    </div>
+</div>
 <JuriTambah card={card} inp={inpSm} btn={btn}>
 <JuriSudahAda base={base} cid={cid} catName={category.name || 'ini'} card={card} btn={btn} />
 </JuriTambah>
