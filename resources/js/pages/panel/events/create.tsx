@@ -653,7 +653,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                         <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
                                         <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
                                             value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
-                                            onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                                            onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9), price_manual: true } as any)} />
                                         <Err m={err(k + 'price')} />
                                     </div>
                                     <div>
@@ -732,7 +732,7 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                                 <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
                                 <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
                                     value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
-                                    onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
+                                    onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9), price_manual: true } as any)} />
                                 <Err m={err(k + 'price')} />
                             </div>
                             <div>
@@ -917,21 +917,22 @@ export default function CreateEvent({ packages, categories, selected_package_id,
             if (m !== 'ticket') return x.ticket_types;
             const cats = (x.participant_categories ?? []).filter((c: any) => String(c.name ?? '').trim() !== '');
             const old: any[] = x.ticket_types ?? [];
+            const fee = String(x.registration_fee ?? '').replace(/\D/g, '').replace(/^0+$/, '');
             const base: any = { ...newTicket(), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
             if (cats.length < 2) {
                 if (old.length > 0 && !old.some((t) => t.category)) return old;
-                return [{ ...base, name: 'Pendaftaran Peserta Lomba', price: old[0]?.price ?? base.price, quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
+                return [{ ...base, name: 'Pendaftaran Peserta Lomba', price: old[0]?.price_manual ? old[0].price : (fee || old[0]?.price || ''), quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
             }
             return cats.map((c: any) => {
                 const nm = String(c.name).trim();
                 const prev = old.find((t) => t.category === nm);
-                return { ...base, ...(prev ?? {}), price: prev?.price ?? old[0]?.price ?? base.price, name: `Pendaftaran Peserta Lomba - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
+                return { ...base, ...(prev ?? {}), price: prev?.price_manual ? prev.price : (fee || prev?.price || ''), name: `Pendaftaran Peserta Lomba - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
             });
         };
         const next = data.subs.map((x: any) => ({ ...x, registration_method: m, ticket_types: build(x) }));
         if (JSON.stringify(next) === JSON.stringify(data.subs)) return;
         setData((d) => ({ ...d, subs: next as any }));
-    }, [series, data.registration_method, data.subs.length, JSON.stringify(data.subs.map((x: any) => [x.participant_categories, x.ends_at]))]);
+    }, [series, data.registration_method, data.subs.length, JSON.stringify(data.subs.map((x: any) => [x.participant_categories, x.ends_at, x.registration_fee]))]);
     const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
