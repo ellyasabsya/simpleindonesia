@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { AlertCircle, Check, Clock, Loader2, Mail, MapPin, Send, Trash2, UserPlus, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 type Invite = { id: number; name: string; email: string; status: string };
 type Found = { name: string; city?: string | null };
@@ -87,7 +87,7 @@ export function JuriMenunggu() {
     );
 }
 
-export default function JuriTambah({ btn }: { card?: string; inp?: string; btn: string }) {
+export default function JuriTambah({ btn, children }: { card?: string; inp?: string; btn: string; children?: ReactNode }) {
     const page = usePage().props as any;
     const base: string = page.inviteBase;
     const categoryId: number = page.category?.id ?? 0;
@@ -169,6 +169,7 @@ export default function JuriTambah({ btn }: { card?: string; inp?: string; btn: 
             )}
 
             <JuriMenunggu />
+            {children}
         </div>
     );
 }

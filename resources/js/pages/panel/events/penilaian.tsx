@@ -557,9 +557,9 @@ function JuriSudahAda({ base, cid, catName, card, btn }: { base: string; cid: nu
         router.post(`${base}/juri/${id}/kategori`, { category_id: cid }, { preserveScroll: true, onSuccess: () => setN((x) => x + 1), onFinish: () => setBusy(0) });
     };
     return (
-        <div className={`${card} p-5`}>
-            <h3 className="text-base font-extrabold">Juri yang sudah ada di event ini</h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Mereka sudah diundang dan bertugas di kategori lain. Tidak perlu diundang lagi, cukup tambahkan ke kategori {catName}.</p>
+        <div className="mt-5 border-t border-slate-200 pt-5 dark:border-white/10">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Sudah diundang di kategori lain ({list.length})</h4>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Tidak perlu diundang lagi, cukup tambahkan ke kategori {catName}.</p>
             <ul className="mt-4 space-y-2">
                 {list.map((j) => (
                     <li key={j.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3 dark:border-white/10">
@@ -936,8 +936,9 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                             </div>
                         )}
 <JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
+<JuriTambah card={card} inp={inpSm} btn={btn}>
 <JuriSudahAda base={base} cid={cid} catName={category.name || 'ini'} card={card} btn={btn} />
-<JuriTambah card={card} inp={inpSm} btn={btn} />
+</JuriTambah>
 <JuriBelumTugas btn={btn} />
 
                         <div className={`${card} p-4`}>
