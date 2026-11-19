@@ -638,7 +638,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                         return (
                             <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}</span>
+                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}{(t as any).category && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">Kategori: {(t as any).category}</span>}</span>
                                     {d.ticket_types.length > 1 && (
                                         <button type="button" onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })} className="text-xs font-bold text-red-600">Hapus</button>
                                     )}
@@ -646,7 +646,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
                                         <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
-                                        <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" onChange={(e) => up({ name: e.target.value })} />
+                                        <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" readOnly={!!(t as any).category} onChange={(e) => up({ name: e.target.value })} />
                                         <Err m={err(k + 'name')} />
                                     </div>
                                     <div>
@@ -725,7 +725,7 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                         <div key={i} className="grid gap-3 rounded-xl border border-slate-200 bg-white/80 p-4 sm:grid-cols-2 dark:border-white/10 dark:bg-white/5">
                             <div>
                                 <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
-                                <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" onChange={(e) => up({ name: e.target.value })} />
+                                <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" readOnly={!!(t as any).category} onChange={(e) => up({ name: e.target.value })} />
                                 <Err m={err(k + 'name')} />
                             </div>
                             <div>
@@ -912,16 +912,26 @@ export default function CreateEvent({ packages, categories, selected_package_id,
     useEffect(() => {
         if (!series) return;
         const m = data.registration_method;
-        if (!m || data.subs.every((x) => x.registration_method === m && (m !== 'ticket' || x.ticket_types.length > 0))) return;
-        setData((d) => ({
-            ...d,
-            subs: d.subs.map((x) => ({
-                ...x,
-                registration_method: m,
-                ticket_types: m === 'ticket' && x.ticket_types.length === 0 ? [{ ...newTicket(), name: 'Pendaftaran Peserta Lomba', max_per_order: '1', quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '', valid_from: saleStart(x.ends_at), valid_until: x.ends_at }] : x.ticket_types,
-            })),
-        }));
-    }, [series, data.registration_method, data.subs.length]);
+        if (!m) return;
+        const build = (x: any): any[] => {
+            if (m !== 'ticket') return x.ticket_types;
+            const cats = (x.participant_categories ?? []).filter((c: any) => String(c.name ?? '').trim() !== '');
+            const old: any[] = x.ticket_types ?? [];
+            const base: any = { ...newTicket(), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
+            if (cats.length < 2) {
+                if (old.length > 0 && !old.some((t) => t.category)) return old;
+                return [{ ...base, name: 'Pendaftaran Peserta Lomba', price: old[0]?.price ?? base.price, quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
+            }
+            return cats.map((c: any) => {
+                const nm = String(c.name).trim();
+                const prev = old.find((t) => t.category === nm);
+                return { ...base, ...(prev ?? {}), price: prev?.price ?? old[0]?.price ?? base.price, name: `Pendaftaran Peserta Lomba - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
+            });
+        };
+        const next = data.subs.map((x: any) => ({ ...x, registration_method: m, ticket_types: build(x) }));
+        if (JSON.stringify(next) === JSON.stringify(data.subs)) return;
+        setData((d) => ({ ...d, subs: next as any }));
+    }, [series, data.registration_method, data.subs.length, JSON.stringify(data.subs.map((x: any) => [x.participant_categories, x.ends_at]))]);
     const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };

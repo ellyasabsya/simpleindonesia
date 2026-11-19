@@ -383,6 +383,9 @@ class EventController extends Controller
                     'valid_from' => $t['valid_from'],
                     'valid_until' => $t['valid_until'],
                     'max_per_order' => (int) ($t['max_per_order'] ?? 10),
+                    'participant_category_id' => ! empty($t['category'])
+                        ? (\Illuminate\Support\Facades\DB::table('event_participant_categories')->where('event_id', $eventId)->where('name', trim((string) $t['category']))->value('id') ?: null)
+                        : null,
                     'valid_days' => max(1, (int) abs(\Carbon\Carbon::parse($d['starts_at'])->diffInDays(\Carbon\Carbon::parse($d['ends_at']))) + 1),
                     'created_at' => $now, 'updated_at' => $now,
                 ], array_values($d['ticket_types'] ?? []))
@@ -477,6 +480,7 @@ class EventController extends Controller
             "{$p}ticket_types.*.valid_from" => ["required_if:{$p}registration_method,ticket", 'nullable', 'date'],
             "{$p}ticket_types.*.valid_until" => ["required_if:{$p}registration_method,ticket", 'nullable', 'date', "after_or_equal:{$p}ticket_types.*.valid_from"],
             "{$p}ticket_types.*.max_per_order" => ['nullable', 'integer', 'min:1', 'max:10'],
+            "{$p}ticket_types.*.category" => ['nullable', 'string', 'max:60'],
             "{$p}competition_type" => ['nullable', Rule::in(['individual', 'team'])],
             "{$p}team_size" => ['nullable', 'integer', 'min:2', 'max:100'],
             "{$p}team_slots" => ['nullable', 'array', 'max:100'],
