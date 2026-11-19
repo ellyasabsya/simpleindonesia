@@ -1777,20 +1777,20 @@ class JudgingController extends EventScopedController
                     $school = trim((string) ($reg->school ?? ''));
                     $pcode = trim((string) ($reg->participant_code ?? ''));
                     $who = trim((string) ($r['name'] ?? '')) ?: trim((string) ($r['code'] ?? ''));
-                    if ($school !== '') {
-                        $key = 's:'.mb_strtolower($school);
-                        $label = $school;
-                    } elseif ($pcode !== '') {
+                    if ($pcode !== '') {
                         $key = 'p:'.mb_strtolower($pcode);
                         $label = $who ?: $pcode;
                     } elseif (! empty($reg->user_id)) {
                         $key = 'u:'.$reg->user_id;
                         $label = $who ?: 'Peserta #'.$reg->user_id;
+                    } elseif ($school !== '') {
+                        $key = 's:'.mb_strtolower($school);
+                        $label = $school;
                     } else {
                         $key = 'n:'.mb_strtolower($who);
                         $label = $who ?: 'Tanpa asal';
                     }
-                    $unit[$key] ??= ['school' => $label, 'pid' => $school === '' ? $pcode : '', 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
+                    $unit[$key] ??= ['school' => $label, 'pid' => $pcode, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
                     $unit[$key]['points'] += $points[$rk - 1];
                     $unit[$key]['counts'][$rk - 1]++;
                     $unit[$key]['categories']++;

@@ -380,13 +380,6 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                 <h4 className="flex items-center gap-2 font-extrabold"><span className={`h-3 w-3 rounded-full ${x.locked ? 'bg-emerald-500' : x.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {x.name ? `Kategori ${x.name}` : g.sub}</h4>
                                 <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${x.locked ? 'bg-emerald-100 text-emerald-900' : x.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{x.locked ? 'Ditetapkan' : x.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
                             </div>
-                            <p className="ringkas-kat text-sm text-slate-700 dark:text-slate-200">
-                                {x.rows.filter((r) => r.rank <= 3).length === 0
-                                    ? <span className="text-slate-500">Belum ada peringkat.</span>
-                                    : x.rows.filter((r) => r.rank <= 3).map((r, k) => (
-                                        <span key={k} className="mr-4 inline-block"><b>{r.rank}{r.shared ? ' =' : ''}.</b> {r.name || r.code} <span className="font-black">{lsNf(r.score)}</span></span>
-                                    ))}
-                            </p>
                             <div className="mt-3">
                                 <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {x.table.length} tim</p>
                                 <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5">
@@ -457,7 +450,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         <table className="w-full min-w-[560px] text-left text-sm">
                             <thead>
                                 <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Peserta / sekolah</th><th className="py-3 pr-3 text-right">Poin</th>
+                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Peserta</th><th className="py-3 pr-3 text-right">Poin</th>
                                     {ov.points.map((_, i) => <th key={i} className="py-3 pr-3 text-right">Juara {i + 1}</th>)}
                                     <th className="py-3">Keterangan</th>
                                 </tr>
