@@ -283,6 +283,7 @@ function RecapTable({ rec }: { rec: Recap }) {
                                 <td className="py-3 pr-3">
                                     <span className="rounded-lg bg-indigo-50 px-2 py-1 font-mono text-xs font-bold text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200">{r.code}</span>
                                     {r.order != null && <span className="ml-2 font-black text-slate-900 dark:text-white">#{r.order}</span>}
+                                    {(r as any).name && <div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{(r as any).name}</div>}
                                 </td>
                                 <td className="py-3 pr-3">
                                     <div className="flex items-center gap-2">
