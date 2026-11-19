@@ -334,3 +334,8 @@ Route::middleware('auth')->get('/tiket-saya', [\App\Http\Controllers\TicketViewC
 Route::get('/tiket-data', [\App\Http\Controllers\TicketSeriesController::class, 'cards']); // patch-248
 
 Route::get('/klasemen/{event}', fn (\Illuminate\Http\Request $r, \App\Models\Event $event) => app(\App\Http\Controllers\Panel\JudgingController::class)->klasemen($r, $event, true))->whereNumber('event')->name('klasemen.publik');
+
+// Midtrans
+Route::post('/midtrans/notification', [\App\Http\Controllers\MidtransController::class, 'notification']);
+Route::post('/midtrans/token/{code}', [\App\Http\Controllers\MidtransController::class, 'token'])
+    ->where('code', 'TKT-[A-Z0-9]{8}')->middleware('throttle:20,1');

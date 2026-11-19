@@ -32,6 +32,10 @@ class TicketPurchaseController extends Controller
             $m[] = 'transfer_manual';
         }
 
+        if ((string) config('midtrans.server_key') !== '') {
+            $m[] = 'midtrans';
+        }
+
         return $m;
     }
 
@@ -114,7 +118,7 @@ class TicketPurchaseController extends Controller
             'holders' => ['required', 'array', 'min:1', 'max:10'],
             'holders.*' => ['required', 'string', 'max:100'],
             'payment_method' => $free ? ['nullable'] : ['required', \Illuminate\Validation\Rule::in($this->methods())],
-            'payment_proof' => $free ? ['nullable'] : ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'payment_proof' => ($free || $request->input('payment_method') === 'midtrans') ? ['nullable'] : ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
             'required' => ':attribute wajib diisi.',
             'email' => 'Format email tidak valid.',
@@ -152,7 +156,8 @@ class TicketPurchaseController extends Controller
                 $fail('holders', 'Peserta '.$dup.' sudah terdaftar di kegiatan ini. Satu peserta hanya boleh punya satu tiket per kegiatan.');
             }
 
-            $proof = $free ? null : \App\Support\ImageUploader::store($data['payment_proof'], 'payment-proofs/tiket', 'payment_proof', 1600, 'local');
+            $online = ! $free && $data['payment_method'] === 'midtrans';
+            $proof = ($free || $online) ? null : \App\Support\ImageUploader::store($data['payment_proof'], 'payment-proofs/tiket', 'payment_proof', 1600, 'local');
 
             $subtotal = (int) $type->price * (int) $data['quantity'];
             $feePercent = \App\Models\Setting::serviceFeePercent();
@@ -173,13 +178,13 @@ class TicketPurchaseController extends Controller
                 'fee' => $fee,
                 'total' => $subtotal + $fee,
                 'holders' => json_encode(array_values($data['holders']), JSON_UNESCAPED_UNICODE),
-                'status' => $free ? 'lunas' : 'menunggu_verifikasi',
+                'status' => $free ? 'lunas' : ($online ? 'menunggu' : 'menunggu_verifikasi'),
                 'paid_at' => $free ? now() : null,
                 'payment_method' => $free ? 'gratis' : $data['payment_method'],
                 'payment_proof' => $proof,
                 'support_choice' => $sup ? $data['support_choice'] : null,
                 'holder_details' => $req ? json_encode(array_map(fn ($e, $p) => ['email' => $e, 'phone' => $p], array_values($data['holder_emails']), array_values($data['holder_phones'])), JSON_UNESCAPED_UNICODE) : null,
-                'expires_at' => null,
+                'expires_at' => $online ? now()->addMinutes(self::HOLD_MINUTES) : null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
 
@@ -192,7 +197,7 @@ class TicketPurchaseController extends Controller
             } catch (\Throwable $e) {
                 report($e);
             }
-        } else {
+        } elseif (($data['payment_method'] ?? '') !== 'midtrans') {
             \App\Support\AdminNotifier::send(
                 'Pesanan tiket menunggu verifikasi',
                 "Pesanan {$code} atas nama {$data['buyer_name']} menunggu verifikasi pembayaran.",
@@ -200,6 +205,6 @@ class TicketPurchaseController extends Controller
             );
         }
 
-        return redirect('/tickets')->with('order_code', $code);
+        return redirect('/tickets')->with('order_code', $code)->with('pay_online', ($data['payment_method'] ?? '') === 'midtrans');
     }
 }
