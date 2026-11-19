@@ -8,7 +8,7 @@ type Order = {
     id: number; title: string; institution: string; institution_email: string; package: string; detail: string;
     total: number; status: string; note: string | null; proof: { url: string; is_pdf: boolean } | null; created_at: string;
 };
-type Counts = { menunggu_verifikasi: number; lunas: number; ditolak: number };
+type Counts = { menunggu_verifikasi: number; lunas: number; ditolak: number; dikembalikan?: number };
 type Pg = { current: number; last: number; total: number; from: number | null; to: number | null };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
@@ -17,6 +17,7 @@ const STATUS: Record<string, { label: string; style: string }> = {
     menunggu_verifikasi: { label: 'Perlu verifikasi', style: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200' },
     lunas: { label: 'Lunas', style: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' },
     ditolak: { label: 'Ditolak', style: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200' },
+    dikembalikan: { label: 'Dikembalikan', style: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200' },
 };
 
 export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_on }: { orders: Order[]; status: string; q: string; counts: Counts; pg: Pg; manual_on: boolean }) {
@@ -24,11 +25,12 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
     const [busy, setBusy] = useState<number | null>(null);
     const [zoom, setZoom] = useState<string | null>(null);
 
-    const totalAll = counts.menunggu_verifikasi + counts.lunas + counts.ditolak;
+    const totalAll = counts.menunggu_verifikasi + counts.lunas + counts.ditolak + (counts.dikembalikan ?? 0);
     const tabs = [
         { key: 'menunggu_verifikasi', label: 'Perlu verifikasi', n: counts.menunggu_verifikasi },
         { key: 'lunas', label: 'Lunas', n: counts.lunas },
         { key: 'ditolak', label: 'Ditolak', n: counts.ditolak },
+        { key: 'dikembalikan', label: 'Dikembalikan', n: counts.dikembalikan ?? 0 },
         { key: 'all', label: 'Semua', n: totalAll },
     ];
     const activeLabel = tabs.find((t) => t.key === status)?.label ?? 'Semua';

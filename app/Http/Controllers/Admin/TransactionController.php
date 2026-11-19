@@ -147,6 +147,7 @@ class TransactionController extends Controller
                     'status' => match ($e->payment_status) {
                         'lunas' => 'lunas',
                         'menunggu_verifikasi', 'menunggu_pembayaran' => 'menunggu',
+                        'dikembalikan' => 'dikembalikan',
                         default => 'gagal',
                     },
                     'amount' => $amt,

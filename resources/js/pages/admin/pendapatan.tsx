@@ -11,10 +11,12 @@ type W = {
 type Bal = {
     id: number; title: string; institution: string; package: string; share_percent: number; subtotal: number; share: number;
     entitlement: number; transferred: number; processing: number; available: number;
+    held?: number; release_at?: string | null;
 };
 type Summary = {
     total_paid: number; fee: number; share: number; package: number; package_count: number; platform: number;
     entitlement: number; transferred: number; processing: number; pending: number; available: number;
+    mdr?: number; platform_net?: number; package_refunded?: number; package_refunded_count?: number; held?: number;
 };
 type Counts = { all: number; menunggu: number; disetujui: number; ditransfer: number; ditolak: number };
 type Pg = { current: number; last: number; total: number; from: number | null; to: number | null };
@@ -69,7 +71,7 @@ export default function Pendapatan({ tab, status, q, withdrawals, counts, summar
     };
 
     const cards = [
-        { label: 'Total dibayar pembeli', value: summary.total_paid, note: 'Tiket lunas (vote belum tersedia)', color: 'text-blue-700' },
+        { label: 'Total dibayar pembeli', value: summary.total_paid, note: 'Tiket dan vote yang lunas', color: 'text-blue-700' },
         { label: 'Biaya layanan', value: summary.fee, note: 'Dibayar pembeli, di atas harga', color: 'text-violet-700' },
         { label: 'Bagi hasil paket', value: summary.share, note: 'Dipotong dari harga (persen paket)', color: 'text-fuchsia-700' },
         { label: 'Pembayaran paket', value: summary.package, note: `${summary.package_count} paket bayar di muka lunas`, color: 'text-indigo-700' },
@@ -78,6 +80,10 @@ export default function Pendapatan({ tab, status, q, withdrawals, counts, summar
         { label: 'Sudah ditarik', value: summary.transferred, note: 'Sudah ditransfer', color: 'text-slate-800 dark:text-slate-100' },
         { label: 'Dalam proses', value: summary.processing, note: 'Disetujui, menunggu ditransfer', color: 'text-amber-700' },
         { label: 'Saldo tersedia', value: summary.available, note: 'Belum ditarik, sudah dikurangi permintaan', color: 'text-cyan-700' },
+        { label: 'Dana ditahan', value: summary.held ?? 0, note: 'Menunggu masa tahan setelah event selesai', color: 'text-orange-700' },
+        { label: 'Biaya Midtrans (estimasi)', value: summary.mdr ?? 0, note: 'Dari jenis pembayaran dan tarif di config', color: 'text-slate-700 dark:text-slate-200' },
+        { label: 'Pendapatan bersih platform', value: summary.platform_net ?? summary.platform, note: 'Pendapatan platform dikurangi biaya Midtrans', color: 'text-rose-700' },
+        ...(summary.package_refunded ? [{ label: 'Paket dikembalikan', value: summary.package_refunded, note: `${summary.package_refunded_count ?? 0} paket di-refund, tidak dihitung pendapatan`, color: 'text-slate-600' }] : []),
     ];
 
     const chips = [
@@ -190,7 +196,14 @@ export default function Pendapatan({ tab, status, q, withdrawals, counts, summar
                                                 <td className={`${td} text-right font-semibold`}>{rp(b.entitlement)}</td>
                                                 <td className={`${td} text-right`}>{rp(b.transferred)}</td>
                                                 <td className={`${td} text-right text-amber-700`}>{rp(b.processing)}</td>
-                                                <td className={`${td} text-right font-bold text-cyan-700`}>{rp(b.available)}</td>
+                                                <td className={`${td} text-right font-bold text-cyan-700`}>
+                                                    {rp(b.available)}
+                                                    {!!b.held && (
+                                                        <div className="text-[11px] font-normal text-orange-700">
+                                                            Ditahan {rp(b.held)}{b.release_at ? ` · cair ${new Date(b.release_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

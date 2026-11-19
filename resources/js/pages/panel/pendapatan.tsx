@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 type Bal = {
     id: number; title: string; subtotal: number; share: number; entitlement: number; transferred: number;
-    processing: number; available: number; has_pending: boolean;
+    processing: number; available: number; has_pending: boolean; held?: number; release_at?: string | null;
 };
 type H = {
     id: number; event: string; amount: number; bank_name: string; account_number: string; account_name: string; status: string;
@@ -13,7 +13,7 @@ type H = {
 };
 type Acc = { bank_name: string; account_number: string; account_name: string };
 type Props = {
-    summary: { available: number; processing: number; withdrawn: number };
+    summary: { available: number; processing: number; withdrawn: number; held?: number };
     balances: Bal[]; history: H[]; account: Acc; hold_until: string | null; has_pin: boolean; pin_locked_until: string | null;
     email_hint: string; institution_name: string; can_withdraw: boolean; min: number;
 };
@@ -96,6 +96,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                     {stat('Hak lembaga', rp(totals.ent), 'Setelah bagian platform', 'text-emerald-700')}
                     {stat('Sudah ditarik', rp(summary.withdrawn), `Dalam proses: ${rp(summary.processing)}`, 'text-slate-900 dark:text-white')}
                     {stat('Saldo tersedia', rp(summary.available), 'Siap ditarik', 'text-cyan-700')}
+                    {!!summary.held && stat('Dana ditahan', rp(summary.held), 'Bisa ditarik setelah event selesai + masa tahan', 'text-orange-700')}
                     {stat('Dalam proses', rp(summary.processing), 'Menunggu persetujuan atau transfer', 'text-amber-700')}
                 </div>
 
@@ -135,7 +136,14 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                                                     <td className={`${td} text-right font-bold text-emerald-700`}>{rp(b.entitlement)}</td>
                                                     <td className={`${td} text-right text-amber-700`}>{rp(b.processing)}</td>
                                                     <td className={`${td} text-right`}>{rp(b.transferred)}</td>
-                                                    <td className={`${td} text-right font-bold text-cyan-700`}>{rp(b.available)}</td>
+                                                    <td className={`${td} text-right font-bold text-cyan-700`}>
+                                                        {rp(b.available)}
+                                                        {!!b.held && (
+                                                            <div className="text-[11px] font-normal text-orange-700">
+                                                                Ditahan {rp(b.held)}{b.release_at ? ` · bisa ditarik ${new Date(b.release_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                     <td className={`${td} text-right`}>
                                                         <button type="button" disabled={blocked} title={hint} onClick={() => start(b)} className="rounded-xl bg-indigo-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-40">Tarik dana</button>
                                                     </td>

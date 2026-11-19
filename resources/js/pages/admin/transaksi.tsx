@@ -23,6 +23,7 @@ const STATUS: Record<string, { label: string; style: string }> = {
     lunas: { label: 'Lunas', style: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' },
     menunggu: { label: 'Menunggu', style: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200' },
     gagal: { label: 'Gagal', style: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200' },
+    dikembalikan: { label: 'Dikembalikan', style: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200' },
 };
 
 const card = 'rounded-2xl border border-slate-200 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/5';
@@ -144,6 +145,7 @@ export default function Transaksi({ rows, summary, filters, pg }: { rows: Row[];
                                 <option value="lunas">Lunas</option>
                                 <option value="menunggu">Menunggu</option>
                                 <option value="gagal">Gagal</option>
+                                <option value="dikembalikan">Dikembalikan</option>
                                 <option value="semua">Semua status</option>
                             </select>
                         </div>
