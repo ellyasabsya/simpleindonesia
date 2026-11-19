@@ -48,7 +48,7 @@ class TicketViewController extends Controller
             ->where(function ($q) use ($user) {
                 $q->where('o.user_id', $user->id);
                 if ($user->email_verified_at) {
-                    $q->orWhere('o.buyer_email', $user->email);
+                    $q->orWhereRaw('LOWER(TRIM(o.buyer_email)) = ?', [mb_strtolower(trim($user->email))]);
                 }
             })
             ->orderByDesc('o.id')

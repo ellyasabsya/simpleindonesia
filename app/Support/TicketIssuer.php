@@ -49,7 +49,7 @@ class TicketIssuer
                         ->whereNotNull('h.participant_code')->orderBy('h.id')->value('h.participant_code');
                 }
                 $__eid = (int) ($__r['event_id'] ?? $__ev);
-                $__pc = $__pc ?: \App\Support\RegistrationCode::existingTicketCode($__eid, $o->user_id ? (int) $o->user_id : null, (string) ($__r['holder_name'] ?? '')) ?: \App\Support\RegistrationCode::make($__eid, $__cat ?: null);
+                $__pc = $__pc ?: \App\Support\RegistrationCode::existingTicketCode($__eid, (string) ($o->buyer_email ?? ''), (string) ($__r['holder_name'] ?? '')) ?: \App\Support\RegistrationCode::make($__eid, $__cat ?: null);
                 $__r['participant_code'] = $__pc;
                 $__r['reg_code'] = $__r['reg_code'] ?? \App\Support\RegistrationCode::regCode($__pc, $__eid);
             }

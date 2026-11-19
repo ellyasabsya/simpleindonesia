@@ -78,10 +78,11 @@ class RegistrationCode
     }
 
     /** Tiket: pakai ID peserta lama untuk akun pembeli + nama pemegang yang sama di seluruh rangkaian. */
-    public static function existingTicketCode(int $eventId, ?int $userId, string $holderName): ?string
+    public static function existingTicketCode(int $eventId, ?string $email, string $holderName): ?string
     {
         $name = mb_strtolower(trim($holderName));
-        if (! $userId || $name === '') {
+        $email = mb_strtolower(trim((string) $email));
+        if ($email === '' || $name === '') {
             return null;
         }
         $ev = DB::table('events')->where('id', $eventId)->first(['id', 'parent_id']);
@@ -90,7 +91,7 @@ class RegistrationCode
         return DB::table('ticket_holders as h')
             ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
             ->join('events as e', 'e.id', '=', 'o.event_id')
-            ->where('o.user_id', $userId)
+            ->whereRaw('LOWER(TRIM(o.buyer_email)) = ?', [$email])
             ->where(fn ($q) => $q->where('e.id', $rootId)->orWhere('e.parent_id', $rootId))
             ->whereRaw('LOWER(TRIM(h.holder_name)) = ?', [$name])
             ->whereNotNull('h.participant_code')
