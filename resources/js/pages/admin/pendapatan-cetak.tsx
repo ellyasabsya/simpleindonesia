@@ -6,7 +6,7 @@ type Summary = { total_paid: number; fee: number; share: number; package: number
 
 const rp = (n: number) => `Rp ${new Intl.NumberFormat('id-ID').format(n)}`;
 
-export default function PendapatanCetak({ summary, balances, withdrawals, printed_at }: { summary: Summary; balances: Bal[]; withdrawals: W[]; printed_at: string }) {
+export default function PendapatanCetak({ summary, balances, withdrawals, withdrawals_total, printed_at }: { summary: Summary; balances: Bal[]; withdrawals: W[]; withdrawals_total?: number; printed_at: string }) {
     useEffect(() => {
         const t = setTimeout(() => window.print(), 500);
         return () => clearTimeout(t);
@@ -59,6 +59,9 @@ export default function PendapatanCetak({ summary, balances, withdrawals, printe
             </table>
 
             <h2 className="mt-6 font-bold">Permintaan penarikan</h2>
+            {withdrawals_total !== undefined && withdrawals_total > withdrawals.length && (
+                <p className="mt-1 text-xs font-semibold text-rose-700">Menampilkan {withdrawals.length} dari {withdrawals_total} permintaan. Gunakan Unduh CSV untuk data lengkap.</p>
+            )}
             <table className="mt-2 w-full border-collapse text-xs">
                 <thead><tr className="bg-slate-100">
                     <th className={cell}>Tanggal</th><th className={cell}>Lembaga</th><th className={cell}>Event</th><th className={cell}>Rekening</th><th className={num}>Nominal</th><th className={cell}>Status</th>

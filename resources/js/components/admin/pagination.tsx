@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Props = {
@@ -11,6 +12,16 @@ type Props = {
 };
 
 export default function Pagination({ current, last, total, from, to, unit = 'data' }: Props) {
+    // Halaman di luar jangkauan (data berkurang): pindah ke halaman terakhir yang valid.
+    useEffect(() => {
+        const max = Math.max(last, 1);
+        if (current > max) {
+            const u = new URL(window.location.href);
+            u.searchParams.set('page', String(max));
+            router.get(u.pathname + u.search, {}, { preserveScroll: true, preserveState: true, replace: true });
+        }
+    }, [current, last]);
+
     if (last <= 1) return null;
 
     // Pakai URL yang sedang dibuka dan hanya ganti `page`, jadi pencarian dan filter ikut terbawa.

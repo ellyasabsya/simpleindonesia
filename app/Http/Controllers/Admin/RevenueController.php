@@ -94,6 +94,7 @@ class RevenueController extends Controller
             'summary' => $report['summary'],
             'balances' => $report['balances'],
             'withdrawals' => $this->query('all', '')->limit(500)->get()->map(fn (Withdrawal $w) => $this->present($w))->values(),
+            'withdrawals_total' => Withdrawal::count(),
             'printed_at' => now()->locale('id')->translatedFormat('j F Y, H:i'),
         ]);
     }
