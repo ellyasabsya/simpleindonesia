@@ -316,6 +316,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
     const can = !locked && okBlock && !dirty && filled && confirmed && !busy;
     const winners = ov.standings.filter((s) => s.rank <= ov.winner_count);
     const ranked = groups.reduce((a, g) => a + g.categories.reduce((b, x) => b + x.rows.length, 0), 0);
+    const klasemenUrl = base.replace(/\/penilaian\/?$/, '/klasemen');
     const saved = !!(ov as any).saved;
     const blockers = ov.checks.filter((x) => !x.ok && !(x as any).saveStep);
     const canSaveResult = !locked && !saved && blockers.length === 0 && !dirty && !busy;
@@ -396,7 +397,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         <div key={x.id} className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <h4 className="flex items-center gap-2 font-extrabold"><span className={`h-3 w-3 rounded-full ${x.locked ? 'bg-emerald-500' : x.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {x.name ? `Kategori ${x.name}` : g.sub}</h4>
-                                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${x.locked ? 'bg-emerald-100 text-emerald-900' : x.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{x.locked ? 'Ditetapkan' : x.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
+                                <div className="flex items-center gap-2"><Link href={`${klasemenUrl}?sub=${g.sub_id}&kategori=${x.id}`} className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200">Klasemen</Link><span className={`rounded-full px-3 py-1 text-xs font-extrabold ${x.locked ? 'bg-emerald-100 text-emerald-900' : x.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{x.locked ? 'Ditetapkan' : x.saved ? 'Tersimpan' : 'Belum disimpan'}</span></div>
                             </div>
                             <div className="mt-3">
                                 <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {x.table.length} tim</p>
@@ -460,6 +461,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
                     <div className="flex flex-wrap items-center gap-2">
+                        <Link href={klasemenUrl} className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200">Halaman klasemen</Link>
                         {saved && !locked ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-900">Tersimpan · {(ov as any).saved_at}</span> : ov.provisional ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span> : null}
                         {!locked && !saved && (
                             <button type="button" onClick={saveResult} disabled={!canSaveResult} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white shadow transition hover:bg-indigo-700 disabled:opacity-50">

@@ -2031,6 +2031,40 @@ class JudgingController extends EventScopedController
         return back()->with('success', 'Pengaturan juara umum disimpan.');
     }
 
+    public function klasemen(Request $request, Event $event)
+    {
+        $parent = $event->parent_id ? Event::findOrFail($event->parent_id) : $event;
+        $this->guard($request, $parent);
+        $ov = $this->overallData($parent);
+
+        $sub = $request->query('sub');
+        $kid = $request->query('kategori');
+        $nav = [];
+        $cat = null;
+        foreach ($ov['groups'] as $g) {
+            foreach ($g['categories'] as $c) {
+                $nav[] = ['sub_id' => $g['sub_id'], 'sub' => $g['sub'], 'id' => $c['id'], 'name' => $c['name']];
+                if ($sub !== null && $kid !== null && (int) $sub === (int) $g['sub_id'] && (int) $kid === (int) $c['id']) {
+                    $cat = $c + ['sub' => $g['sub'], 'sub_id' => $g['sub_id']];
+                }
+            }
+        }
+        abort_if($sub !== null && $kid !== null && $cat === null, 404);
+
+        return \Inertia\Inertia::render('panel/events/klasemen', [
+            'title' => $parent->title,
+            'back' => "/panel/event/{$parent->id}/penilaian",
+            'self' => "/panel/event/{$parent->id}/klasemen",
+            'ov' => [
+                'points' => $ov['points'], 'winner_count' => $ov['winner_count'], 'standings' => $ov['standings'],
+                'locked' => (bool) $ov['locked'], 'saved' => (bool) ($ov['saved'] ?? false), 'saved_at' => $ov['saved_at'] ?? null,
+                'provisional' => (bool) ($ov['provisional'] ?? false),
+            ],
+            'category' => $cat,
+            'nav' => $nav,
+        ]);
+    }
+
     public function saveOverallResult(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event);
