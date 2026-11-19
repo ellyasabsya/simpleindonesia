@@ -13,7 +13,7 @@ use Inertia\Response;
 
 class PackagePaymentController extends Controller
 {
-    private const STATUSES = ['menunggu_verifikasi', 'lunas', 'ditolak'];
+    private const STATUSES = ['menunggu_verifikasi', 'lunas', 'ditolak', 'dikembalikan'];
 
     public function index(Request $request): Response
     {
