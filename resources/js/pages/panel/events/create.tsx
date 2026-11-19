@@ -1187,7 +1187,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 </p>
                             </div>
                             <div><h3 className={h3}>Informasi Event</h3><InfoSection d={s} set={set} pre={pre} err={err} categories={categories} bounds={bounds} /></div>
-                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} hideRegistration ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
+                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} fixedMethod={data.registration_method} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
                             <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Penanggung Jawab</h3><PjSection d={s} set={set} pre={pre} err={err} /></div>
                         </div>
                     );
