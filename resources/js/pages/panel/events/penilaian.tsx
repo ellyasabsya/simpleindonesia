@@ -453,7 +453,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                             </div>
                         </div>
                         <ul className="space-y-2">
-                            {ov.checks.map((x, i) => (
+                            {(okBlock ? [] : ov.checks).map((x, i) => (
                                 <li key={`c${i}`} className={`rounded-xl px-3 py-1.5 text-xs font-bold ${x.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-200'}`}>{x.ok ? '✓' : '✕'} {x.title}<span className="ml-2 font-semibold opacity-80">· {x.detail}</span></li>
                             ))}
                             {warnings.map((m, i) => <li key={`w${i}`} className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">! {m}</li>)}
