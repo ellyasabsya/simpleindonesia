@@ -180,17 +180,11 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
     const base: string = page.inviteBase;
     const list: { id: number; name: string; contact: string | null }[] = page.unassigned ?? [];
     const cats: { id: number; name: string }[] = page.categories ?? [];
-    const [pick, setPick] = useState<Record<number, number[]>>({});
     const [busy, setBusy] = useState<number | null>(null);
     const [errs, setErrs] = useState<Record<number, string>>({});
     if (list.length === 0) return null;
 
-    const toggle = (jid: number, cid: number) => setPick((p) => {
-        const cur = p[jid] ?? [];
-        return { ...p, [jid]: cur.includes(cid) ? cur.filter((x) => x !== cid) : [...cur, cid] };
-    });
-    const assign = (jid: number) => {
-        const sel = pick[jid] ?? [];
+    const assign = (jid: number, sel: number[]) => {
         if (sel.length === 0 || busy !== null) return;
         setBusy(jid);
         setErrs((e) => ({ ...e, [jid]: '' }));
@@ -207,10 +201,9 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
     return (
         <div className={`${solid} border-l-4 border-l-amber-400 p-5 sm:p-6`}>
             <h3 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">Belum ditugaskan <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">{list.length}</span></h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Juri ini sudah menerima undangan, tetapi belum bisa menilai. Pilih kategori yang ditugaskan (boleh lebih dari satu), lalu tekan Tugaskan.</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Klik kategori untuk menugaskan juri.</p>
             <ul className="mt-4 space-y-3">
                 {list.map((j) => {
-                    const sel = pick[j.id] ?? [];
                     return (
                         <li key={j.id} className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
                             <div className="flex items-center gap-3">
@@ -221,17 +214,17 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
                                 </div>
                                 <button type="button" onClick={() => remove(j)} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Hapus ${j.name}`}><Trash2 className="h-4 w-4" /></button>
                             </div>
-                            <div className="mt-3 flex flex-wrap gap-2">
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
                                 {cats.map((c) => (
-                                    <button key={c.id} type="button" onClick={() => toggle(j.id, c.id)} className={`rounded-full border px-3 py-1.5 text-xs font-extrabold transition ${sel.includes(c.id) ? 'border-indigo-600 bg-indigo-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>{c.name || 'Semua peserta'}</button>
+                                    <button key={c.id} type="button" disabled={busy !== null} onClick={() => assign(j.id, [c.id])} className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-extrabold text-indigo-800 transition hover:bg-indigo-600 hover:text-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                        {busy === j.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} {cats.length === 1 ? 'Tugaskan' : '+ ' + (c.name || 'Semua peserta')}
+                                    </button>
                                 ))}
+                                {cats.length > 1 && (
+                                    <button type="button" disabled={busy !== null} onClick={() => assign(j.id, cats.map((c) => c.id))} className="rounded-full border border-slate-200 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 transition hover:border-indigo-300 disabled:opacity-50 dark:border-white/10 dark:text-slate-300">Semua kategori</button>
+                                )}
                             </div>
                             {errs[j.id] && <p className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {errs[j.id]}</p>}
-                            <div className="mt-3 flex justify-end">
-                                <button type="button" disabled={sel.length === 0 || busy !== null} onClick={() => assign(j.id)} className={`${btn} inline-flex items-center gap-2 !px-5 !py-2.5`}>
-                                    {busy === j.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Tugaskan{sel.length > 1 ? ` (${sel.length} kategori)` : ''}
-                                </button>
-                            </div>
                         </li>
                     );
                 })}
