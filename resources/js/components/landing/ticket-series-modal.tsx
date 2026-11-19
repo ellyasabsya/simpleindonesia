@@ -3,6 +3,7 @@ import { Check, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import FileDrop from '@/components/file-drop';
 type TType = { id: number; name: string; price: number; remaining: number; valid_from: string; valid_until: string; max_per_order: number; require_holder_details: boolean; support_enabled: boolean };
 type Activity = { event_id: number; title: string; date: string; location: string | null; ticket_types: TType[] };
 type Data = {
@@ -221,7 +222,7 @@ export default function TicketSeriesModal({ eventId, onClose }: { eventId: numbe
                                             <p className="text-slate-600 dark:text-slate-300">
                                                 Transfer <b>{rp(subtotal + fee)}</b> sekali untuk semua kegiatan ke {info.payment.bank.bank_name} <b>{info.payment.bank.bank_account_number}</b> a.n. {info.payment.bank.bank_account_holder}, lalu unggah satu bukti transfer.
                                             </p>
-                                            <input type="file" accept="image/*,application/pdf" onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+                                            <FileDrop compact file={data.payment_proof} accept="image/*,application/pdf" onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)} onClear={() => setData('payment_proof', null)} title="Klik untuk unggah bukti transfer" hint="JPG, PNG, WEBP, atau PDF" />
                                             {err('payment_proof') && <p className="text-xs text-red-600">{err('payment_proof')}</p>}
                                             {err('payment_method') && <p className="text-xs text-red-600">{err('payment_method')}</p>}
                                         </div>

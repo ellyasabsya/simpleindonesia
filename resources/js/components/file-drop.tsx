@@ -9,6 +9,7 @@ export default function FileDrop({
     onChange,
     onClear,
     invalid = false,
+    compact = false,
     title = 'Klik untuk unggah file',
     hint,
 }: {
@@ -17,6 +18,7 @@ export default function FileDrop({
     onChange: ChangeEventHandler<HTMLInputElement>;
     onClear: () => void;
     invalid?: boolean;
+    compact?: boolean;
     title?: string;
     hint?: string;
 }) {
@@ -69,7 +71,7 @@ export default function FileDrop({
                 <button
                     type="button"
                     onClick={open}
-                    className={`flex w-full flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed px-4 py-7 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 ${invalid ? 'border-rose-400 bg-rose-50/60 dark:bg-rose-500/10' : 'border-slate-300 bg-white/60 dark:border-white/15 dark:bg-white/5'}`}
+                    className={`flex w-full flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed px-4 ${compact ? 'py-4' : 'py-7'} text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 ${invalid ? 'border-rose-400 bg-rose-50/60 dark:bg-rose-500/10' : 'border-slate-300 bg-white/60 dark:border-white/15 dark:bg-white/5'}`}
                 >
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">
                         <UploadCloud className="h-5 w-5" />
