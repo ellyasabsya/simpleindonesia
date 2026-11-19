@@ -76,7 +76,7 @@ class MidtransController extends Controller
 
         if ($midtrans->isPaid($p)) {
             $n = DB::table('ticket_orders')->where('id', $o->id)->whereIn('status', ['menunggu', 'menunggu_verifikasi', 'batal'])
-                ->update(['status' => 'lunas', 'paid_at' => now(), 'expires_at' => null, 'updated_at' => now()]);
+                ->update(['status' => 'lunas', 'paid_at' => now(), 'expires_at' => null, 'updated_at' => now()] + $this->mdr($p ?? []));
             if ($n === 1) {
                 try {
                     \App\Support\TicketIssuer::issue((int) $o->id);
@@ -106,7 +106,7 @@ class MidtransController extends Controller
 
                 if ($midtrans->isPaid($p)) {
                     $n = DB::table('ticket_orders')->where('id', $o->id)->whereIn('status', ['menunggu', 'menunggu_verifikasi', 'batal'])
-                        ->update(['status' => 'lunas', 'paid_at' => now(), 'expires_at' => null, 'updated_at' => now()]);
+                        ->update(['status' => 'lunas', 'paid_at' => now(), 'expires_at' => null, 'updated_at' => now()] + $this->mdr($p ?? []));
                     if ($n === 1) {
                         \App\Support\TicketIssuer::issue((int) $o->id);
                     }
@@ -122,6 +122,17 @@ class MidtransController extends Controller
         return response()->json(['status' => DB::table('ticket_orders')->where('id', $o->id)->value('status')]);
     }
 
+    /** Jenis pembayaran dan estimasi MDR dari payload Midtrans. */
+    private function mdr(array $p): array
+    {
+        $type = $p['payment_type'] ?? null;
+
+        return [
+            'midtrans_payment_type' => $type,
+            'mdr_fee' => \App\Support\MidtransFee::estimate($type, (int) round((float) ($p['gross_amount'] ?? 0))),
+        ];
+    }
+
     private function eventNotification(int $id, array $p, MidtransService $midtrans)
     {
         $e = \App\Models\Event::whereNull('parent_id')->find($id);
@@ -135,7 +146,7 @@ class MidtransController extends Controller
         }
         if ($midtrans->isPaid($p)) {
             $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
-                ->update(['payment_status' => 'lunas', 'updated_at' => now()]);
+                ->update(['payment_status' => 'lunas', 'updated_at' => now()] + $this->mdr($p ?? []));
             if ($n > 0) {
                 \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
             }
@@ -230,7 +241,7 @@ class MidtransController extends Controller
             $amount = (int) (($e->package_snapshot['estimated_upfront'] ?? 0));
             if ((int) round((float) ($p['gross_amount'] ?? 0)) === $amount && $midtrans->isPaid($p)) {
                 $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
-                    ->update(['payment_status' => 'lunas', 'updated_at' => now()]);
+                    ->update(['payment_status' => 'lunas', 'updated_at' => now()] + $this->mdr($p ?? []));
                 if ($n > 0) {
                     \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
                 }
@@ -254,7 +265,7 @@ class MidtransController extends Controller
         if ($midtrans->isPaid($p)) {
             // Idempotent: hanya berubah sekali, notifikasi ganda tidak menambah vote.
             $n = DB::table('voting_orders')->where('id', $o->id)->whereIn('status', ['menunggu', 'batal'])
-                ->update(['status' => 'lunas', 'paid_at' => now(), 'updated_at' => now()]);
+                ->update(['status' => 'lunas', 'paid_at' => now(), 'updated_at' => now()] + $this->mdr($p ?? []));
             if ($n > 0) {
                 $evTitle = (string) DB::table('events')->where('id', $o->event_id)->value('title');
                 \App\Support\AdminNotifier::send(
