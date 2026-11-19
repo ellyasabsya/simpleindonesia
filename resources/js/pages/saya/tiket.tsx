@@ -12,7 +12,7 @@ type Row = {
 };
 type Item = { r: Row; h: Holder; index: number; total: number };
 
-const PER_PAGE = 6;
+const PER_PAGE = 10;
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
