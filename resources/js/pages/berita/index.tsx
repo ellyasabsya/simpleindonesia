@@ -1,83 +1,140 @@
 import { Head, Link } from '@inertiajs/react';
-
-
-import type { ComponentProps } from 'react';
+import { CalendarDays, Newspaper, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
 import Navbar from '@/components/landing/navbar';
 import PageBackground from '@/components/page-background';
 
 type Card = { id: number; title: string; slug: string; summary: string | null; cover_url: string | null; date: string | null };
-type PageLink = { url: string | null; label: string; active: boolean };
+type PageLink = { url: string | null: string; label: string; active: boolean };
+type Props = {
+    news: { data: Card[]; links: PageLink[]; from?: number | null; to?: number | null; total?: number };
+};
 
-function BeritaIndexInner({ news }: { news: { data: Card[]; links: PageLink[] } }) {
-    return (
-        <div className="mx-auto max-w-5xl p-6">
-            <Head title="Berita" />
-            <div className="mx-auto max-w-6xl px-4 py-10">
-                <h1 className="text-3xl font-bold">Berita</h1>
-                <p className="mt-1 text-gray-500">Kabar terbaru seputar event dan kegiatan.</p>
+const idLabel = (s: string) => s.replace('Previous', 'Sebelumnya').replace('Next', 'Berikutnya');
 
-                {news.data.length === 0 && <p className="mt-10 text-center text-gray-500">Belum ada berita.</p>}
+export default function BeritaIndex({ news }: Props) {
+    const [q, setQ] = useState('');
 
-                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {news.data.map((n) => (
-                        <Link
-                            key={n.id}
-                            href={`/berita/${n.slug}`}
-                            className="group overflow-hidden rounded-xl border border-gray-200 hover:shadow-md dark:border-gray-700"
-                        >
-                            <div className="aspect-video bg-gray-100 dark:bg-gray-800">
-                                {n.cover_url && (
-                                    <img src={n.cover_url} alt="" className="h-full w-full object-cover" />
-                                )}
-                            </div>
-                            <div className="p-4">
-                                <div className="text-xs text-gray-500">{n.date}</div>
-                                <h2 className="mt-1 line-clamp-2 font-semibold group-hover:underline">{n.title}</h2>
-                                {n.summary && <p className="mt-2 line-clamp-3 text-sm text-gray-600 dark:text-gray-400">{n.summary}</p>}
-                            </div>
-                        </Link>
-                    ))}
-                </div>
+    const items = useMemo(() => {
+        const k = q.trim().toLowerCase();
+        if (!k) return news.data;
+        return news.data.filter((n) => `${n.title} ${n.summary ?? ''}`.toLowerCase().includes(k));
+    }, [q, news.data]);
 
-                {news.links.length > 3 && (
-                    <div className="mt-8 flex flex-wrap justify-center gap-1">
-                        {news.links.map((l, i) =>
-                            l.url ? (
-                                <Link
-                                    key={i}
-                                    href={l.url}
-                                    className={`rounded-md px-3 py-1.5 text-sm ${
-                                        l.active ? 'bg-blue-600 text-white' : 'border border-gray-300 dark:border-gray-700'
-                                    }`}
-                                    dangerouslySetInnerHTML={{
-                                        __html: l.label.replace('Previous', 'Sebelumnya').replace('Next', 'Berikutnya'),
-                                    }}
-                                />
-                            ) : (
-                                <span
-                                    key={i}
-                                    className="px-3 py-1.5 text-sm text-gray-400"
-                                    dangerouslySetInnerHTML={{
-                                        __html: l.label.replace('Previous', 'Sebelumnya').replace('Next', 'Berikutnya'),
-                                    }}
-                                />
-                            ),
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
+    const total = news.total ?? news.data.length;
+    const from = news.from ?? (news.data.length ? 1 : 0);
+    const to = news.to ?? news.data.length;
 
-export default function BeritaIndex(props: ComponentProps<typeof BeritaIndexInner>) {
     return (
         <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+            <Head title="Semua Berita" />
             <PageBackground />
             <Navbar />
             <div className="relative z-10 pt-24">
-                <BeritaIndexInner {...props} />
+                <main className="mx-auto w-full max-w-[1400px] px-6 pb-20 lg:px-24">
+                    <div className="pt-16">
+                        <div className="h-1.5 w-40 rounded-full bg-gradient-to-r from-indigo-600 to-pink-500" />
+                        <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                                <h1 className="bg-gradient-to-r from-orange-700 via-indigo-700 to-blue-700 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent uppercase">
+                                    Semua Berita
+                                </h1>
+                                <p className="mt-4 text-xl text-slate-500 dark:text-slate-300">
+                                    Kabar terbaru seputar event dan kegiatan di SIMPLE.
+                                </p>
+                            </div>
+                            <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white px-6 py-4 text-lg font-semibold shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                                <Newspaper className="h-6 w-6 text-orange-500" /> {total} berita
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-10 rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                placeholder="Cari judul atau isi ringkasan berita..."
+                                className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pr-4 pl-12 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/15 dark:bg-neutral-900"
+                            />
+                        </div>
+                    </div>
+
+                    <p className="mt-8 text-lg font-medium text-slate-500 dark:text-slate-300">
+                        {q.trim() ? `Menemukan ${items.length} berita` : `Menampilkan ${from}–${to} dari ${total} berita`}
+                    </p>
+
+                    {items.length === 0 ? (
+                        <p className="mt-16 text-center text-slate-500">{q.trim() ? 'Berita tidak ditemukan.' : 'Belum ada berita.'}</p>
+                    ) : (
+                        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                            {items.map((n) => (
+                                <Link
+                                    key={n.id}
+                                    href={`/berita/${n.slug}`}
+                                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-neutral-900"
+                                >
+                                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                                        {n.cover_url ? (
+                                            <img
+                                                src={n.cover_url}
+                                                alt=""
+                                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center text-neutral-400">
+                                                <Newspaper className="size-10" />
+                                            </div>
+                                        )}
+                                        {n.date && (
+                                            <span className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-xl bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
+                                                <CalendarDays className="h-4 w-4" /> {n.date}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-1 flex-col p-5">
+                                        <h2 className="line-clamp-2 text-lg font-bold group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+                                            {n.title}
+                                        </h2>
+                                        {n.summary && (
+                                            <p className="mt-2 line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">{n.summary}</p>
+                                        )}
+                                        <span className="mt-auto pt-4 text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                                            Baca selengkapnya &rarr;
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
+                    {news.links.length > 3 && (
+                        <div className="mt-10 flex flex-wrap justify-center gap-1.5">
+                            {news.links.map((l, i) =>
+                                l.url ? (
+                                    <Link
+                                        key={i}
+                                        href={l.url}
+                                        className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                                            l.active
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-900 dark:text-slate-300'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: idLabel(l.label) }}
+                                    />
+                                ) : (
+                                    <span
+                                        key={i}
+                                        className="rounded-xl px-4 py-2 text-sm text-slate-400"
+                                        dangerouslySetInnerHTML={{ __html: idLabel(l.label) }}
+                                    />
+                                ),
+                            )}
+                        </div>
+                    )}
+                </main>
                 <Footer />
             </div>
         </div>
