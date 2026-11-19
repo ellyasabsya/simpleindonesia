@@ -23,7 +23,29 @@ class JudgeHomeController extends Controller
 
         $rows = $assigned->map(function ($j) use ($events, $parents) {
             $e = $events->get($j->event_id);
-            $cat = collect(Judging::categories((int) $j->event_id))->firstWhere('id', (int) $j->category_id)['name'] ?? null;
+            $eid = (int) $j->event_id;
+            $cid = (int) $j->category_id;
+            $cat = collect(Judging::categories($eid))->firstWhere('id', $cid)['name'] ?? null;
+
+            // Progres: peserta dianggap selesai kalau semua kriteria sudah diberi nilai oleh juri ini.
+            $critIds = Judging::leaves($eid, $cid)->pluck('id')->map(fn ($i) => (int) $i)->all();
+            $partIds = collect(Judging::participants($eid, $cid))->pluck('id')->map(fn ($i) => (int) $i)->all();
+            $filled = $critIds
+                ? DB::table('judging_scores')->where('judge_id', $j->id)->whereIn('criterion_id', $critIds)
+                    ->selectRaw('registration_id, COUNT(DISTINCT criterion_id) as n')->groupBy('registration_id')
+                    ->pluck('n', 'registration_id')
+                : collect();
+            $done = 0;
+            foreach ($partIds as $pid) {
+                if ((int) ($filled[$pid] ?? 0) >= count($critIds)) {
+                    $done++;
+                }
+            }
+            $total = count($partIds);
+            $started = $partIds && $critIds && collect($partIds)->contains(fn ($pid) => (int) ($filled[$pid] ?? 0) > 0);
+            $status = ! $total || ! $critIds ? 'kosong' : ($done >= $total ? 'selesai' : ($started ? 'berjalan' : 'belum'));
+
+            $s = Judging::settings($eid, $cid);
 
             return [
                 'id' => (int) $j->id,
@@ -31,8 +53,12 @@ class JudgeHomeController extends Controller
                 'parent' => $e && $e->parent_id ? ($parents[$e->parent_id] ?? null) : null,
                 'category' => $cat,
                 'token' => $j->token,
+                'total' => $total,
+                'done' => $done,
+                'status' => $status,
+                'locked' => ! empty($s->saved_at) || ! empty($s->finalized_at),
             ];
-        })->values()->all();
+        })->sortBy(fn ($r) => $r['status'] === 'selesai' ? 1 : 0)->values()->all();
 
         $pending = $waiting->map(fn ($id) => $events->get($id)?->title)->filter()->values()->all();
 
