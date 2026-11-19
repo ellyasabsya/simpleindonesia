@@ -75,8 +75,9 @@ class TransactionController extends Controller
         $wantTiket = in_array($f['type'], ['semua', 'tiket'], true) && in_array($f['dir'], ['semua', 'masuk'], true);
         $wantPaket = in_array($f['type'], ['semua', 'paket'], true) && in_array($f['dir'], ['semua', 'masuk'], true);
         $wantTarik = in_array($f['type'], ['semua', 'penarikan'], true) && in_array($f['dir'], ['semua', 'keluar'], true);
+        $wantVote = in_array($f['type'], ['semua', 'vote'], true) && in_array($f['dir'], ['semua', 'masuk'], true);
 
-        $events = ($wantTiket || $wantPaket || $wantTarik)
+        $events = ($wantTiket || $wantPaket || $wantTarik || $wantVote)
             ? Event::with('institution:id,name')->get()->keyBy('id')
             : collect();
         $rows = collect();
@@ -150,6 +151,33 @@ class TransactionController extends Controller
                     },
                     'amount' => $amt,
                     'fee' => 0,
+                ]);
+            }
+        }
+
+        // Vote (Midtrans / manual)
+        if ($wantVote) {
+            $votes = $inRange(
+                DB::table('voting_orders')->select(['id', 'event_id', 'code', 'buyer_name', 'votes', 'amount', 'service_fee', 'status', 'payment_proof', 'midtrans_order_id', 'paid_at', 'created_at']),
+                'DATE(COALESCE(paid_at, created_at))'
+            );
+            foreach ($votes->cursor() as $o) {
+                $ev = $events[$o->event_id] ?? null;
+                $rows->push([
+                    'at' => Carbon::parse($o->paid_at ?? $o->created_at)->format('Y-m-d H:i'),
+                    'code' => $o->code,
+                    'type' => 'vote',
+                    'dir' => 'masuk',
+                    'title' => $ev?->title ?? '-',
+                    'subtitle' => $o->buyer_name.' · '.number_format((int) $o->votes, 0, ',', '.').' vote',
+                    'method' => $o->midtrans_order_id ? 'online' : 'manual',
+                    'status' => match ($o->status) {
+                        'lunas' => 'lunas',
+                        'menunggu', 'menunggu_verifikasi' => 'menunggu',
+                        default => 'gagal',
+                    },
+                    'amount' => (int) $o->amount,
+                    'fee' => (int) $o->service_fee,
                 ]);
             }
         }
