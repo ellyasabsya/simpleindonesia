@@ -134,6 +134,19 @@ function BeritaShowInner({
                                     <span className="text-xs text-gray-500">{c.date}</span>
                                 </div>
                                 <p className="mt-2 whitespace-pre-line text-sm">{c.body}</p>
+                                {viewer && viewer.id !== c.user_id && (
+                                    <button
+                                        type="button"
+                                        className="mt-2 text-xs text-gray-500 hover:underline"
+                                        onClick={() => {
+                                            if (confirm('Laporkan komentar ini ke admin?')) {
+                                                router.post(`/berita/komentar/${c.id}/lapor`, {}, { preserveScroll: true });
+                                            }
+                                        }}
+                                    >
+                                        Laporkan
+                                    </button>
+                                )}
                                 {viewer?.id === c.user_id && (
                                     <button
                                         type="button"

@@ -9,6 +9,7 @@ Route::get('/berita', [\App\Http\Controllers\NewsController::class, 'index'])->n
 Route::get('/berita/{news:slug}', [\App\Http\Controllers\NewsController::class, 'show'])->name('berita.show');
 Route::middleware(['auth', 'throttle:10,1'])->post('/berita/{news:slug}/komentar', [\App\Http\Controllers\NewsCommentController::class, 'store'])->name('berita.komentar.store');
 Route::middleware('auth')->delete('/berita/komentar/{comment}', [\App\Http\Controllers\NewsCommentController::class, 'destroy'])->name('berita.komentar.destroy');
+Route::middleware(['auth', 'throttle:10,1'])->post('/berita/komentar/{comment}/lapor', [\App\Http\Controllers\NewsCommentController::class, 'report'])->name('berita.komentar.report');
 Route::get('/paket', \App\Http\Controllers\PaketController::class)->name('paket.semua');
 Route::get('/events', \App\Http\Controllers\EventController::class)->name('events.semua');
 // Tiket hanya untuk pengguna yang sudah login.
@@ -307,6 +308,8 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::get('komentar', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('komentar');
         Route::patch('komentar/{comment}/abaikan', [\App\Http\Controllers\Admin\CommentController::class, 'dismiss'])->name('komentar.dismiss');
         Route::delete('komentar/{comment}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('komentar.destroy');
+        Route::patch('komentar-berita/{newsComment}/abaikan', [\App\Http\Controllers\Admin\CommentController::class, 'dismissNews'])->name('komentar.berita.dismiss');
+        Route::delete('komentar-berita/{newsComment}', [\App\Http\Controllers\Admin\CommentController::class, 'destroyNews'])->name('komentar.berita.destroy');
         // Berita (admin)
         Route::get('berita', [\App\Http\Controllers\Admin\NewsController::class, 'index'])->name('berita.index');
         Route::get('berita/tambah', [\App\Http\Controllers\Admin\NewsController::class, 'create'])->name('berita.create');

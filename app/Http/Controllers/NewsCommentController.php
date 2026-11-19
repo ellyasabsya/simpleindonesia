@@ -35,4 +35,16 @@ class NewsCommentController extends Controller
 
         return back();
     }
+
+    public function report(Request $request, NewsComment $comment): RedirectResponse
+    {
+        abort_if($comment->user_id === $request->user()->id, 403);
+
+        if ($comment->reported_at === null) {
+            $comment->forceFill(['reported_at' => now()])->save();
+            \App\Support\AdminNotifier::send('Komentar dilaporkan', 'Ada komentar berita yang dilaporkan dan perlu dimoderasi.', '/admin/komentar');
+        }
+
+        return back();
+    }
 }
