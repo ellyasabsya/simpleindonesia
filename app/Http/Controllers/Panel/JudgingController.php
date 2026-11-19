@@ -193,16 +193,6 @@ class JudgingController extends EventScopedController
         if ($open) {
             $s = Judging::settings($event->id, $cid);
             $problems = Judging::problems($event->id, $cid);
-            $active = DB::table('judges')->where('event_id', $event->id)->where('category_id', $cid)->where('active', 1)->count();
-            if ($active < (int) $s->judge_count) {
-                $problems[] = "Jumlah juri aktif baru {$active}, sedangkan pengaturan meminta {$s->judge_count} juri.";
-            } elseif ($active > (int) $s->judge_count) {
-                $problems[] = "Jumlah juri aktif {$active}, melebihi pengaturan {$s->judge_count} juri. Nonaktifkan kelebihannya atau naikkan jumlah juri di Pengaturan penilaian supaya semua tim dirata-rata dari juri yang sama.";
-            }
-            if (\Illuminate\Support\Facades\Schema::hasTable('registrations') && \Illuminate\Support\Facades\Schema::hasColumn('registrations', 'event_id')
-                && DB::table('registrations')->where('event_id', $event->id)->count() === 0) {
-                $problems[] = 'Belum ada peserta terdaftar.';
-            }
             if ($problems) {
                 return back()->with('error', "Tidak bisa disahkan{$label}: ".implode(' ', $problems));
             }
