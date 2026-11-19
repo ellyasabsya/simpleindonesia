@@ -897,6 +897,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         ({ paket: 'Paket', info: 'Informasi Event', peserta: 'Peserta & Pendaftaran', pj: 'Penanggung Jawab', utama: 'Event Utama', daftar: 'Pendaftaran', tinjau: 'Tinjau' } as Record<string, string>)[k];
     const cur = keys[Math.min(step, keys.length - 1)];
     const last = step >= keys.length - 1;
+    useEffect(() => { window.scrollTo(0, 0); }, [step]);
     useEffect(() => {
         if (pkg?.payment_type !== 'revenue_share') return;
         if (data.registration_method !== 'ticket' || data.subs.some((x) => x.registration_method !== 'ticket')) {
