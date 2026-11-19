@@ -1,10 +1,15 @@
 import { Head, Link } from '@inertiajs/react';
 
 
+import type { ComponentProps } from 'react';
+import Footer from '@/components/landing/footer';
+import Navbar from '@/components/landing/navbar';
+import PageBackground from '@/components/page-background';
+
 type Card = { id: number; title: string; slug: string; summary: string | null; cover_url: string | null; date: string | null };
 type PageLink = { url: string | null; label: string; active: boolean };
 
-export default function BeritaIndex({ news }: { news: { data: Card[]; links: PageLink[] } }) {
+function BeritaIndexInner({ news }: { news: { data: Card[]; links: PageLink[] } }) {
     return (
         <div className="mx-auto max-w-5xl p-6">
             <Head title="Berita" />
@@ -61,6 +66,19 @@ export default function BeritaIndex({ news }: { news: { data: Card[]; links: Pag
                         )}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+export default function BeritaIndex(props: ComponentProps<typeof BeritaIndexInner>) {
+    return (
+        <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+            <PageBackground />
+            <Navbar />
+            <div className="relative z-10 pt-24">
+                <BeritaIndexInner {...props} />
+                <Footer />
             </div>
         </div>
     );

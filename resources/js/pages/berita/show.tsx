@@ -2,6 +2,11 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEvent, useEffect, useState } from 'react';
 
 
+import type { ComponentProps } from 'react';
+import Footer from '@/components/landing/footer';
+import Navbar from '@/components/landing/navbar';
+import PageBackground from '@/components/page-background';
+
 type Article = {
     id: number;
     title: string;
@@ -20,7 +25,7 @@ const PROSE =
     '[&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:pl-4 [&_blockquote]:italic [&_img]:my-4 [&_img]:rounded-lg ' +
     '[&_hr]:my-6 [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1 dark:[&_code]:bg-gray-800';
 
-export default function BeritaShow({
+function BeritaShowInner({
     news,
     comments,
     viewer,
@@ -145,6 +150,19 @@ export default function BeritaShow({
                     </div>
                 </section>
             </article>
+        </div>
+    );
+}
+
+export default function BeritaShow(props: ComponentProps<typeof BeritaShowInner>) {
+    return (
+        <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
+            <PageBackground />
+            <Navbar />
+            <div className="relative z-10 pt-24">
+                <BeritaShowInner {...props} />
+                <Footer />
+            </div>
         </div>
     );
 }
