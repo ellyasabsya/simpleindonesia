@@ -41,8 +41,31 @@ class Judging
         return preg_match('/(\d+)\s*$/', $code, $m) ? $m[1] : $code;
     }
 
+    /** Event tiket: peserta = pemegang tiket lunas berjenis peserta (tiket umum tidak dinilai). */
+    private static function ticketParticipants(int $eventId, int $catId): array
+    {
+        if ($catId > 0 && $catId !== (int) (self::categoryIds($eventId)[0] ?? 0)) {
+            return [];
+        }
+
+        return DB::table('ticket_holders as h')
+            ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
+            ->leftJoin('ticket_types as t', 't.id', '=', 'h.ticket_type_id')
+            ->where('h.event_id', $eventId)->where('o.status', 'lunas')
+            ->where(fn ($q) => $q->where('t.audience', 'peserta')->orWhereNull('t.audience'))
+            ->orderBy('h.id')->get(['h.id', 'h.holder_name', 'h.participant_code', 'h.reg_code'])
+            ->map(function ($h) {
+                $c = (string) ($h->participant_code ?: ($h->reg_code ?: ''));
+
+                return ['id' => (int) $h->id, 'name' => $h->holder_name ?: '-', 'school' => null, 'code' => $c, 'code_tail' => self::regTail($c)];
+            })->all();
+    }
+
     public static function participants(int $eventId, int $catId = 0): array
     {
+        if (DB::table('events')->where('id', $eventId)->value('registration_method') === 'ticket') {
+            return self::ticketParticipants($eventId, $catId);
+        }
         $closed = ['ditolak', 'batal', 'dibatalkan', 'kedaluwarsa'];
         $q = DB::table('event_registrations')->where('event_id', $eventId)->whereNotIn('status', $closed);
         if ($catId > 0) {

@@ -8,10 +8,10 @@ type T = {
     custom_sale: boolean; require_holder_details: boolean; max_per_order: number;
     support_enabled: boolean; support_options: string[]; support_ranking: { name: string; votes: number }[];
     sold: number; remaining: number; revenue: number; locked: boolean;
-    sub_id?: number; sub?: string;
+    sub_id?: number; sub?: string; audience?: 'peserta' | 'umum';
 };
 type Sub = { id: number; title: string; open: boolean };
-type Props = { eventId: number; salesOpen: boolean; manual?: boolean; feePercent: number; types: T[]; subs?: Sub[]; isParent?: boolean };
+type Props = { eventId: number; salesOpen: boolean; manual?: boolean; audienceChoice?: boolean; feePercent: number; types: T[]; subs?: Sub[]; isParent?: boolean };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
@@ -87,14 +87,14 @@ function SupportEditor({ value, onChange }: { value: string; onChange: (v: strin
     );
 }
 
-export default function Tiket({ eventId, salesOpen, manual, feePercent, types, subs: subList, isParent: parentMode }: Props) {
+export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feePercent, types, subs: subList, isParent: parentMode }: Props) {
     const pg = usePage().props as any;
     const evStart: string = pg.event?.starts_at ?? '';
     const evEnd: string = pg.event?.ends_at ?? '';
     const today = new Date().toISOString().slice(0, 10);
     const span = evStart && evEnd ? Math.max(1, Math.round((Date.parse(evEnd) - Date.parse(evStart)) / 86400000) + 1) : 1;
 
-    const blank = { name: '', price: '', quota: '', valid_days: String(span), custom_sale: false, valid_from: today, valid_until: evEnd || today, require_holder_details: true, max_per_order: '10', support_enabled: false, support_options: '' };
+    const blank = { audience: 'peserta' as 'peserta' | 'umum', name: '', price: '', quota: '', valid_days: String(span), custom_sale: false, valid_from: today, valid_until: evEnd || today, require_holder_details: true, max_per_order: '10', support_enabled: false, support_options: '' };
     const [editing, setEditing] = useState<T | 'new' | null>(null);
     const form = useForm<typeof blank>(blank);
 
@@ -112,7 +112,7 @@ export default function Tiket({ eventId, salesOpen, manual, feePercent, types, s
     const openNew = () => { form.clearErrors(); form.setData(blank); setTargetSub(filter || subs[0]?.id || eventId); setEditing('new'); };
     const openEdit = (t: T) => {
         form.clearErrors();
-        form.setData({ name: t.name, price: String(t.price), quota: String(t.quota), valid_days: String(t.valid_days), custom_sale: t.custom_sale, valid_from: t.valid_from, valid_until: t.valid_until, require_holder_details: t.require_holder_details, max_per_order: String(t.max_per_order), support_enabled: t.support_enabled, support_options: t.support_options.join('\n') });
+        form.setData({ audience: t.audience ?? 'peserta', name: t.name, price: String(t.price), quota: String(t.quota), valid_days: String(t.valid_days), custom_sale: t.custom_sale, valid_from: t.valid_from, valid_until: t.valid_until, require_holder_details: t.require_holder_details, max_per_order: String(t.max_per_order), support_enabled: t.support_enabled, support_options: t.support_options.join('\n') });
         setTargetSub(t.sub_id ?? eventId); setEditing(t);
     };
     const close = () => { setEditing(null); form.clearErrors(); };
@@ -206,7 +206,7 @@ export default function Tiket({ eventId, salesOpen, manual, feePercent, types, s
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             {isParent && t.sub && <div className="mb-1 inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">{t.sub}</div>}
-                                            <div className="text-lg font-extrabold">{t.name}</div>
+                                            <div className="text-lg font-extrabold">{t.name}{audienceChoice !== false && <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-bold ${t.audience === 'umum' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{t.audience === 'umum' ? 'Umum' : 'Peserta'}</span>}</div>
                                             <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">{t.price === 0 ? 'Gratis' : rp(t.price)}</div>
                                         </div>
                                         <div className="flex gap-1">
@@ -279,6 +279,21 @@ export default function Tiket({ eventId, salesOpen, manual, feePercent, types, s
                                         <span className="mt-1 block text-xs text-slate-500">Jumlah maksimum tiket yang bisa terjual.</span>{err('quota')}
                                     </label>
                                 </div>
+                                {audienceChoice !== false && (
+                                    <div className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                                        <div className="font-extrabold">Tiket ini untuk</div>
+                                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                            {([['peserta', 'Peserta', 'Masuk Registrasi dan dinilai juri.'], ['umum', 'Umum', 'Penonton atau pengunjung, tidak masuk Registrasi dan penilaian.']] as const).map(([v, t, s]) => (
+                                                <button key={v} type="button" disabled={locked} onClick={() => form.setData('audience', v)} className={`rounded-2xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${d.audience === v ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-white/10'}`}>
+                                                    <div className="text-sm font-extrabold">{t}</div>
+                                                    <div className="text-xs text-slate-500">{s}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {locked && <p className="mt-2 text-xs text-slate-500">Terkunci, sudah ada pesanan.</p>}
+                                        {err('audience')}
+                                    </div>
+                                )}
                                 {free && <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Tiket ini gratis dan tidak dikenakan biaya pembelian.</p>}
                             </section>
 

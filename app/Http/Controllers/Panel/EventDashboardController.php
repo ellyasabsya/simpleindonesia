@@ -274,6 +274,7 @@ class EventDashboardController extends EventScopedController
 
             return [
                 'id' => $t->id,
+                'audience' => $t->audience ?? 'peserta',
                 'name' => $t->name,
                 'price' => (int) $t->price,
                 'quota' => (int) $t->quota,
@@ -305,6 +306,7 @@ class EventDashboardController extends EventScopedController
         return $this->render('panel/events/tiket', $event, [
             'eventId' => $event->id,
             'salesOpen' => (bool) $event->ticket_sales_open,
+            'audienceChoice' => $event->registration_method === 'ticket',
             'feePercent' => \App\Models\Setting::serviceFeePercent(),
             'types' => $types,
         ]);
@@ -315,7 +317,9 @@ class EventDashboardController extends EventScopedController
     {
         $db = \Illuminate\Support\Facades\DB::class;
         $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
-        $orders = $db::table('ticket_orders')->where('event_id', $event->id)->orderByDesc('id')
+        $orders = $db::table('ticket_orders')->where('event_id', $event->id)
+            ->whereIn('ticket_type_id', fn ($q) => $q->select('id')->from('ticket_types')->where('event_id', $event->id)->where(fn ($w) => $w->where('audience', 'peserta')->orWhereNull('audience')))
+            ->orderByDesc('id')
             ->get(['id', 'code', 'buyer_name', 'buyer_email', 'ticket_type_id', 'quantity', 'status', 'holders', 'holder_details', 'support_choice']);
         $holders = $db::table('ticket_holders')->where('event_id', $event->id)
             ->get(['ticket_order_id', 'code', 'reg_code', 'participant_code', 'holder_name', 'checked_in_at'])->groupBy('ticket_order_id');
@@ -403,6 +407,7 @@ class EventDashboardController extends EventScopedController
             return [
                 'id' => $t->id,
                 'sub_id' => $t->event_id,
+                'audience' => $t->audience ?? 'peserta',
                 'sub' => $titles[$t->event_id] ?? '-',
                 'name' => $t->name,
                 'price' => (int) $t->price,

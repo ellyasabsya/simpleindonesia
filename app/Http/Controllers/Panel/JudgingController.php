@@ -783,7 +783,7 @@ class JudgingController extends EventScopedController
         $scores = ($leafIds && $judgeIds)
             ? DB::table('judging_scores')->whereIn('judge_id', $judgeIds)->whereIn('criterion_id', $leafIds)->get(['judge_id', 'registration_id', 'criterion_id', 'score'])->groupBy('registration_id')
             : collect();
-        $regs = $parts ? DB::table('event_registrations')->whereIn('id', array_column($parts, 'id'))->get()->keyBy('id') : collect();
+        $regs = $parts ? DB::table('event_registrations')->where('event_id', $event->id)->whereIn('id', array_column($parts, 'id'))->get()->keyBy('id') : collect();
         $has = fn ($col) => \Illuminate\Support\Facades\Schema::hasColumn('event_registrations', $col);
         $codeCol = collect(['code', 'registration_code', 'reg_code'])->first($has);
         $orderCol = collect(['performance_order', 'order_no', 'start_order'])->first($has);
