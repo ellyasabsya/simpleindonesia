@@ -881,6 +881,24 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
 
                 {tab === 'juri' && (
                     <>
+{categories.length > 1 && (
+                            <div className={`${card} p-4`}>
+                                <p className="text-sm font-extrabold">Pilih kategori yang ingin diatur juri-nya</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {categories.map((c) => (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            onClick={() => { if (c.id !== cid) router.get(base, { kategori: c.id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('juri') }); }}
+                                            className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
+                                        >
+                                            {c.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Juri yang Anda tambahkan di bawah ini khusus untuk kategori <b>{category.name}</b>. Kategori lain punya daftar juri sendiri.</p>
+                            </div>
+                        )}
 <JuriHeader title={event.title} category={multiCat && category.name ? category.name : ''} active={activeJudges} need={cfg.judge_count} />
 <JuriTambah card={card} inp={inpSm} btn={btn} />
 <JuriBelumTugas btn={btn} />
