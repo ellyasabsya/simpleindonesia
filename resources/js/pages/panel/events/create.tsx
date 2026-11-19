@@ -875,6 +875,39 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
 }
 
 /* ---------- halaman ---------- *//* ---------- halaman ---------- */
+const xsrf = () => decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+
+async function payEvent(id: string) {
+    const h = { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() };
+    const done = () => { window.location.href = '/panel'; };
+    try {
+        const r = await fetch(`/midtrans/event-token/${id}`, { method: 'POST', credentials: 'same-origin', headers: h });
+        if (!r.ok) throw new Error('token');
+        const t = await r.json();
+        if (!(window as any).snap) {
+            await new Promise<void>((ok, fail) => {
+                const sc = document.createElement('script');
+                sc.src = t.sandbox ? 'https://app.sandbox.midtrans.com/snap/snap.js' : 'https://app.midtrans.com/snap/snap.js';
+                sc.setAttribute('data-client-key', t.client_key);
+                sc.onload = () => ok();
+                sc.onerror = () => fail(new Error('snap'));
+                document.body.appendChild(sc);
+            });
+        }
+        (window as any).snap.pay(t.token, {
+            onSuccess: () => {
+                void fetch(`/midtrans/event-sync/${id}`, { method: 'POST', credentials: 'same-origin', headers: h }).catch(() => undefined).finally(done);
+            },
+            onPending: () => { alert('Menunggu pembayaran Anda. Event masuk review setelah pembayaran terkonfirmasi.'); done(); },
+            onError: () => alert('Pembayaran gagal. Silakan coba lagi.'),
+            onClose: () => { alert('Pembayaran belum diselesaikan. Event baru masuk review setelah dibayar.'); done(); },
+        });
+    } catch {
+        alert('Gagal membuka pembayaran. Silakan coba lagi.');
+        done();
+    }
+}
+
 export default function CreateEvent({ packages, categories, selected_package_id, payment_methods = [], platform_bank = null }: Props & { payment_methods?: string[]; platform_bank?: { bank_name: string; bank_account_number: string; bank_account_holder: string } | null }) {
     const initial = packages.find((p) => p.id === selected_package_id) ?? null;
     const [step, setStep] = useState(initial && !hasOptions(initial) ? 1 : 0);
@@ -1016,6 +1049,10 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         }));
         post('/panel/ajukan', {
             forceFormData: true,
+            onSuccess: (pg: any) => {
+                const f = (pg.props?.flash ?? {}) as { pay_online?: boolean; order_code?: string };
+                if (f.pay_online && f.order_code) void payEvent(String(f.order_code));
+            },
             onError: (errs) => {
                 const idx = Math.min(...Object.keys(errs).map((k) => { const i = keys.indexOf(stepOfField(k)); return i < 0 ? keys.length - 1 : i; }));
                 setStep(idx);
