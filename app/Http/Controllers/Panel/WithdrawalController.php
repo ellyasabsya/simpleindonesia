@@ -105,6 +105,7 @@ class WithdrawalController extends Controller
                 'available' => $report['summary']['available'],
                 'processing' => $report['summary']['processing'] + $report['summary']['pending'],
                 'withdrawn' => $report['summary']['transferred'],
+                'held' => $report['summary']['held'],
             ],
             'balances' => $report['balances']->map(fn ($b) => [
                 'id' => $b['id'],
@@ -115,6 +116,8 @@ class WithdrawalController extends Controller
                 'transferred' => $b['transferred'],
                 'processing' => $b['processing'],
                 'available' => $b['available'],
+                'held' => $b['held'],
+                'release_at' => $b['release_at'],
                 'has_pending' => in_array($b['id'], $pendingEvents, true),
             ])->values(),
             'history' => $history->map(fn (Withdrawal $w) => [
