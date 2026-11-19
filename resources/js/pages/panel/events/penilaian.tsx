@@ -306,6 +306,9 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
     const [date, setDate] = useState(ov.letter?.date?.slice(0, 10) ?? lsToday());
     const [signer, setSigner] = useState(ov.letter?.signer_name ?? '');
     const [position, setPosition] = useState(ov.letter?.signer_position ?? '');
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPrev, setLogoPrev] = useState<string | null>(null);
+    const skLogo = logoPrev ?? (ov as { logo_url?: string | null }).logo_url ?? null;
     const [confirmed, setConfirmed] = useState(false);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
@@ -340,7 +343,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
         if (!confirm(`Tetapkan hasil ${title} dan juara umum? Semua kategori di semua sub-event akan dikunci dan tidak bisa diubah lagi.`)) return;
         setErr('');
         setBusy(true);
-        router.post(`${base}/juara-umum/tetapkan`, { number, date, signer_name: signer, signer_position: position, confirm: true } as any, {
+        router.post(`${base}/juara-umum/tetapkan`, { number, date, signer_name: signer, signer_position: position, confirm: true, ...(logoFile ? { logo: logoFile } : {}) } as any, {
             preserveScroll: true,
             onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menetapkan SK.')),
             onFinish: () => setBusy(false),
@@ -375,6 +378,26 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Tanggal SK *</span><input className={`${inpSm} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                            <div className="md:col-span-2 xl:col-span-4">
+                                <span className={`${lbl} !normal-case !tracking-normal`}>Logo kop SK (opsional)</span>
+                                <div className="mt-1 flex flex-wrap items-center gap-3">
+                                    {skLogo
+                                        ? <img src={skLogo} alt="Logo SK" className="h-14 w-14 rounded-xl border border-slate-200 bg-white object-contain p-1" />
+                                        : <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[10px] font-bold text-slate-400">Logo</div>}
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        className="block max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-700"
+                                        onChange={(e) => {
+                                            const f = e.target.files?.[0] ?? null;
+                                            setLogoFile(f);
+                                            setLogoPrev(f ? URL.createObjectURL(f) : null);
+                                        }}
+                                    />
+                                    {logoFile && <button type="button" onClick={() => { setLogoFile(null); setLogoPrev(null); }} className="text-xs font-bold text-rose-600">Batalkan logo baru</button>}
+                                    <span className="text-xs text-slate-500">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
+                                </div>
+                            </div>
                         </div>
                         <ul className="space-y-2">
                             {ov.checks.map((x, i) => (
@@ -551,60 +574,137 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{ranked} peringkat tercantum</span>
                 </div>
 
-                <div id="sk-print" className="mx-auto max-w-3xl rounded-2xl bg-white p-8 font-serif text-[14px] leading-relaxed text-slate-900 shadow-sm sm:p-12">
-                    <div className="border-b-2 border-slate-900 pb-3 text-center text-lg font-bold uppercase">{ov.institution || 'Nama lembaga'}</div>
-                    <div className="mt-6 text-center">
-                        <div className="text-lg font-bold">SURAT KEPUTUSAN</div>
-                        <div>Nomor: {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</div>
-                        <div className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">Tentang</div>
-                        <div className="font-bold uppercase">Penetapan hasil lomba dan juara umum {title}</div>
+                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 print:space-y-0">
+                    {/* ===== Halaman 1: Surat Keputusan ===== */}
+                    <div className="rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                        <div className="pb-1 text-center">
+                            {skLogo
+                                ? <img src={skLogo} alt={ov.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
+                                : <div className="text-lg font-bold uppercase">{ov.institution || 'Nama lembaga'}</div>}
+                        </div>
+                        <div className="mt-6 text-center">
+                            <div className="text-lg font-bold">SURAT KEPUTUSAN</div>
+                            <div>Nomor: {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</div>
+                            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">Tentang</div>
+                            <div className="font-bold uppercase">Penetapan juara dan juara umum {title}</div>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-y-3">
+                            <div>Menimbang</div>
+                            <ol className="list-decimal space-y-1 pl-5 text-justify">
+                                <li>Bahwa seluruh lomba pada {title} telah dilaksanakan melalui sistem SIMPLE dan seluruh penilaian telah diselesaikan oleh juri;</li>
+                                <li>Bahwa hasil penilaian telah direkapitulasi dan diperiksa oleh panitia, sehingga perlu ditetapkan dengan Surat Keputusan.</li>
+                            </ol>
+                            <div>Mengingat</div>
+                            <ol className="list-decimal space-y-1 pl-5 text-justify">
+                                <li>Rekapitulasi nilai seluruh lomba pada {title} yang tersimpan pada sistem SIMPLE;</li>
+                                <li>Hasil pemeriksaan oleh panitia penyelenggara.</li>
+                            </ol>
+                        </div>
+
+                        <p className="mt-6 text-center font-bold">MEMUTUSKAN</p>
+                        <div className="mt-2 grid grid-cols-[6.5rem_1.25rem_1fr] gap-y-2">
+                            <div>Menetapkan</div><div>:</div>
+                            <div className="text-justify font-bold uppercase">Keputusan tentang penetapan juara dan juara umum {title};</div>
+                            <div>Kesatu</div><div>:</div>
+                            <div className="text-justify">Hasil dan peringkat tiap lomba ditetapkan sebagaimana tercantum dalam Lampiran bagian A keputusan ini;</div>
+                            <div>Kedua</div><div>:</div>
+                            <div className="text-justify">Juara umum {title} ditetapkan berdasarkan akumulasi poin peringkat dari seluruh kategori, sebagaimana tercantum dalam Lampiran bagian B keputusan ini;</div>
+                            <div>Ketiga</div><div>:</div>
+                            <div className="text-justify">Keputusan ini berlaku sejak tanggal ditetapkan, dan apabila terdapat kekeliruan akan diperbaiki sebagaimana mestinya.</div>
+                        </div>
+
+                        <div className="ml-auto mt-10 w-1/2 text-center">
+                            <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
+                            <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
+                            <div className="h-20" />
+                            <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
+                        </div>
                     </div>
 
-                    <p className="mt-6"><b>Menimbang:</b> bahwa seluruh lomba pada {title} telah dilaksanakan, penilaian telah diselesaikan oleh seluruh juri, dan hasilnya telah diperiksa oleh panitia.</p>
-                    <p className="mt-4 text-center font-bold">MEMUTUSKAN</p>
-                    <p className="mt-2"><b>Menetapkan:</b></p>
-                    <p className="mt-2"><b>Pertama:</b> hasil dan peringkat tiap lomba sebagai berikut.</p>
-
-                    {groups.length === 0 && <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
-                    {groups.map((g, gi) => (
-                        <div key={g.sub_id} className="mt-3">
-                            <p className="font-bold">{String.fromCharCode(65 + gi)}. {g.sub}</p>
-                            {g.categories.map((x) => (
-                                <div key={x.id} className="mt-2">
-                                    {x.name && <p className="font-semibold">Kategori {x.name}</p>}
-                                    {x.rows.length === 0
-                                        ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada peringkat yang bisa dicantumkan.</p>
-                                        : <LsTable rows={x.rows} />}
-                                </div>
-                            ))}
+                    {/* ===== Halaman 2: Lampiran ===== */}
+                    <div className="break-before-page rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                        <div className="pb-1">
+                            <p className="font-bold">LAMPIRAN SURAT KEPUTUSAN</p>
+                            <p className="font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
                         </div>
-                    ))}
+                        <div className="mt-6 text-center font-bold uppercase">
+                            <div>Penetapan juara dan juara umum {title}</div>
+                            {ov.institution && <div>{ov.institution}</div>}
+                        </div>
 
-                    <p className="mt-5"><b>Kedua:</b> juara umum {title} ditetapkan sebagai berikut.</p>
-                    {winners.length === 0
-                        ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada juara umum yang bisa dicantumkan.</p>
-                        : (
-                            <table className="mt-2 w-full border-collapse text-[13px]">
-                                <thead><tr><th className="w-24 border border-slate-400 bg-slate-100 px-2 py-1 text-center font-bold">Juara umum</th><th className="border border-slate-400 bg-slate-100 px-2 py-1 text-left font-bold">Sekolah / lembaga</th><th className="w-24 border border-slate-400 bg-slate-100 px-2 py-1 text-right font-bold">Poin</th></tr></thead>
-                                <tbody>
-                                    {winners.map((s, i) => (
-                                        <tr key={i}>
-                                            <td className="border border-slate-400 px-2 py-1 text-center font-bold">{s.rank}{s.shared ? ' =' : ''}</td>
-                                            <td className="border border-slate-400 px-2 py-1">{s.school}</td>
-                                            <td className="border border-slate-400 px-2 py-1 text-right font-bold">{num(s.points)}</td>
+                        <p className="mt-5 font-bold">A. Hasil per lomba</p>
+                        {groups.length === 0 && <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
+                        {groups.map((g, gi) => (
+                            <div key={g.sub_id} className="mt-3">
+                                <p className="font-semibold">{gi + 1}. {g.sub}</p>
+                                <table className="mt-1 w-full border-collapse border border-slate-900 text-[12.5px]">
+                                    <thead>
+                                        <tr className="bg-slate-200 text-center font-bold uppercase">
+                                            <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
+                                            <th className="w-24 border border-slate-900 px-1.5 py-2">Kategori</th>
+                                            <th className="w-14 border border-slate-900 px-1.5 py-2">Juara</th>
+                                            <th className="w-32 border border-slate-900 px-1.5 py-2">Kode peserta</th>
+                                            <th className="border border-slate-900 px-1.5 py-2">Nama</th>
+                                            <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
+                                            <th className="w-20 border border-slate-900 px-1.5 py-2">Nilai akhir</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                                    </thead>
+                                    <tbody>
+                                        {g.categories.map((x, i) => x.rows.length === 0 ? (
+                                            <tr key={`x${x.id}`}>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center">{x.name || g.sub}</td>
+                                                <td colSpan={5} className="border border-slate-900 px-1.5 py-1.5 text-center italic">Belum ada peringkat yang bisa dicantumkan.</td>
+                                            </tr>
+                                        ) : x.rows.map((r, k) => (
+                                            <tr key={`x${x.id}-${k}`}>
+                                                {k === 0 && <td rowSpan={x.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{i + 1}</td>}
+                                                {k === 0 && <td rowSpan={x.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{x.name || g.sub}</td>}
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{r.rank}{r.shared ? ' =' : ''}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center font-mono text-[11.5px]">{r.code}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5">{r.name || '-'}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5">{r.school || '-'}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{lsNf(r.score)}</td>
+                                            </tr>
+                                        )))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
 
-                    <p className="mt-5"><b>Ketiga:</b> keputusan ini berlaku sejak tanggal ditetapkan.</p>
+                        <p className="mt-6 font-bold">B. Juara umum {title}</p>
+                        {winners.length === 0
+                            ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada juara umum yang bisa dicantumkan.</p>
+                            : (
+                                <table className="mt-2 w-full border-collapse border border-slate-900 text-[12.5px]">
+                                    <thead>
+                                        <tr className="bg-slate-200 text-center font-bold uppercase">
+                                            <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
+                                            <th className="w-28 border border-slate-900 px-1.5 py-2">Juara umum</th>
+                                            <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
+                                            <th className="w-24 border border-slate-900 px-1.5 py-2">Total poin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {winners.map((w, i) => (
+                                            <tr key={i}>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{w.rank}{w.shared ? ' =' : ''}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5">{w.school}</td>
+                                                <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{num(w.points)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
 
-                    <div className="ml-auto mt-8 w-1/2 text-center">
-                        <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
-                        <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
-                        <div className="h-20" />
-                        <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
+                        <div className="ml-auto mt-10 w-1/2 text-center">
+                            <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
+                            <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
+                            <div className="h-20" />
+                            <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
+                        </div>
                     </div>
                 </div>
             </div>

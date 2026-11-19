@@ -1728,6 +1728,16 @@ class JudgingController extends EventScopedController
     /** Juara umum event utama: poin dari peringkat tiap kategori di semua sub-event, dijumlahkan per sekolah/lembaga. */
     private function overallData(Event $event): array
     {
+        $d = $this->overallDataBase($event);
+        $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
+        $lp = (string) (($row->logo_path ?? null) ?: ($event->institution->logo_path ?? ''));
+        $d['logo_url'] = $lp !== '' ? '/storage/'.ltrim($lp, '/') : null;
+
+        return $d;
+    }
+
+    private function overallDataBase(Event $event): array
+    {
         $row = DB::table('judging_overall')->where('event_id', $event->id)->first();
         $points = $row ? array_map('intval', json_decode((string) $row->points_json, true) ?: []) : [];
         if (! $points) {
@@ -2167,6 +2177,12 @@ class JudgingController extends EventScopedController
 
     public function finalizeOverall(Request $request, Event $event): RedirectResponse
     {
+        if ($request->hasFile('logo')) {
+            $request->validate(['logo' => 'image|mimes:png,jpg,jpeg,webp|max:2048']);
+            $this->guard($request, $event);
+            $skLogoPath = $request->file('logo')->store('sk-logo', 'public');
+            DB::table('judging_overall')->where('event_id', $event->id)->whereNull('finalized_at')->update(['logo_path' => $skLogoPath]);
+        }
         $this->guard($request, $event);
         $data = $request->validate([
             'number' => 'required|string|max:100',
