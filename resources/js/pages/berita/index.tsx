@@ -32,19 +32,19 @@ export default function BeritaIndex({ news }: Props) {
             <PageBackground />
             <Navbar />
             <div className="relative z-10 pt-24">
-                <main className="mx-auto w-full max-w-[1400px] px-6 pb-20 lg:px-24">
+                <main className="mx-auto w-full max-w-7xl px-6 pb-20">
                     <div className="pt-16">
-                        <div className="h-1.5 w-40 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500" />
+                        <div className="h-1.5 w-24 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500" />
                         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
                             <div>
-                                <h1 className="bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 bg-clip-text text-5xl font-bold tracking-tight text-transparent uppercase md:text-6xl">
+                                <h1 className="bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 bg-clip-text text-4xl font-semibold tracking-tight text-transparent uppercase">
                                     Semua Berita
                                 </h1>
                                 <p className="mt-4 text-xl text-slate-500 dark:text-slate-300">
                                     Kabar terbaru seputar event dan kegiatan di SIMPLE.
                                 </p>
                             </div>
-                            <div className="inline-flex items-center gap-3 rounded-full border border-slate-200/70 bg-white px-6 py-3.5 text-lg font-semibold shadow-sm dark:border-white/10 dark:bg-neutral-900">
+                            <div className="inline-flex items-center gap-3 rounded-full border border-slate-200/70 bg-white px-5 py-3 text-base font-semibold shadow-sm dark:border-white/10 dark:bg-neutral-900">
                                 <Newspaper className="h-6 w-6 text-orange-500" /> {total} berita
                             </div>
                         </div>

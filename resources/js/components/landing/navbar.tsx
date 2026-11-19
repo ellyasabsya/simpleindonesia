@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/auth';
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { goTo } from '@/lib/scroll';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -14,11 +14,21 @@ const links = [
     { label: 'Berita', id: 'berita' },
 ];
 
+const pageLinks: Record<string, string> = { event: '/events', berita: '/berita' };
+
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [active, setActive] = useState('hero');
     const { dark, toggle } = useTheme();
     const { user, dashboardUrl } = useAuth();
+    const path = usePage().url.split('?')[0].split('#')[0];
+    const onHome = path === '/';
+    const pathActive = path.startsWith('/events') ? 'event' : path.startsWith('/berita') ? 'berita' : null;
+    const hrefFor = (id: string) => (onHome ? `#${id}` : (pageLinks[id] ?? `/#${id}`));
+    const go = (e: { preventDefault: () => void }, id: string) => {
+        e.preventDefault();
+        router.visit(id === 'hero' ? '/' : (pageLinks[id] ?? `/#${id}`));
+    };
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 16);
@@ -29,6 +39,7 @@ export default function Navbar() {
 
     // Tandai menu aktif sesuai section yang sedang terlihat
     useEffect(() => {
+        if (!onHome) return;
         const observer = new IntersectionObserver(
             (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
             { rootMargin: '-45% 0px -50% 0px' },
@@ -38,7 +49,9 @@ export default function Navbar() {
             if (el) observer.observe(el);
         });
         return () => observer.disconnect();
-    }, []);
+    }, [onHome]);
+
+    const current = onHome ? active : pathActive;
 
     return (
         <header
@@ -49,7 +62,7 @@ export default function Navbar() {
             }`}
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-                <a href="#hero" onClick={(e) => goTo(e, "hero")} className="flex items-center gap-3">
+                <a href={onHome ? '#hero' : '/'} onClick={(e) => (onHome ? goTo(e, 'hero') : go(e, 'hero'))} className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
                         S
                     </span>
@@ -62,9 +75,9 @@ export default function Navbar() {
                     {links.map((link) => (
                         <a
                             key={link.id}
-                            href={`#${link.id}`} onClick={(e) => goTo(e, link.id)}
+                            href={hrefFor(link.id)} onClick={(e) => (onHome ? goTo(e, link.id) : go(e, link.id))}
                             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                                active === link.id
+                                current === link.id
                                     ? 'bg-white text-indigo-900 shadow dark:bg-indigo-500/30 dark:text-white'
                                     : 'text-slate-600 hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white'
                             }`}
