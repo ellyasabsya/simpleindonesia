@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, MapPin, Trophy } from 'lucide-react';
 import UserLayout from '@/components/user/user-layout';
 
-type Row = { id: number; status: string; title: string | null; category: string | null; location: string | null; starts_at: string | null; poster: string | null };
+type Row = { id: number; status: string; title: string | null; category: string | null; location: string | null; starts_at: string | null; poster: string | null; can_results?: boolean };
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 
@@ -64,6 +64,11 @@ export default function Lomba({ rows = [] }: { rows?: Row[] }) {
                                     {r.category && <p className="text-sm text-slate-500 dark:text-slate-300">{r.category}</p>}
                                     <p className="mt-2 flex items-center gap-1.5 text-sm"><CalendarDays className="h-4 w-4" /> {fmt(r.starts_at)}</p>
                                     {r.location && <p className="flex items-center gap-1.5 text-sm"><MapPin className="h-4 w-4" /> {r.location}</p>}
+                                    {r.can_results && (
+                                        <Link href={`/event-saya/${r.id}/hasil`} className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-bold text-white">
+                                            <Trophy className="h-4 w-4" /> Lihat hasil
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         ))}
