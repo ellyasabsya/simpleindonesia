@@ -574,13 +574,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 </div>
             )}
 
-            {!hideRegistration && (
-            <>
-            {ticketOnly ? (
-                <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
-            ) : (
-            <div>
-                <>
+            {!ticketOnly && (
                 <div className={`${box} mb-6 p-5`}>
                     <b className="block text-[15px]">Biaya pendaftaran</b>
                     <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Biaya per peserta. Kosongkan atau isi 0 kalau pendaftaran gratis.</span>
@@ -596,6 +590,15 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     </div>
                     <Err m={err(pre + 'registration_fee')} />
                 </div>
+            )}
+
+            {!hideRegistration && (
+            <>
+            {ticketOnly ? (
+                <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
+            ) : (
+            <div>
+                <>
                 {fixedMethod ? (<div className={`${box} mb-3 p-4 text-sm`}><b className="block">Pendaftaran peserta: {fixedMethod === 'ticket' ? 'Tiket' : 'Transfer Manual'}</b><span className="text-xs text-slate-500 dark:text-slate-400">Mengikuti event utama. Satu rangkaian memakai satu metode pendaftaran.</span></div>) : (<label className={label}>Pendaftaran peserta *</label>)}</>
                 <div className={fixedMethod ? 'hidden' : 'grid gap-3 sm:grid-cols-2'}>
                     {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
@@ -741,16 +744,6 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
     if (d.registration_method === 'transfer_manual') {
         return (
             <div className="space-y-4">
-                <div>
-                    <label className={label}>Biaya pendaftaran per peserta</label>
-                    <div className="flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 dark:border-white/10 dark:bg-slate-950/60">
-                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
-                        <input inputMode="numeric" placeholder="0 jika gratis" className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
-                            value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
-                            onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })} />
-                    </div>
-                    <Err m={err(pre + 'registration_fee')} />
-                </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                     {([['bank_name', 'Nama bank', 'Contoh: BCA, Mandiri, BRI'], ['bank_account_number', 'Nomor rekening', 'Hanya angka'], ['bank_account_name', 'Atas nama', 'Nama pemilik rekening']] as const).map(([k, t, ph]) => (
                         <div key={k}>
@@ -1187,7 +1180,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 </p>
                             </div>
                             <div><h3 className={h3}>Informasi Event</h3><InfoSection d={s} set={set} pre={pre} err={err} categories={categories} bounds={bounds} /></div>
-                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} fixedMethod={data.registration_method} ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
+                            <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Peserta & Pendaftaran</h3><PesertaSection d={s} set={set} pre={pre} err={err} max={cap} hideRegistration ticketOnly={!!pkg && pkg.payment_type === 'revenue_share'} canTicket={pkg ? pkg.can_ticket : true} canTeam={pkg ? pkg.can_team : true} /></div>
                             <div className="border-t border-slate-200/70 pt-6 dark:border-white/10"><h3 className={h3}>Penanggung Jawab</h3><PjSection d={s} set={set} pre={pre} err={err} /></div>
                         </div>
                     );
