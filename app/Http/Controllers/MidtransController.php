@@ -110,6 +110,22 @@ class MidtransController extends Controller
         return response()->json(['token' => $token, 'client_key' => config('midtrans.client_key'), 'sandbox' => ! config('midtrans.is_production')]);
     }
 
+    /** Sinkronisasi status vote ke Midtrans (cadangan bila webhook belum masuk). */
+    public function voteSync(string $code, MidtransService $midtrans): JsonResponse
+    {
+        $o = DB::table('voting_orders')->where('code', $code)->first();
+        abort_unless($o && $o->midtrans_order_id, 404);
+
+        try {
+            $p = $midtrans->status($o->midtrans_order_id);
+            $this->votingNotification($o, $p, $midtrans);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['status' => DB::table('voting_orders')->where('id', $o->id)->value('status')]);
+    }
+
     private function votingNotification(object $o, array $p, MidtransService $midtrans)
     {
         if ((int) round((float) ($p['gross_amount'] ?? 0)) !== (int) $o->amount) {

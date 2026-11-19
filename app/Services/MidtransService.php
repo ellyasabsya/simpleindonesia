@@ -28,6 +28,12 @@ class MidtransService
         return Snap::getSnapToken($params);
     }
 
+    /** Tanya status transaksi langsung ke Midtrans. */
+    public function status(string $orderId): array
+    {
+        return (array) json_decode(json_encode(\Midtrans\Transaction::status($orderId)), true);
+    }
+
     public function validSignature(array $p): bool
     {
         $expected = hash('sha512', ($p['order_id'] ?? '').($p['status_code'] ?? '').($p['gross_amount'] ?? '').config('midtrans.server_key'));

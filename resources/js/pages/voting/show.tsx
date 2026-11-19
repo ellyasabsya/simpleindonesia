@@ -86,7 +86,11 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
             const t = await r.json();
             await loadSnap(t.client_key, t.sandbox);
             (window as any).snap.pay(t.token, {
-                onSuccess: () => { setPendingCode(''); setDone('Pembayaran berhasil. Vote akan masuk dalam beberapa saat.'); },
+                onSuccess: () => {
+                    void fetch(`/midtrans/vote-sync/${code}`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf } })
+                        .catch(() => undefined)
+                        .finally(() => { setPendingCode(''); setDone('Pembayaran berhasil. Vote Anda sudah dihitung.'); });
+                },
                 onPending: () => { setPendingCode(''); setDone('Menunggu pembayaran Anda. Vote masuk setelah pembayaran terkonfirmasi.'); },
                 onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),
                 onClose: () => setPayMsg('Pembayaran belum diselesaikan. Klik "Lanjutkan pembayaran" untuk membuka lagi.'),

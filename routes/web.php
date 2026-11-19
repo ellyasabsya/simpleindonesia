@@ -342,3 +342,6 @@ Route::post('/midtrans/token/{code}', [\App\Http\Controllers\MidtransController:
 
 Route::post('/midtrans/vote-token/{code}', [\App\Http\Controllers\MidtransController::class, 'voteToken'])
     ->where('code', '[A-Z0-9]{10}')->middleware('throttle:20,1');
+
+Route::post('/midtrans/vote-sync/{code}', [\App\Http\Controllers\MidtransController::class, 'voteSync'])
+    ->where('code', '[A-Z0-9]{10}')->middleware('throttle:30,1');
