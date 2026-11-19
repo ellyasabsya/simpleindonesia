@@ -295,6 +295,50 @@ function ovNum(v: any): string {
     return v === null || v === undefined || v === '' ? '–' : Number(v).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
 
+/** Tabel lampiran SK: header nama menyesuaikan perorangan/tim, kolom sekolah tampil hanya bila ada datanya. */
+function SkLampiranTable({ cats, fallback }: { cats: { id: number; name?: string | null; rows: any[] }[]; fallback: string }) {
+    const all = cats.flatMap((c) => c.rows);
+    const hasSchool = all.some((r) => String(r.school ?? '').trim() !== '');
+    const teams = all.filter((r) => r.team).length;
+    const nameHead = all.length > 0 && teams === all.length ? 'Nama tim' : teams > 0 ? 'Nama peserta / tim' : 'Nama peserta';
+    const th = 'border border-slate-900 px-1.5 py-2';
+    const td = 'border border-slate-900 px-1.5 py-1.5';
+    return (
+        <table className="mt-1 w-full border-collapse border border-slate-900 text-[12.5px]">
+            <thead>
+                <tr className="bg-slate-200 text-center font-bold uppercase">
+                    <th className={`w-9 ${th}`}>No</th>
+                    <th className={`w-24 ${th}`}>Kategori</th>
+                    <th className={`w-14 ${th}`}>Juara</th>
+                    <th className={`w-32 ${th}`}>Kode peserta</th>
+                    <th className={th}>{nameHead}</th>
+                    {hasSchool && <th className={th}>Sekolah / institusi</th>}
+                    <th className={`w-20 ${th}`}>Nilai akhir</th>
+                </tr>
+            </thead>
+            <tbody>
+                {cats.map((c, i) => c.rows.length === 0 ? (
+                    <tr key={`c${c.id}`}>
+                        <td className={`${td} text-center`}>{i + 1}</td>
+                        <td className={`${td} text-center`}>{c.name || fallback}</td>
+                        <td colSpan={hasSchool ? 5 : 4} className={`${td} text-center italic`}>Belum ada peringkat yang bisa dicantumkan.</td>
+                    </tr>
+                ) : c.rows.map((r, k) => (
+                    <tr key={`c${c.id}-${k}`}>
+                        {k === 0 && <td rowSpan={c.rows.length} className={`${td} text-center align-middle`}>{i + 1}</td>}
+                        {k === 0 && <td rowSpan={c.rows.length} className={`${td} text-center align-middle`}>{c.name || fallback}</td>}
+                        <td className={`${td} text-center font-bold`}>{r.rank}{r.shared ? ' =' : ''}</td>
+                        <td className={`${td} text-center font-mono text-[11.5px]`}>{r.code}</td>
+                        <td className={td}>{r.name || '-'}</td>
+                        {hasSchool && <td className={td}>{String(r.school ?? '').trim() || '-'}</td>}
+                        <td className={`${td} text-right font-semibold`}>{lsNf(r.score)}</td>
+                    </tr>
+                )))}
+            </tbody>
+        </table>
+    );
+}
+
 function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Overall; base: string; title: string; dirty?: boolean }) {
     const ov = ovIn as OverallX;
     const [dirtySet, setDirtySet] = useState(false);
@@ -638,38 +682,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         {groups.map((g, gi) => (
                             <div key={g.sub_id} className="mt-3">
                                 <p className="font-semibold">{gi + 1}. {g.sub}</p>
-                                <table className="mt-1 w-full border-collapse border border-slate-900 text-[12.5px]">
-                                    <thead>
-                                        <tr className="bg-slate-200 text-center font-bold uppercase">
-                                            <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
-                                            <th className="w-24 border border-slate-900 px-1.5 py-2">Kategori</th>
-                                            <th className="w-14 border border-slate-900 px-1.5 py-2">Juara</th>
-                                            <th className="w-32 border border-slate-900 px-1.5 py-2">Kode peserta</th>
-                                            <th className="border border-slate-900 px-1.5 py-2">Nama</th>
-                                            <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
-                                            <th className="w-20 border border-slate-900 px-1.5 py-2">Nilai akhir</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {g.categories.map((x, i) => x.rows.length === 0 ? (
-                                            <tr key={`x${x.id}`}>
-                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
-                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center">{x.name || g.sub}</td>
-                                                <td colSpan={5} className="border border-slate-900 px-1.5 py-1.5 text-center italic">Belum ada peringkat yang bisa dicantumkan.</td>
-                                            </tr>
-                                        ) : x.rows.map((r, k) => (
-                                            <tr key={`x${x.id}-${k}`}>
-                                                {k === 0 && <td rowSpan={x.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{i + 1}</td>}
-                                                {k === 0 && <td rowSpan={x.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{x.name || g.sub}</td>}
-                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{r.rank}{r.shared ? ' =' : ''}</td>
-                                                <td className="border border-slate-900 px-1.5 py-1.5 text-center font-mono text-[11.5px]">{r.code}</td>
-                                                <td className="border border-slate-900 px-1.5 py-1.5">{r.name || '-'}</td>
-                                                <td className="border border-slate-900 px-1.5 py-1.5">{r.school || '-'}</td>
-                                                <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{lsNf(r.score)}</td>
-                                            </tr>
-                                        )))}
-                                    </tbody>
-                                </table>
+                                <SkLampiranTable cats={g.categories} fallback={g.sub} />
                             </div>
                         ))}
 
@@ -957,38 +970,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
 
                         {sk.categories.length === 0 && <p className="mt-4 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
                         {sk.categories.length > 0 && (
-                            <table className="mt-5 w-full border-collapse border border-slate-900 text-[12.5px]">
-                                <thead>
-                                    <tr className="bg-slate-200 text-center font-bold uppercase">
-                                        <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
-                                        <th className="w-24 border border-slate-900 px-1.5 py-2">Kategori</th>
-                                        <th className="w-14 border border-slate-900 px-1.5 py-2">Juara</th>
-                                        <th className="w-32 border border-slate-900 px-1.5 py-2">Kode peserta</th>
-                                        <th className="border border-slate-900 px-1.5 py-2">Nama</th>
-                                        <th className="border border-slate-900 px-1.5 py-2">Sekolah / lembaga</th>
-                                        <th className="w-20 border border-slate-900 px-1.5 py-2">Nilai akhir</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sk.categories.map((c, i) => c.rows.length === 0 ? (
-                                        <tr key={`c${c.id}`}>
-                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center">{i + 1}</td>
-                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center">{c.name || sk.title}</td>
-                                            <td colSpan={5} className="border border-slate-900 px-1.5 py-1.5 text-center italic">Belum ada peringkat yang bisa dicantumkan.</td>
-                                        </tr>
-                                    ) : c.rows.map((r, k) => (
-                                        <tr key={`c${c.id}-${k}`}>
-                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{i + 1}</td>}
-                                            {k === 0 && <td rowSpan={c.rows.length} className="border border-slate-900 px-1.5 py-1.5 text-center align-middle">{c.name || sk.title}</td>}
-                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center font-bold">{r.rank}{r.shared ? ' =' : ''}</td>
-                                            <td className="border border-slate-900 px-1.5 py-1.5 text-center font-mono text-[11.5px]">{r.code}</td>
-                                            <td className="border border-slate-900 px-1.5 py-1.5">{r.name || '-'}</td>
-                                            <td className="border border-slate-900 px-1.5 py-1.5">{r.school || '-'}</td>
-                                            <td className="border border-slate-900 px-1.5 py-1.5 text-right font-semibold">{lsNf(r.score)}</td>
-                                        </tr>
-                                    )))}
-                                </tbody>
-                            </table>
+                            <SkLampiranTable cats={sk.categories} fallback={sk.title} />
                         )}
 
                         <div className="ml-auto mt-10 w-1/2 text-center">

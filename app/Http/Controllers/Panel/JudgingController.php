@@ -1774,6 +1774,7 @@ class JudgingController extends EventScopedController
                         $useRows = $snapRows;
                     }
                 }
+                $useRows = $this->markTeams((int) $child->id, $useRows);
                 $regs = DB::table('event_registrations')->whereIn('id', array_column($useRows, 'id'))->get(['id', 'school', 'participant_code', 'user_id'])->keyBy('id');
                 $winners = [];
                 foreach ($useRows as $r) {
@@ -1819,6 +1820,7 @@ class JudgingController extends EventScopedController
                 $rnk = [];
                 foreach ($useRows as $x) {
                     $tbl[] = [
+                        'team' => ! empty($x['team']),
                         'rank' => $x['rank'], 'shared' => (bool) ($x['rank_shared'] ?? false),
                         'code' => $x['code'], 'name' => (string) ($x['name'] ?? ''), 'school' => (string) ($x['school'] ?? ''),
                         'order' => $x['order'] ?? null, 'judges_done' => (int) $x['judges_done'],
@@ -1827,6 +1829,7 @@ class JudgingController extends EventScopedController
                     ];
                     if ($x['rank'] !== null && $x['score'] !== null) {
                         $rnk[] = [
+                            'team' => ! empty($x['team']),
                             'rank' => (int) $x['rank'], 'shared' => (bool) ($x['rank_shared'] ?? false),
                             'code' => $x['code'], 'name' => (string) ($x['name'] ?? ''), 'school' => (string) ($x['school'] ?? ''),
                             'score' => $x['score'],
@@ -2246,6 +2249,39 @@ class JudgingController extends EventScopedController
     }
 
     /** SK satu lomba (sub-event): memuat semua kategorinya. Kalau sudah ditetapkan, dibaca dari salinan beku. */
+    /** Nama tim per pendaftaran. Kosong = peserta perorangan. */
+    private function teamNames(array $regIds): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $regIds)));
+        if (! $ids || ! \Illuminate\Support\Facades\Schema::hasTable('registration_teams')) {
+            return [];
+        }
+
+        return DB::table('registration_teams')->whereIn('event_registration_id', $ids)->orderBy('id')
+            ->get(['event_registration_id', 'name'])->unique('event_registration_id')
+            ->mapWithKeys(fn ($t) => [(int) $t->event_registration_id => trim((string) $t->name)])
+            ->filter()->all();
+    }
+
+    /** Tandai peserta tim: nama tim menggantikan nama peserta, dan baris diberi flag team. */
+    private function markTeams(int $eventId, array $rows): array
+    {
+        if (DB::table('events')->where('id', $eventId)->value('registration_method') === 'ticket') {
+            return $rows;
+        }
+        $map = $this->teamNames(array_column($rows, 'id'));
+        foreach ($rows as &$r) {
+            $tn = $map[(int) ($r['id'] ?? 0)] ?? '';
+            $r['team'] = $tn !== '';
+            if ($r['team']) {
+                $r['name'] = $tn;
+            }
+        }
+        unset($r);
+
+        return $rows;
+    }
+
     private function skLombaData(Event $event): array
     {
         $institution = (string) ($event->institution->name ?? '');
@@ -2306,10 +2342,12 @@ class JudgingController extends EventScopedController
             if ($unranked > 0) {
                 $warnings[] = $label.': '.$unranked.' tim tidak mendapat peringkat (diskualifikasi atau dibatalkan) dan tidak dicantumkan di SK.';
             }
+            $useRows = $this->markTeams($event->id, $useRows);
             $ranked = [];
             $table = [];
             foreach ($useRows as $r) {
                 $table[] = [
+                    'team' => ! empty($r['team']),
                     'rank' => $r['rank'], 'shared' => (bool) ($r['rank_shared'] ?? false),
                     'code' => $r['code'], 'name' => (string) ($r['name'] ?? ''), 'school' => (string) ($r['school'] ?? ''),
                     'order' => $r['order'] ?? null, 'judges_done' => (int) $r['judges_done'],
@@ -2318,6 +2356,7 @@ class JudgingController extends EventScopedController
                 ];
                 if ($r['rank'] !== null && $r['score'] !== null) {
                     $ranked[] = [
+                        'team' => ! empty($r['team']),
                         'rank' => (int) $r['rank'], 'shared' => (bool) ($r['rank_shared'] ?? false),
                         'code' => $r['code'], 'name' => (string) ($r['name'] ?? ''), 'school' => (string) ($r['school'] ?? ''),
                         'score' => $r['score'],
