@@ -30,6 +30,7 @@ import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
 import { useAuth } from '@/lib/auth';
 
+import { feeRange } from '@/lib/fee-label';
 type StatusKey = 'selesai' | 'segera' | 'berlangsung';
 
 type Child = {
@@ -40,7 +41,7 @@ type Child = {
     starts_at: string | null;
     ends_at: string | null;
     juknis: string | null;
-    registration_fee: number;
+    registration_fee: number; registration_fee_min?: number; registration_fee_max?: number;
     ticket_price?: number | null;
     ticket_open?: boolean;
     ticket_left?: number | null;
@@ -66,7 +67,7 @@ type Detail = {
     ends_at: string | null;
     status: { key: StatusKey; label: string };
     description: string | null;
-    registration_fee: number;
+    registration_fee: number; registration_fee_min?: number; registration_fee_max?: number;
     registration_method: 'ticket' | 'transfer_manual' | null;
     juknis: string | null;
     contact: { name?: string; position?: string; phone?: string; email?: string } | null;
@@ -622,7 +623,7 @@ function EventDetailSingle() {
                                         <div className={infoBox}>
                                             <p className={eyebrow}><Ticket className="h-4 w-4 text-indigo-700" />Biaya Pendaftaran</p>
                                             <p className="mt-3 text-lg font-bold">
-                                                {event.registration_fee > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(event.registration_fee)}` : 'Gratis'}
+                                                {feeRange(event.registration_fee_min ?? event.registration_fee, event.registration_fee_max ?? event.registration_fee)}
                                             </p>
                                         </div>
                                     </div>
