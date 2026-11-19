@@ -880,7 +880,8 @@ export default function CreateEvent({ packages, categories, selected_package_id,
     const [step, setStep] = useState(initial && !hasOptions(initial) ? 1 : 0);
     const [local, setLocal] = useState<Errs>({});
 
-    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[] }>({
+    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[]; agree_terms: boolean; agree_revenue: boolean }>({
+        agree_terms: false, agree_revenue: false,
         ...blank(),
         package_id: initial?.id ?? '',
         assessment_addon: false,
@@ -1334,6 +1335,23 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 {errors.payment_method && <p className="mt-3 text-sm text-rose-500">{errors.payment_method}</p>}
                             </div>
                         )}
+                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-5 text-[15px] dark:border-white/10 dark:bg-white/5">
+                            <label className="flex cursor-pointer items-start gap-3">
+                                <input type="checkbox" className="mt-1 h-4 w-4 accent-indigo-700" checked={data.agree_terms} onChange={(e) => setData('agree_terms', e.target.checked)} />
+                                <span>Saya menyatakan data yang saya isi sudah benar dan menyetujui syarat & ketentuan penyelenggaraan event di SIMPLE. <span className="text-rose-500">*</span></span>
+                            </label>
+                            {errors.agree_terms && <p className="text-sm text-rose-500">{errors.agree_terms}</p>}
+                            {pkg.payment_type === 'revenue_share' && (
+                                <>
+                                    <label className="flex cursor-pointer items-start gap-3">
+                                        <input type="checkbox" className="mt-1 h-4 w-4 accent-indigo-700" checked={data.agree_revenue} onChange={(e) => setData('agree_revenue', e.target.checked)} />
+                                        <span>Saya menyetujui skema bagi hasil: {pkg.price_label} dari penjualan. <span className="text-rose-500">*</span></span>
+                                    </label>
+                                    {errors.agree_revenue && <p className="text-sm text-rose-500">{errors.agree_revenue}</p>}
+                                </>
+                            )}
+                            {!(data.agree_terms && (pkg.payment_type !== 'revenue_share' || data.agree_revenue)) && <p className="text-xs text-slate-500 dark:text-slate-400">Centang semua persetujuan di atas untuk mengaktifkan tombol Ajukan.</p>}
+                        </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Semua pengajuan akan ditinjau dan dikonfirmasi admin sebelum event aktif.</p>
                         {Object.keys(errors).length > 0 && <p className="text-sm text-rose-500">Ada isian yang belum sesuai. Silakan periksa langkah yang ditandai.</p>}
                     </div>
@@ -1348,7 +1366,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                             Lanjut <ArrowRight className="h-4 w-4" />
                         </button>
                     ) : (
-                        <button onClick={submit} disabled={processing} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-7 py-3 text-sm font-bold text-white shadow-md disabled:opacity-60">
+                        <button onClick={submit} disabled={processing || !(data.agree_terms && (pkg?.payment_type !== 'revenue_share' || data.agree_revenue))} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-7 py-3 text-sm font-bold text-white shadow-md disabled:opacity-60">
                             {processing && <Loader2 className="h-4 w-4 animate-spin" />} {series ? 'Ajukan Rangkaian' : 'Ajukan Event'}
                         </button>
                     )}
