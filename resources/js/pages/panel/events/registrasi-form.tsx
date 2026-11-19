@@ -1,7 +1,7 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import { router } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Check, Download, Paperclip, Plus, Search, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import RegistrationInfoCard from '@/components/panel/registration-info-card';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
@@ -48,6 +48,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
     const [saved, setSaved] = useState(false);
     const [q, setQ] = useState('');
     const [st, setSt] = useState('');
+    const [page, setPage] = useState(1);
 
     const patch = (i: number, p: Partial<Item>) => { setSaved(false); setItems((a) => a.map((x, j) => (j === i ? { ...x, ...p } : x))); };
     const move = (i: number, d: number) => { setSaved(false); setItems((a) => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; [c[i], c[j]] = [c[j], c[i]]; return c; }); };
@@ -98,6 +99,12 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
             (!k || [r.name, r.email, r.phone ?? '', r.school ?? '', ...r.teams.map((t) => t.name)].some((v) => v.toLowerCase().includes(k))),
         );
     }, [rows, q, st]);
+
+    const PER_PAGE = 25;
+    useEffect(() => { setPage(1); }, [q, st]);
+    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    const pg = Math.min(page, pages);
+    const view = list.slice((pg - 1) * PER_PAGE, pg * PER_PAGE);
 
     const shown = isTeam ? [] : fields;
     const cell = (v: unknown) => (Array.isArray(v) ? v.join(', ') : v == null ? '' : String(v));
@@ -169,7 +176,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {list.map((r) => {
+                                    {view.map((r) => {
                                         const s = STATUS[r.status] ?? { label: r.status, style: 'bg-slate-200 text-slate-700' };
                                         return (
                                             <tr key={r.id} className="border-b border-slate-200/70 align-middle transition-colors hover:bg-slate-50/70 dark:border-white/10 dark:hover:bg-white/5">
@@ -201,6 +208,18 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                         );
                                     })}
                                     {list.length === 0 && <tr><td colSpan={10 + shown.length} className="py-8 text-center text-slate-500">Belum ada pendaftar.</td></tr>}
+                                    {list.length > PER_PAGE && (
+                                        <tr><td colSpan={10 + shown.length} className="py-3">
+                                            <div className="flex items-center justify-between px-2 text-sm text-slate-600">
+                                                <span>{(pg - 1) * PER_PAGE + 1}–{Math.min(pg * PER_PAGE, list.length)} dari {list.length} pendaftar</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button type="button" disabled={pg <= 1} onClick={() => setPage(pg - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40">Sebelumnya</button>
+                                                    <span>Halaman {pg} / {pages}</span>
+                                                    <button type="button" disabled={pg >= pages} onClick={() => setPage(pg + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold hover:bg-slate-50 disabled:opacity-40">Berikutnya</button>
+                                                </div>
+                                            </div>
+                                        </td></tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
