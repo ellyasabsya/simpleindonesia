@@ -291,8 +291,10 @@ type OverallX = Overall & {
     letter?: { number: string; date: string; signer_name: string; signer_position: string; finalized_at: string | null; finalized_by: string | null } | null;
 };
 
-function ParentSK({ ov: ovIn, base, title, dirty }: { ov: Overall; base: string; title: string; dirty: boolean }) {
+function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Overall; base: string; title: string; dirty?: boolean }) {
     const ov = ovIn as OverallX;
+    const [dirtySet, setDirtySet] = useState(false);
+    const dirty = dirtyProp || dirtySet;
     const groups = ov.groups ?? [];
     const warnings = ov.warnings ?? [];
     const progress = ov.progress ?? { done: 0, total: 0 };
@@ -417,6 +419,8 @@ function ParentSK({ ov: ovIn, base, title, dirty }: { ov: Overall; base: string;
                 </div>
             ))}
 
+            <OverallSettings points={ov.points} winnerCount={ov.winner_count} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
+
             <div className={`${card} space-y-4 p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
@@ -537,17 +541,6 @@ function ParentSK({ ov: ovIn, base, title, dirty }: { ov: Overall; base: string;
     );
 }
 
-
-function OverallTab({ ov, base, title }: { ov: Overall; base: string; title: string }) {
-    const [dirty, setDirty] = useState(false);
-
-    return (
-        <div className="space-y-6">
-            <OverallSettings points={ov.points} winnerCount={ov.winner_count} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirty} />
-            <ParentSK ov={ov} base={base} title={title} dirty={dirty} />
-        </div>
-    );
-}
 
 function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     const [number, setNumber] = useState(sk?.letter?.number ?? '');
@@ -782,7 +775,7 @@ function PanelLayout(props: React.ComponentProps<typeof BasePanelLayout>) {
         `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
 
     const bar = pb ? (
-        <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`}>
+        <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`} data-subbar>
             <span className={`${lbl} mr-1`}>Sub-event</span>
             {pb.subs.map((s) => (
                 <Link key={s.id} href={`${pb.base}?sub=${s.id}`} className={chip(pb.current === s.id)}>{s.title}</Link>
@@ -1035,7 +1028,7 @@ function PenilaianInner({ event, isParent, overall = null, subs = [], settings, 
                 {tab === 'rekap' && <Rekap />}
 
                 {tab === 'sk' && (overall
-                    ? <OverallTab ov={overall} base={(overall as any).base} title={(overall as any).title} />
+                    ? <><style>{`[data-subbar]{display:none}`}</style><ParentSK ov={overall} base={(overall as any).base} title={(overall as any).title} /></>
                     : <PenetapanSK sk={skLomba} base={base} />)}
 
                 {tab === 'publikasi' && <Publikasi btn={btn} onGoSettings={(id: number) => { if (id === category.id) setTab('nilai'); else router.get(base, { kategori: id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('nilai') }); }} />}
