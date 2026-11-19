@@ -305,6 +305,7 @@ class EventDashboardController extends EventScopedController
         return $this->render('panel/events/tiket', $event, [
             'eventId' => $event->id,
             'salesOpen' => (bool) $event->ticket_sales_open,
+            'manual' => $event->registration_method !== 'ticket',
             'feePercent' => \App\Models\Setting::serviceFeePercent(),
             'types' => $types,
         ]);
@@ -802,10 +803,10 @@ class EventDashboardController extends EventScopedController
         }
 
         if ($menu === 'tiket') {
-            return $this->render('panel/events/tiket-mandiri', $event, []);
+            return $this->tiket($request, $event);
         }
 
-        if ($menu === 'checkin' && $event->registration_method === 'ticket') {
+        if ($menu === 'checkin') {
             return $this->checkin($event);
         }
 

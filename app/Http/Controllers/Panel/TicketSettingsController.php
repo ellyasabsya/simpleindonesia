@@ -20,11 +20,12 @@ class TicketSettingsController extends Controller
             ->sum('quantity');
     }
 
-    private function guard(Request $request, Event $event): void
+    private function guard(Request $request, Event $event, bool $salesOnly = false): void
     {
         $inst = $request->attributes->get('institution');
         abort_unless($inst && $event->institution_id === $inst->id, 404);
-        abort_unless($event->registration_method === 'ticket' && $event->status === Event::PUBLISHED, 404);
+        $methods = $salesOnly ? ['ticket'] : ['ticket', 'transfer_manual'];
+        abort_unless(in_array($event->registration_method, $methods, true) && $event->status === Event::PUBLISHED, 404);
     }
 
     private function validated(Request $request, Event $event, ?TicketType $type = null): array
@@ -84,7 +85,7 @@ class TicketSettingsController extends Controller
 
     public function toggle(Request $request, Event $event): RedirectResponse
     {
-        $this->guard($request, $event);
+        $this->guard($request, $event, true);
         $data = $request->validate(['open' => ['required', 'boolean']]);
 
         if ($data['open'] && ! TicketType::where('event_id', $event->id)->exists()) {

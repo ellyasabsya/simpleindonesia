@@ -11,7 +11,7 @@ type T = {
     sub_id?: number; sub?: string;
 };
 type Sub = { id: number; title: string; open: boolean };
-type Props = { eventId: number; salesOpen: boolean; feePercent: number; types: T[]; subs?: Sub[]; isParent?: boolean };
+type Props = { eventId: number; salesOpen: boolean; manual?: boolean; feePercent: number; types: T[]; subs?: Sub[]; isParent?: boolean };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
@@ -87,7 +87,7 @@ function SupportEditor({ value, onChange }: { value: string; onChange: (v: strin
     );
 }
 
-export default function Tiket({ eventId, salesOpen, feePercent, types, subs: subList, isParent: parentMode }: Props) {
+export default function Tiket({ eventId, salesOpen, manual, feePercent, types, subs: subList, isParent: parentMode }: Props) {
     const pg = usePage().props as any;
     const evStart: string = pg.event?.starts_at ?? '';
     const evEnd: string = pg.event?.ends_at ?? '';
@@ -144,7 +144,7 @@ export default function Tiket({ eventId, salesOpen, feePercent, types, subs: sub
         <PanelLayout title="Tiket">
             <div className="space-y-5">
 
-                {isParent ? (
+                {manual ? null : isParent ? (
                     <div className={`${card} p-6`}>
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
@@ -240,7 +240,7 @@ export default function Tiket({ eventId, salesOpen, feePercent, types, subs: sub
                     </div>
                 </div>
 
-                <p className="rounded-2xl bg-sky-50 p-4 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">Biaya layanan {feePercent}% dibayar pembeli di atas harga tiket dan tidak mengurangi hak lembaga. Tiket gratis tidak dikenai biaya layanan dan tidak butuh verifikasi pembayaran.</p>
+                {!manual && <p className="rounded-2xl bg-sky-50 p-4 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">Biaya layanan {feePercent}% dibayar pembeli di atas harga tiket dan tidak mengurangi hak lembaga. Tiket gratis tidak dikenai biaya layanan dan tidak butuh verifikasi pembayaran.</p>}
             </div>
 
             {editing && (
