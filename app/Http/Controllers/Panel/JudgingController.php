@@ -890,6 +890,7 @@ class JudgingController extends EventScopedController
             $code = ($codeCol && $reg && ! empty($reg->{$codeCol})) ? (string) $reg->{$codeCol} : (($p['code'] ?? '') !== '' ? (string) $p['code'] : 'REG-'.$p['id']);
             $codes[$p['id']] = $code;
             $perJudge = [];
+            $pj = [];
             $critSums = [];
             $counts = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
             $tiers = [];
@@ -898,11 +899,12 @@ class JudgingController extends EventScopedController
                     $tiers[$k.'-'.$t] = 0;
                 }
             }
-            foreach ($scores->get($p['id'], collect())->groupBy('judge_id') as $cells) {
+            foreach ($scores->get($p['id'], collect())->groupBy('judge_id') as $jid => $cells) {
                 if ($cells->pluck('criterion_id')->unique()->count() < count($leafIds)) {
                     continue;
                 }
                 $perJudge[] = (float) $cells->sum('score');
+                $pj[(int) $jid] = (float) $cells->sum('score');
                 foreach ($cells as $cell) {
                     $leafId = (int) $cell->criterion_id;
                     $rid = $rootOf[$leafId] ?? null;
@@ -939,7 +941,7 @@ class JudgingController extends EventScopedController
                         $vals[] = (float) $tiers[$k.'-'.$t];
                     }
                 }
-                $items[] = ['id' => $p['id'], 'code' => $code, 'v' => $vals];
+                $items[] = ['id' => $p['id'], 'code' => $code, 'v' => $vals, 'pj' => $pj];
             }
 
             $rows[] = [
@@ -1529,6 +1531,63 @@ class JudgingController extends EventScopedController
         return back()->with('success', "Hasil{$for} ditetapkan dan tidak bisa diubah lagi.");
     }
 
+    /** Tahap terakhir sebelum dewan juri: tiap juri satu suara (total skor lebih tinggi). Kandidat diurutkan menurut jumlah lawan yang dikalahkan dengan suara juri terbanyak. */
+    private function judgeVotes(array $group, array &$info): array
+    {
+        $label = 'Perbandingan per juri (jumlah lawan yang dikalahkan)';
+        $beats = [];
+        foreach ($group as $a) {
+            $beats[$a['id']] = 0;
+            foreach ($group as $b) {
+                if ($a['id'] === $b['id']) {
+                    continue;
+                }
+                $x = $y = 0;
+                foreach (($a['pj'] ?? []) as $j => $sa) {
+                    if (! isset($b['pj'][$j])) {
+                        continue;
+                    }
+                    if ($sa > $b['pj'][$j]) {
+                        $x++;
+                    } elseif ($sa < $b['pj'][$j]) {
+                        $y++;
+                    }
+                }
+                if ($x > $y) {
+                    $beats[$a['id']]++;
+                }
+            }
+        }
+        $by = [];
+        foreach ($group as $it) {
+            $by[$beats[$it['id']]][] = $it;
+        }
+        krsort($by, SORT_NUMERIC);
+        $top = array_key_first($by);
+        $cmp = array_map(fn ($it) => ['code' => $it['code'], 'value' => $beats[$it['id']]], $group);
+        foreach ($group as $it) {
+            $info[$it['id']]['trail'][] = [
+                'label' => $label,
+                'value' => $beats[$it['id']],
+                'cmp' => $cmp,
+                'result' => count($by) === 1 ? 'sama' : ($beats[$it['id']] === $top ? 'unggul' : 'kalah'),
+            ];
+        }
+        $out = [];
+        foreach ($by as $sub) {
+            if (count($sub) === 1) {
+                $info[$sub[0]['id']]['by'] ??= $label;
+            } else {
+                foreach ($sub as $it) {
+                    $info[$it['id']]['council'] = true;
+                }
+            }
+            $out[] = $sub;
+        }
+
+        return $out;
+    }
+
     /** Pecah kelompok yang seri level demi level. Mengembalikan daftar kelompok berurutan (terbaik dulu); kelompok yang masih >1 anggota harus diputuskan dewan juri. */
     private function tieSplit(array $group, int $level, array $labels, array &$info): array
     {
@@ -1536,11 +1595,7 @@ class JudgingController extends EventScopedController
             return [$group];
         }
         if ($level >= count($labels)) {
-            foreach ($group as $it) {
-                $info[$it['id']]['council'] = true;
-            }
-
-            return [$group];
+            return $this->judgeVotes($group, $info);
         }
         $by = [];
         foreach ($group as $it) {
