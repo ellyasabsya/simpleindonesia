@@ -91,7 +91,10 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
     ->group(function () {
         Route::get('paket', [\App\Http\Controllers\Admin\PackageController::class, 'index'])->name('paket.index');
         Route::get('penilaian', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'index'])->name('penilaian');
-        Route::patch('penilaian/{system}/cantolan/{hook}', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'toggleHook'])->where(['system' => '[a-z_]+', 'hook' => '[a-z_]+'])->name('penilaian.hook');
+        Route::patch('penilaian/{system}/cantolan/{hook}', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'toggleHook'])->where(['system' => '[a-z_0-9]+', 'hook' => '[a-z_]+'])->name('penilaian.hook');
+        Route::post('penilaian', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'store'])->name('penilaian.store');
+        Route::patch('penilaian/{system}', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'update'])->where('system', '[a-z_0-9]+')->name('penilaian.update');
+        Route::patch('penilaian/{system}/aktif', [\App\Http\Controllers\Admin\ScoringSystemController::class, 'toggle'])->where('system', '[a-z_0-9]+')->name('penilaian.toggle');
         
         Route::post('paket', [\App\Http\Controllers\Admin\PackageController::class, 'store'])->name('paket.store');
         Route::patch('paket/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'update'])->name('paket.update');
