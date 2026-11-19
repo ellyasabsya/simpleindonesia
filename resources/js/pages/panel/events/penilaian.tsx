@@ -929,6 +929,7 @@ function PenilaianInner({ event, isParent, subs = [], settings, criteria = [], d
                                             className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
                                         >
                                             {c.name}
+                                            <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.id === cid ? 'bg-white/20 text-white' : ((c as any).judges >= (c as any).need ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}`}>{(c as any).judges ?? 0}/{(c as any).need ?? 0}</span>
                                         </button>
                                     ))}
                                 </div>

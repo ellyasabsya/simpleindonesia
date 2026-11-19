@@ -123,6 +123,8 @@ class JudgingController extends EventScopedController
         $categories = collect(Judging::categories($event->id))->map(fn ($c) => $c + [
             'approved' => (bool) Judging::settings($event->id, $c['id'])->enabled,
             'participants' => count(Judging::participants($event->id, $c['id'])),
+            'judges' => (int) DB::table('judges')->where('event_id', $event->id)->where('category_id', $c['id'])->where('active', 1)->count(),
+            'need' => (int) Judging::settings($event->id, $c['id'])->judge_count,
         ])->values();
 
         $siblings = $event->parent_id
