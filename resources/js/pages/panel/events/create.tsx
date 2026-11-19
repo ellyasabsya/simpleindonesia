@@ -611,7 +611,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                             registration_method: v,
                             ticket_types: v === 'ticket'
                                 ? [
-                                    { ...(d.ticket_types[0] ?? newTicket()), name: 'Pendaftaran', price: d.registration_fee || '0', quota: String(totalQuota(d) || ''), max_per_order: '1' },
+                                    { ...(d.ticket_types[0] ?? newTicket()), name: 'Pendaftaran Peserta Lomba', price: d.registration_fee || '0', quota: String(totalQuota(d) || ''), max_per_order: '1' },
                                     ...d.ticket_types.slice(1),
                                 ]
                                 : d.ticket_types,
@@ -918,7 +918,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
             subs: d.subs.map((x) => ({
                 ...x,
                 registration_method: m,
-                ticket_types: m === 'ticket' && x.ticket_types.length === 0 ? [{ ...newTicket(), name: 'Pendaftaran', max_per_order: '1', quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '', valid_from: saleStart(x.ends_at), valid_until: x.ends_at }] : x.ticket_types,
+                ticket_types: m === 'ticket' && x.ticket_types.length === 0 ? [{ ...newTicket(), name: 'Pendaftaran Peserta Lomba', max_per_order: '1', quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '', valid_from: saleStart(x.ends_at), valid_until: x.ends_at }] : x.ticket_types,
             })),
         }));
     }, [series, data.registration_method, data.subs.length]);

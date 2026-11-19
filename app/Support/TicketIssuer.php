@@ -37,6 +37,8 @@ class TicketIssuer
             // patch-256: beri ID registrasi (mis. BB-UMUM-2026-001) pada setiap pemegang tiket
             $__ev = DB::table('ticket_orders')->where('id', $orderId)->value('event_id');
             $__grp = DB::table('ticket_orders')->where('id', $orderId)->value('group_code'); // patch-257
+            $__cat = DB::table('ticket_types as t')->leftJoin('event_participant_categories as c', 'c.id', '=', 't.participant_category_id')
+                ->where('t.id', $o->ticket_type_id)->value('c.name');
             foreach ($rows as &$__r) {
                 // patch-257: orang yang sama dalam satu pembelian gabungan memakai satu ID peserta
                 $__pc = null;
@@ -47,7 +49,7 @@ class TicketIssuer
                         ->whereNotNull('h.participant_code')->orderBy('h.id')->value('h.participant_code');
                 }
                 $__eid = (int) ($__r['event_id'] ?? $__ev);
-                $__pc = $__pc ?: \App\Support\RegistrationCode::make($__eid, null);
+                $__pc = $__pc ?: \App\Support\RegistrationCode::make($__eid, $__cat ?: null);
                 $__r['participant_code'] = $__pc;
                 $__r['reg_code'] = $__r['reg_code'] ?? \App\Support\RegistrationCode::regCode($__pc, $__eid);
             }
