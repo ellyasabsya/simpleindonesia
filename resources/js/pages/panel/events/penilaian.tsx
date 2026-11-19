@@ -1,4 +1,5 @@
 import JuriTambah, { JuriBelumTugas, JuriHeader, JuriKosong } from './juri-undangan';
+import OverallSettings from '@/components/panel/overall-settings';
 import Publikasi from './publikasi';
 import Rekap from './rekap';
 import BasePanelLayout from '@/components/panel/panel-layout';
@@ -537,6 +538,17 @@ function ParentSK({ ov: ovIn, base, title, dirty }: { ov: Overall; base: string;
 }
 
 
+function OverallTab({ ov, base, title }: { ov: Overall; base: string; title: string }) {
+    const [dirty, setDirty] = useState(false);
+
+    return (
+        <div className="space-y-6">
+            <OverallSettings points={ov.points} winnerCount={ov.winner_count} locked={ov.locked} finalizedAt={ov.finalized_at} base={base} onDirty={setDirty} />
+            <ParentSK ov={ov} base={base} title={title} dirty={dirty} />
+        </div>
+    );
+}
+
 function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     const [number, setNumber] = useState(sk?.letter?.number ?? '');
     const [date, setDate] = useState(sk?.letter?.date?.slice(0, 10) ?? lsToday());
@@ -1023,7 +1035,7 @@ function PenilaianInner({ event, isParent, overall = null, subs = [], settings, 
                 {tab === 'rekap' && <Rekap />}
 
                 {tab === 'sk' && (overall
-                    ? <ParentSK ov={overall} base={(overall as any).base} title={(overall as any).title} dirty={false} />
+                    ? <OverallTab ov={overall} base={(overall as any).base} title={(overall as any).title} />
                     : <PenetapanSK sk={skLomba} base={base} />)}
 
                 {tab === 'publikasi' && <Publikasi btn={btn} onGoSettings={(id: number) => { if (id === category.id) setTab('nilai'); else router.get(base, { kategori: id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('nilai') }); }} />}
