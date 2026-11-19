@@ -1,3 +1,4 @@
+import { snapPay } from '@/lib/snap-backdrop';
 import { Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CornerDownRight, Loader2, MapPin, Pencil, Phone, Tag, Ticket, Users, type LucideIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -894,7 +895,7 @@ async function payEvent(id: string) {
                 document.body.appendChild(sc);
             });
         }
-        (window as any).snap.pay(t.token, {
+        snapPay(t.token, {
             onSuccess: () => {
                 void fetch(`/midtrans/event-sync/${id}`, { method: 'POST', credentials: 'same-origin', headers: h }).catch(() => undefined).finally(done);
             },

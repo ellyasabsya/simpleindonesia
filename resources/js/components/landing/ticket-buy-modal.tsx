@@ -1,3 +1,4 @@
+import { snapPay } from '@/lib/snap-backdrop';
 import { router, useForm } from '@inertiajs/react';
 import { Check, Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -48,7 +49,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
             if (!r.ok) throw new Error('token');
             const d = await r.json();
             await loadSnap(d.client_key, d.sandbox);
-            (window as any).snap.pay(d.token, {
+            snapPay(d.token, {
                 onSuccess: () => { setPendingCode(''); setDone(true); },
                 onPending: () => { setPendingCode(''); setDone(true); },
                 onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),

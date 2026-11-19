@@ -1,3 +1,4 @@
+import { snapPay } from '@/lib/snap-backdrop';
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search, Swords, Trophy, Upload, User, Volume2, VolumeX, X, Zap, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -98,7 +99,7 @@ function BuyModal({ p, rank, props, onClose }: { p: P; rank: number; props: Prop
             if (!r.ok) throw new Error('token');
             const t = await r.json();
             await loadSnap(t.client_key, t.sandbox);
-            (window as any).snap.pay(t.token, {
+            snapPay(t.token, {
                 onSuccess: () => {
                     void fetch(`/midtrans/vote-sync/${code}`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf } })
                         .catch(() => undefined)
