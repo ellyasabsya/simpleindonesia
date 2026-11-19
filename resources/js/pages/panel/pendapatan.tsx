@@ -5,7 +5,7 @@ import { useState } from 'react';
 
 type Bal = {
     id: number; title: string; subtotal: number; share: number; entitlement: number; transferred: number;
-    processing: number; available: number; has_pending: boolean; held?: number; release_at?: string | null;
+    processing: number; available: number; has_pending: boolean; held?: number; release_at?: string | null; blocked?: boolean;
 };
 type H = {
     id: number; event: string; amount: number; bank_name: string; account_number: string; account_name: string; status: string;
@@ -127,7 +127,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                                         {balances.map((b) => {
                                             const blocked = !can_withdraw || !hasAccount || !!hold_until || b.has_pending || b.available < min;
-                                            const hint = !can_withdraw ? 'Tidak punya izin penarikan' : !hasAccount ? 'Atur rekening pencairan dulu' : hold_until ? `Ditahan sampai ${hold_until}` : b.has_pending ? 'Masih ada permintaan menunggu' : b.available < min ? `Minimal ${rp(min)}` : '';
+                                            const hint = !can_withdraw ? 'Tidak punya izin penarikan' : !hasAccount ? 'Atur rekening pencairan dulu' : hold_until ? `Ditahan sampai ${hold_until}` : b.blocked ? 'Event ditolak, saldo diblokir' : b.held ? `Dana ditahan${b.release_at ? ' sampai ' + new Date(b.release_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}` : b.has_pending ? 'Masih ada permintaan menunggu' : b.available < min ? `Minimal ${rp(min)}` : '';
                                             return (
                                                 <tr key={b.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5">
                                                     <td className={`${td} font-extrabold`}>{b.title}</td>

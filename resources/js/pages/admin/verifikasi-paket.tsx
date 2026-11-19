@@ -39,6 +39,7 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
         { key: 'menunggu_verifikasi', label: 'Perlu verifikasi', n: counts.menunggu_verifikasi, color: 'text-amber-600', icon: Clock },
         { key: 'lunas', label: 'Lunas', n: counts.lunas, color: 'text-emerald-600', icon: CheckCircle2 },
         { key: 'ditolak', label: 'Ditolak', n: counts.ditolak, color: 'text-rose-600', icon: XCircle },
+        { key: 'dikembalikan', label: 'Dikembalikan', n: counts.dikembalikan ?? 0, color: 'text-slate-600', icon: FileText },
     ] as const;
 
 
@@ -90,7 +91,7 @@ export default function VerifikasiPaket({ orders, status, q, counts, pg, manual_
                     </div>
                 )}
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {cards.map(({ key, label, n, color, icon: Icon }) => (
                         <button key={key} type="button" onClick={() => go({ status: key })}
                             className={`rounded-2xl border bg-white/80 p-5 text-left shadow-sm transition hover:-translate-y-0.5 dark:bg-white/5 ${status === key ? 'border-indigo-400 ring-2 ring-indigo-400/30' : 'border-slate-200 dark:border-white/10'}`}>

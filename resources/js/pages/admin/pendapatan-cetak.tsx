@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 type W = { id: number; institution: string; event: string; amount: number; bank_name: string; account_number: string; account_name: string; status: string; requested_at: string };
 type Bal = { id: number; title: string; institution: string; subtotal: number; share: number; entitlement: number; transferred: number; processing: number; available: number };
-type Summary = { total_paid: number; fee: number; share: number; package: number; platform: number; entitlement: number; transferred: number; processing: number; available: number };
+type Summary = { total_paid: number; fee: number; share: number; package: number; platform: number; entitlement: number; transferred: number; processing: number; available: number; mdr?: number; platform_net?: number; held?: number; package_refunded?: number };
 
 const rp = (n: number) => `Rp ${new Intl.NumberFormat('id-ID').format(n)}`;
 
@@ -23,15 +23,19 @@ export default function PendapatanCetak({ summary, balances, withdrawals, printe
             <table className="mt-5 w-full border-collapse text-xs">
                 <tbody>
                     {[
-                        ['Total dibayar pembeli (tiket lunas)', summary.total_paid],
+                        ['Total dibayar pembeli (tiket dan vote lunas)', summary.total_paid],
                         ['Biaya layanan', summary.fee],
                         ['Bagi hasil paket', summary.share],
                         ['Pembayaran paket', summary.package],
                         ['Total pendapatan platform', summary.platform],
+                        ['Biaya Midtrans (estimasi)', summary.mdr ?? 0],
+                        ['Pendapatan bersih platform', summary.platform_net ?? summary.platform],
+                        ...(summary.package_refunded ? [['Paket dikembalikan (tidak dihitung pendapatan)', summary.package_refunded]] : []),
                         ['Hak penyelenggara', summary.entitlement],
                         ['Sudah ditarik', summary.transferred],
                         ['Dalam proses', summary.processing],
                         ['Saldo tersedia', summary.available],
+                        ['Dana ditahan', summary.held ?? 0],
                     ].map(([l, v]) => (
                         <tr key={l as string}><td className={cell}>{l}</td><td className={num}>{rp(v as number)}</td></tr>
                     ))}
