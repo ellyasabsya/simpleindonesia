@@ -74,6 +74,30 @@ class DashboardController extends Controller
                 ];
             })->values()->all();
 
+        // Riwayat peran juri: satu entri per event yang sudah ditugaskan ke kategori.
+        $judged = \Illuminate\Support\Facades\DB::table('judges as j')
+            ->join('events as e', 'e.id', '=', 'j.event_id')
+            ->where('j.user_id', $user->id)->where('j.active', 1)->where('j.category_id', '!=', -1)
+            ->groupBy('j.event_id', 'e.title', 'e.location', 'e.starts_at')
+            ->selectRaw('j.event_id, e.title, e.location, e.starts_at, COUNT(*) as n, MIN(j.created_at) as since')
+            ->orderByDesc('since')->get();
+        foreach ($judged as $j) {
+            $history[] = [
+                'id' => 'juri-'.$j->event_id,
+                'role' => 'juri',
+                'title' => $j->title,
+                'subtitle' => implode(' · ', array_filter([
+                    $j->starts_at ? \Illuminate\Support\Carbon::parse($j->starts_at)->format('d M Y') : null,
+                    $j->location,
+                    $j->n.' kategori',
+                ])),
+                'date' => \Illuminate\Support\Carbon::parse($j->since)->setTimezone($tz)->toDateString(),
+                'status' => 'Juri aktif',
+                'tone' => 'ok',
+                'href' => '/juri-saya',
+            ];
+        }
+
         return Inertia::render('dashboard', [
             'hasPanel' => (bool) $approved || \App\Models\InstitutionMember::where('user_id', $user->id)->where('status', 'aktif')->whereIn('institution_id', Institution::where('status', Institution::APPROVED)->select('id'))->exists(),
             'institution' => $current?->only('id', 'name', 'status'),
