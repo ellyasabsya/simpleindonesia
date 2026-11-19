@@ -1763,7 +1763,7 @@ class JudgingController extends EventScopedController
                         $useRows = $snapRows;
                     }
                 }
-                $schools = DB::table('event_registrations')->whereIn('id', array_column($useRows, 'id'))->pluck('school', 'id');
+                $regs = DB::table('event_registrations')->whereIn('id', array_column($useRows, 'id'))->get(['id', 'school', 'participant_code', 'user_id'])->keyBy('id');
                 $winners = [];
                 foreach ($useRows as $r) {
                     if ($r['rank'] === null || $r['score'] === null) {
@@ -1773,13 +1773,28 @@ class JudgingController extends EventScopedController
                     if ($rk < 1 || $rk > $n) {
                         continue;
                     }
-                    $school = trim((string) ($schools[$r['id']] ?? '')) ?: 'Tanpa asal';
-                    $key = mb_strtolower($school);
-                    $unit[$key] ??= ['school' => $school, 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
+                    $reg = $regs[$r['id']] ?? null;
+                    $school = trim((string) ($reg->school ?? ''));
+                    $pcode = trim((string) ($reg->participant_code ?? ''));
+                    $who = trim((string) ($r['name'] ?? '')) ?: trim((string) ($r['code'] ?? ''));
+                    if ($school !== '') {
+                        $key = 's:'.mb_strtolower($school);
+                        $label = $school;
+                    } elseif ($pcode !== '') {
+                        $key = 'p:'.mb_strtolower($pcode);
+                        $label = $who ?: $pcode;
+                    } elseif (! empty($reg->user_id)) {
+                        $key = 'u:'.$reg->user_id;
+                        $label = $who ?: 'Peserta #'.$reg->user_id;
+                    } else {
+                        $key = 'n:'.mb_strtolower($who);
+                        $label = $who ?: 'Tanpa asal';
+                    }
+                    $unit[$key] ??= ['school' => $label, 'pid' => $school === '' ? $pcode : '', 'points' => 0, 'counts' => array_fill(0, $n, 0), 'categories' => 0];
                     $unit[$key]['points'] += $points[$rk - 1];
                     $unit[$key]['counts'][$rk - 1]++;
                     $unit[$key]['categories']++;
-                    $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $school];
+                    $winners[] = ['rank' => $rk, 'code' => $r['code'], 'school' => $label];
                 }
                 usort($winners, fn ($a, $b) => $a['rank'] <=> $b['rank']);
                 $isLocked = ! empty($rec['locked']);

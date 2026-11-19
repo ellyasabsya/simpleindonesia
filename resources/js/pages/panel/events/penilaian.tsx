@@ -457,7 +457,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         <table className="w-full min-w-[560px] text-left text-sm">
                             <thead>
                                 <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
-                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Sekolah / lembaga</th><th className="py-3 pr-3 text-right">Poin</th>
+                                    <th className="py-3 pr-3">#</th><th className="py-3 pr-3">Peserta / sekolah</th><th className="py-3 pr-3 text-right">Poin</th>
                                     {ov.points.map((_, i) => <th key={i} className="py-3 pr-3 text-right">Juara {i + 1}</th>)}
                                     <th className="py-3">Keterangan</th>
                                 </tr>
@@ -466,7 +466,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                 {ov.standings.map((s, i) => (
                                     <tr key={i} className={s.rank <= ov.winner_count ? 'bg-emerald-50/60 dark:bg-emerald-500/10' : ''}>
                                         <td className="py-3 pr-3 pl-1 font-black">{s.rank}{s.shared ? ' =' : ''}</td>
-                                        <td className="py-3 pr-3 font-extrabold">{s.school}</td>
+                                        <td className="py-3 pr-3 font-extrabold">{s.school}{(s as any).pid ? <span className="block text-xs font-semibold text-slate-400">ID {(s as any).pid}</span> : null}</td>
                                         <td className="py-3 pr-3 text-right text-base font-black">{num(s.points)}</td>
                                         {s.counts.map((n, k) => <td key={k} className="py-3 pr-3 text-right font-semibold">{n}</td>)}
                                         <td className="py-3">{s.rank <= ov.winner_count && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-900">Juara umum {s.rank}</span>}</td>
