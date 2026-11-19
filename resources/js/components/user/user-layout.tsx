@@ -6,12 +6,14 @@ import { Building2, ChevronDown, LayoutDashboard, LogOut, Moon, Sun } from 'luci
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import { useTheme } from '@/hooks/use-theme';
+import { useIdleLogout } from '@/hooks/use-idle-logout';
 
 export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel: boolean; children: ReactNode }) {
     const { dark, toggle } = useTheme();
     const [open, setOpen] = useState(false);
     const page = usePage<{ auth?: { user?: { name?: string; email?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null }>().props;
     const user = page.auth?.user;
+    useIdleLogout(30, !!user);
     const avatar = page.profile?.avatar ?? user?.avatar ?? null;
     const name = user?.name ?? 'Pengguna';
 

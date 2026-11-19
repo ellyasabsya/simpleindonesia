@@ -6,6 +6,7 @@ import PageBackground from '@/components/page-background';
 import { Toast } from '@/lib/toast';
 import { adminMenu } from '@/data/admin-menu';
 import { useTheme } from '@/hooks/use-theme';
+import { useIdleLogout } from '@/hooks/use-idle-logout';
 import type { NotificationsProp } from '@/types';
 
 type PageProps = {
@@ -124,6 +125,7 @@ export default function AdminLayout({
     children: ReactNode;
 }) {
     const { dark, toggle } = useTheme();
+    useIdleLogout(30);
     const [open, setOpen] = useState(false);
     const { auth, notifications } = usePage<PageProps>().props;
     const user = auth?.user;
