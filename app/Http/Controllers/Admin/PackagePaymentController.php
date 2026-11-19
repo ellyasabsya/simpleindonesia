@@ -133,4 +133,28 @@ class PackagePaymentController extends Controller
 
         return back()->with('success', 'Pembayaran ditolak dan event ikut ditolak.');
     }
+
+    /** Tandai paket lunas sebagai dikembalikan. Transfer uangnya ke lembaga tetap manual. */
+    public function refund(Request $request, Event $event): RedirectResponse
+    {
+        abort_if($event->parent_id !== null, 404);
+
+        $data = $request->validate(['reason' => ['required', 'string', 'max:300']], [
+            'reason.required' => 'Alasan refund wajib diisi.',
+        ]);
+
+        $note = trim(($event->payment_note ? $event->payment_note."\n" : '').'[Refund '.now()->format('Y-m-d H:i').'] '.$data['reason']);
+
+        $n = Event::where('id', $event->id)->where('payment_status', 'lunas')->update([
+            'payment_status' => 'dikembalikan',
+            'payment_note' => $note,
+            'payment_reviewed_at' => now(),
+        ]);
+
+        if ($n !== 1) {
+            return back()->with('error', 'Hanya paket berstatus lunas yang bisa ditandai dikembalikan.');
+        }
+
+        return back()->with('success', 'Paket ditandai dikembalikan dan keluar dari pendapatan platform. Transfer uangnya ke lembaga secara manual.');
+    }
 }

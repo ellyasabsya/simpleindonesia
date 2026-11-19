@@ -109,7 +109,8 @@ class Revenue
             $ditransfer = $x['ditransfer'] ?? 0;
             $free = max(0, $entitlement - $menunggu - $disetujui - $ditransfer);
             $releaseAt = isset($endOf[$e->id]) ? $endOf[$e->id]->copy()->addDays($holdDays) : null;
-            $held = $releaseAt !== null && now()->lt($releaseAt);
+            $rejected = $e->status === Event::REJECTED;
+            $held = $rejected || ($releaseAt !== null && now()->lt($releaseAt));
 
             $rows[] = [
                 'id' => $e->id,
@@ -130,7 +131,8 @@ class Revenue
                 'approved' => $disetujui,
                 'available' => $held ? 0 : $free,
                 'held' => $held ? $free : 0,
-                'release_at' => $releaseAt?->toIso8601String(),
+                'release_at' => $rejected ? null : $releaseAt?->toIso8601String(),
+                'blocked' => $rejected,
             ];
         }
 

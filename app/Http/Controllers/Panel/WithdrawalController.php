@@ -118,6 +118,7 @@ class WithdrawalController extends Controller
                 'available' => $b['available'],
                 'held' => $b['held'],
                 'release_at' => $b['release_at'],
+                'blocked' => $b['blocked'],
                 'has_pending' => in_array($b['id'], $pendingEvents, true),
             ])->values(),
             'history' => $history->map(fn (Withdrawal $w) => [

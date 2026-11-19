@@ -111,6 +111,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::get('verifikasi-paket/{event}/bukti', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'proof'])->name('verifikasi-paket.bukti');
         Route::patch('verifikasi-paket/{event}/setujui', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'approve'])->name('verifikasi-paket.setujui');
         Route::patch('verifikasi-paket/{event}/tolak', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'reject'])->name('verifikasi-paket.tolak');
+        Route::patch('verifikasi-paket/{event}/kembalikan', [\App\Http\Controllers\Admin\PackagePaymentController::class, 'refund'])->name('verifikasi-paket.kembalikan');
         Route::get('pendapatan', [\App\Http\Controllers\Admin\RevenueController::class, 'index'])->name('pendapatan');
         Route::get('pendapatan/csv', [\App\Http\Controllers\Admin\RevenueController::class, 'csv'])->name('pendapatan.csv');
         Route::get('pendapatan/cetak', [\App\Http\Controllers\Admin\RevenueController::class, 'print'])->name('pendapatan.cetak');
