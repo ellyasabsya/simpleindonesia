@@ -24,7 +24,7 @@ class TicketSettingsController extends Controller
     {
         $inst = $request->attributes->get('institution');
         abort_unless($inst && $event->institution_id === $inst->id, 404);
-        $methods = $salesOnly ? ['ticket'] : ['ticket', 'transfer_manual'];
+        $methods = ['ticket', 'transfer_manual'];
         abort_unless(in_array($event->registration_method, $methods, true) && $event->status === Event::PUBLISHED, 404);
     }
 

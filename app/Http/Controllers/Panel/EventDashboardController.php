@@ -305,7 +305,6 @@ class EventDashboardController extends EventScopedController
         return $this->render('panel/events/tiket', $event, [
             'eventId' => $event->id,
             'salesOpen' => (bool) $event->ticket_sales_open,
-            'manual' => $event->registration_method !== 'ticket',
             'feePercent' => \App\Models\Setting::serviceFeePercent(),
             'types' => $types,
         ]);
