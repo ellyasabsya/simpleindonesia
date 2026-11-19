@@ -297,6 +297,7 @@ class WithdrawalController extends Controller
         $error = null;
 
         DB::transaction(function () use ($inst, $data, &$error) {
+            \App\Models\Event::where('id', (int) $data['event_id'])->where('institution_id', $inst->id)->lockForUpdate()->first();
             $bal = Revenue::report($inst->id)['balances']->firstWhere('id', (int) $data['event_id']);
 
             if (! $bal) {

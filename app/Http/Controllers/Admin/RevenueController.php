@@ -115,7 +115,7 @@ class RevenueController extends Controller
             'reason.required' => 'Alasan penolakan wajib diisi.',
         ]);
 
-        Withdrawal::where('id', $withdrawal->id)->where('status', Withdrawal::MENUNGGU)->update([
+        Withdrawal::where('id', $withdrawal->id)->whereIn('status', [Withdrawal::MENUNGGU, Withdrawal::DISETUJUI])->update([
             'status' => Withdrawal::DITOLAK,
             'reject_reason' => $data['reason'],
         ]);

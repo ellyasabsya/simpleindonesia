@@ -189,10 +189,12 @@ class MidtransController extends Controller
         return response()->json(['status' => DB::table('voting_orders')->where('id', $o->id)->value('status')]);
     }
 
-    public function eventToken(int $id, MidtransService $midtrans): JsonResponse
+    public function eventToken(\Illuminate\Http\Request $request, int $id, MidtransService $midtrans): JsonResponse
     {
         abort_unless(\App\Models\Setting::midtransOn() && (string) config('midtrans.server_key') !== '', 503);
-        $e = \App\Models\Event::whereNull('parent_id')->where('payment_status', 'menunggu_pembayaran')->findOrFail($id);
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst, 403);
+        $e = \App\Models\Event::whereNull('parent_id')->where('institution_id', $inst->id)->where('payment_status', 'menunggu_pembayaran')->findOrFail($id);
         $amount = (int) (($e->package_snapshot['estimated_upfront'] ?? 0));
         abort_unless($amount > 0, 422);
 
