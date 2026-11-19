@@ -2243,7 +2243,9 @@ class JudgingController extends EventScopedController
             'finalized_at' => ! empty($stored->finalized_at) ? \Illuminate\Support\Carbon::parse($stored->finalized_at)->format('d/m/Y, H.i') : null,
             'finalized_by' => $stored->finalized_by,
         ] : null;
-        $head = ['institution' => $institution, 'title' => $event->title, 'parent_title' => $parentTitle];
+        $logoPath = (string) ($event->institution->logo_path ?? '');
+        $head = ['institution' => $institution, 'title' => $event->title, 'parent_title' => $parentTitle,
+            'logo_url' => $logoPath !== '' ? '/storage/'.ltrim($logoPath, '/') : null];
 
         if ($stored && ! empty($stored->finalized_at)) {
             $snap = json_decode((string) $stored->snapshot_json, true) ?: [];

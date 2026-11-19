@@ -769,65 +769,70 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{ranked} peringkat tercantum</span>
                 </div>
 
-                <div id="sk-print" className="mx-auto max-w-3xl rounded-2xl bg-white p-8 font-serif text-[14px] leading-relaxed text-slate-900 shadow-sm sm:p-12">
-                    <div className="border-b-2 border-slate-900 pb-3 text-center text-lg font-bold uppercase">{sk.institution || 'Nama lembaga'}</div>
-                    <div className="mt-6 text-center">
-                        <div className="text-lg font-bold">SURAT KEPUTUSAN</div>
-                        <div>Nomor: {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</div>
-                        <div className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">Tentang</div>
-                        <div className="font-bold uppercase">Penetapan juara {sk.title}</div>
-                        {sk.parent_title && <div className="font-bold uppercase">{sk.parent_title}</div>}
+                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 print:space-y-0">
+                    {/* ===== Halaman 1: Surat Keputusan ===== */}
+                    <div className="rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                        <div className="border-b-2 border-slate-900 pb-3 text-center">
+                            {(sk as { logo_url?: string | null }).logo_url
+                                ? <img src={(sk as { logo_url?: string | null }).logo_url as string} alt={sk.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
+                                : <div className="text-lg font-bold uppercase">{sk.institution || 'Nama lembaga'}</div>}
+                        </div>
+                        <div className="mt-6 text-center">
+                            <div className="text-lg font-bold">SURAT KEPUTUSAN</div>
+                            <div>Nomor: {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</div>
+                            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">Tentang</div>
+                            <div className="font-bold uppercase">Penetapan juara {sk.title}</div>
+                            {sk.parent_title && <div className="font-bold uppercase">{sk.parent_title}</div>}
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-y-3">
+                            <div>Menimbang</div>
+                            <ol className="list-decimal space-y-1 pl-5 text-justify">
+                                <li>Bahwa lomba {sk.title}{onParent} telah dilaksanakan melalui sistem SIMPLE dan seluruh penilaian telah diselesaikan oleh juri;</li>
+                                <li>Bahwa hasil penilaian telah direkapitulasi dan diperiksa oleh panitia, sehingga perlu ditetapkan dengan Surat Keputusan.</li>
+                            </ol>
+                            <div>Mengingat</div>
+                            <ol className="list-decimal space-y-1 pl-5 text-justify">
+                                <li>Rekapitulasi nilai lomba {sk.title} yang tersimpan pada sistem SIMPLE;</li>
+                                <li>Hasil pemeriksaan oleh panitia penyelenggara.</li>
+                            </ol>
+                        </div>
+
+                        <p className="mt-6 text-center font-bold">MEMUTUSKAN</p>
+                        <div className="mt-2 grid grid-cols-[6.5rem_1.25rem_1fr] gap-y-2">
+                            <div>Menetapkan</div><div>:</div>
+                            <div className="text-justify font-bold uppercase">Keputusan tentang penetapan juara {sk.title}{sk.parent_title ? ` ${sk.parent_title}` : ''};</div>
+                            <div>Kesatu</div><div>:</div>
+                            <div className="text-justify">Hasil dan peringkat lomba {sk.title} ditetapkan sebagaimana tercantum dalam lampiran keputusan ini;</div>
+                            <div>Kedua</div><div>:</div>
+                            <div className="text-justify">Peringkat ditetapkan berdasarkan hasil rekapitulasi nilai yang telah disimpan pada sistem;</div>
+                            <div>Ketiga</div><div>:</div>
+                            <div className="text-justify">Keputusan ini berlaku sejak tanggal ditetapkan, dan apabila terdapat kekeliruan akan diperbaiki sebagaimana mestinya.</div>
+                        </div>
+
+                        <div className="ml-auto mt-10 w-1/2 text-center">
+                            <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
+                            <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
+                            <div className="h-20" />
+                            <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
+                        </div>
                     </div>
 
-                    <p className="mt-5 text-center font-bold uppercase">Dengan rahmat Tuhan Yang Maha Esa</p>
-                    <p className="text-center font-bold uppercase">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />}</p>
-
-                    <div className="mt-5 grid grid-cols-[6.5rem_1fr] gap-y-3">
-                        <div>Menimbang</div>
-                        <ol className="list-decimal space-y-1 pl-5 text-justify">
-                            <li>Bahwa untuk menetapkan keseluruhan hasil pelaksanaan lomba {sk.title}{onParent}, dipandang perlu untuk menetapkan para juara;</li>
-                            <li>Bahwa penilaian telah diselesaikan oleh seluruh juri dan hasilnya telah diperiksa oleh panitia, sebagaimana tercantum dalam Lampiran Surat Keputusan ini.</li>
-                        </ol>
-                        <div>Mengingat</div>
-                        <ol className="list-decimal space-y-1 pl-5 text-justify">
-                            <li>Pedoman dan ketentuan penyelenggaraan lomba {sk.title};</li>
-                            <li>Hasil penilaian dewan juri yang telah direkapitulasi dan disimpan pada sistem SIMPLE Indonesia.</li>
-                        </ol>
-                    </div>
-
-                    <p className="mt-5 text-center font-bold">MEMUTUSKAN</p>
-                    <div className="mt-2 grid grid-cols-[6.5rem_1.25rem_1fr] gap-y-2">
-                        <div>Menetapkan</div><div>:</div>
-                        <div className="text-justify font-bold uppercase">Keputusan {position.trim() ? position : '…'} tentang penetapan juara {sk.title}{sk.parent_title ? ` ${sk.parent_title}` : ''}{sk.institution ? ` ${sk.institution}` : ''};</div>
-                        <div>Kesatu</div><div>:</div>
-                        <div className="text-justify">Susunan penetapan juara lomba {sk.title} sebagaimana tersebut dalam lampiran keputusan ini;</div>
-                        <div>Kedua</div><div>:</div>
-                        <div className="text-justify">Menetapkan para peserta sebagaimana tercantum dalam daftar lampiran keputusan ini sebagai juara;</div>
-                        <div>Ketiga</div><div>:</div>
-                        <div className="text-justify">Segala biaya yang timbul sebagai akibat pelaksanaan keputusan ini dibebankan kepada anggaran penyelenggara dan sumber lain yang sah;</div>
-                        <div>Keempat</div><div>:</div>
-                        <div className="text-justify">Keputusan ini berlaku mulai tanggal ditetapkan, dengan ketentuan apabila di kemudian hari terdapat kekeliruan dalam keputusan ini maka akan diubah dan diperbaiki sebagaimana mestinya.</div>
-                    </div>
-
-                    <div className="ml-auto mt-8 w-1/2 text-center">
-                        <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
-                        <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
-                        <div className="h-20" />
-                        <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
-                    </div>
-
-                    <div className="break-before-page mt-12 print:mt-0">
-                        <p className="text-[13px] font-bold">LAMPIRAN SURAT KEPUTUSAN {position.trim() ? position.toUpperCase() : '…'}</p>
-                        <p className="text-[13px] font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
-                        <div className="mt-5 text-center font-bold uppercase">
+                    {/* ===== Halaman 2: Lampiran ===== */}
+                    <div className="break-before-page rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                        <div className="border-b-2 border-slate-900 pb-3">
+                            <p className="font-bold">LAMPIRAN SURAT KEPUTUSAN</p>
+                            <p className="font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
+                        </div>
+                        <div className="mt-6 text-center font-bold uppercase">
                             <div>Penetapan juara {sk.title}</div>
                             {sk.parent_title && <div>{sk.parent_title}</div>}
                             {sk.institution && <div>{sk.institution}</div>}
                         </div>
 
-                        {sk.categories.length === 0 && <p className="mt-3 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
+                        {sk.categories.length === 0 && <p className="mt-4 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada kategori yang bisa dicantumkan.</p>}
                         {sk.categories.length > 0 && (
-                            <table className="mt-4 w-full border-collapse border border-slate-900 text-[13px]">
+                            <table className="mt-5 w-full border-collapse border border-slate-900 text-[13px]">
                                 <thead>
                                     <tr className="bg-slate-200 text-center font-bold uppercase">
                                         <th className="w-10 border border-slate-900 px-2 py-2">No</th>
@@ -857,12 +862,12 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             </table>
                         )}
 
-                        <div className="ml-auto mt-8 w-1/2 text-center">
+                        <div className="ml-auto mt-10 w-1/2 text-center">
                             <div>Ditetapkan pada tanggal <b>{date ? lsDate(date) : '…'}</b></div>
                             <div className="mt-1">{position.trim() ? position : <LsMark t="Jabatan belum diisi" />},</div>
                             <div className="h-20" />
                             <div className="font-bold underline">{signer.trim() ? signer : <LsMark t="Nama penandatangan belum diisi" />}</div>
-                    </div>
+                        </div>
                     </div>
                 </div>
             </div>
