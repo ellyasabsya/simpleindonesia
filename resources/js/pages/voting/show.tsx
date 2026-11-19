@@ -307,6 +307,36 @@ export default function VotingShow(props: Props) {
 
     const toggleSound = () => { if (!ctx.current) ctx.current = new (window.AudioContext || (window as any).webkitAudioContext)(); setSound((v) => !v); };
 
+    // Bacakan pesan dukungan baru dengan suara perempuan (Web Speech API)
+    const spokenFeed = useRef(initial.feed[0]?.id ?? 0);
+    useEffect(() => {
+        const top = live.feed[0]?.id ?? 0;
+        if (top <= spokenFeed.current) return;
+        const fresh = live.feed.filter((f) => f.id > spokenFeed.current).reverse();
+        spokenFeed.current = top;
+        if (!sound || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+        const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('id'));
+        const female = voices.find((v) => /damayanti|gadis|google bahasa|female|perempuan|wanita/i.test(v.name));
+        const voice = female ?? voices[0];
+
+        fresh.forEach((f) => {
+            const msg = (f.message ?? '').trim();
+            if (!msg) return;
+            const head = f.votes !== null ? `${f.votes} vote dari ${f.sender}.` : `Dukungan dari ${f.sender}.`;
+            const u = new SpeechSynthesisUtterance(`${head} ${msg}`);
+            u.lang = 'id-ID';
+            if (voice) u.voice = voice;
+            u.pitch = female ? 1.05 : 1.3;
+            u.rate = 0.95;
+            window.speechSynthesis.speak(u);
+        });
+    }, [live.feed, sound]);
+
+    useEffect(() => {
+        if (!sound && typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    }, [sound]);
+
     const hasNone = live.participants.some((p) => p.category_id === null);
     const list = useMemo(() => live.participants.filter((p) => (cat === 'all' ? true : cat === 'none' ? p.category_id === null : p.category_id === cat) && p.name.toLowerCase().includes(q.toLowerCase())), [live.participants, cat, q]);
     const scope = live.participants.filter((p) => (cat === 'all' ? true : cat === 'none' ? p.category_id === null : p.category_id === cat));
