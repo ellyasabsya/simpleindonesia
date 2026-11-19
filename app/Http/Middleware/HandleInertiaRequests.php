@@ -22,6 +22,8 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'flash' => fn () => [
                 'success' => $request->session()->get('success'),
+                'order_code' => $request->session()->get('order_code'),
+                'pay_online' => (bool) $request->session()->get('pay_online'),
                 'error' => $request->session()->get('error'),
             ],
             'auth' => [
