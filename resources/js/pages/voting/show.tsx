@@ -10,7 +10,7 @@ type Props = {
     event: { id: number; title: string; description: string | null; location: string | null; date: string; organizer: string | null; poster: string | null };
     period: { start: string | null; end: string };
     settings: { price: number; min_votes: number; message_enabled: boolean; message_max: number; show_sender: boolean; show_ranking: boolean; show_votes: boolean };
-    categories: { id: number; name: string }[]; gifts: Gift[]; bank: Record<string, string>; live: Live;
+    categories: { id: number; name: string }[]; gifts: Gift[]; bank: Record<string, string>; online: boolean; live: Live;
 };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
@@ -47,22 +47,71 @@ function Avatar({ p, cls }: { p: P; cls: string }) {
 }
 
 function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => void }) {
-    const { settings: s, gifts, bank, event } = props;
-    const form = useForm<{ participant_id: number; gift_id: number | null; votes: string; buyer_name: string; buyer_email: string; message: string; payment_proof: File | null }>({
-        participant_id: p.id, gift_id: null, votes: String(s.min_votes), buyer_name: '', buyer_email: '', message: '', payment_proof: null,
+    const { settings: s, gifts, online, event } = props;
+    const form = useForm<{ participant_id: number; gift_id: number | null; votes: string; buyer_name: string; buyer_email: string; message: string }>({
+        participant_id: p.id, gift_id: null, votes: String(s.min_votes), buyer_name: '', buyer_email: '', message: '',
     });
     const d = form.data;
     const gift = gifts.find((g) => g.id === d.gift_id);
     const votes = gift ? gift.votes : Number(d.votes) || 0;
     const amount = gift ? gift.price : votes * s.price;
     const [done, setDone] = useState('');
+    const [paying, setPaying] = useState(false);
+    const [pendingCode, setPendingCode] = useState('');
+    const [payMsg, setPayMsg] = useState('');
+
+    const loadSnap = (clientKey: string, sandbox: boolean) =>
+        new Promise<void>((resolve, reject) => {
+            if ((window as any).snap) return resolve();
+            const sc = document.createElement('script');
+            sc.src = sandbox ? 'https://app.sandbox.midtrans.com/snap/snap.js' : 'https://app.midtrans.com/snap/snap.js';
+            sc.setAttribute('data-client-key', clientKey);
+            sc.onload = () => resolve();
+            sc.onerror = () => reject(new Error('snap'));
+            document.body.appendChild(sc);
+        });
+
+    const pay = async (code: string) => {
+        setPaying(true);
+        setPayMsg('');
+        setPendingCode(code);
+        try {
+            const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+            const r = await fetch(`/midtrans/vote-token/${code}`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
+            });
+            if (!r.ok) throw new Error('token');
+            const t = await r.json();
+            await loadSnap(t.client_key, t.sandbox);
+            (window as any).snap.pay(t.token, {
+                onSuccess: () => { setPendingCode(''); setDone('Pembayaran berhasil. Vote akan masuk dalam beberapa saat.'); },
+                onPending: () => { setPendingCode(''); setDone('Menunggu pembayaran Anda. Vote masuk setelah pembayaran terkonfirmasi.'); },
+                onError: () => setPayMsg('Pembayaran gagal. Silakan coba lagi.'),
+                onClose: () => setPayMsg('Pembayaran belum diselesaikan. Klik "Lanjutkan pembayaran" untuk membuka lagi.'),
+            });
+        } catch {
+            setPayMsg('Gagal membuka pembayaran. Silakan coba lagi.');
+        } finally {
+            setPaying(false);
+        }
+    };
     const err = form.errors as Record<string, string | undefined>;
-    const ok = votes >= (gift ? 1 : s.min_votes) && d.buyer_name.trim() !== '' && d.buyer_email.trim() !== '' && d.payment_proof !== null;
-    const hasBank = !!bank?.bank_account_number;
+    const ok = votes >= (gift ? 1 : s.min_votes) && d.buyer_name.trim() !== '' && d.buyer_email.trim() !== '';
+    const hasBank = !!online;
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.post(`/voting/${event.id}/beli`, { forceFormData: true, preserveScroll: true, onSuccess: (pg: any) => setDone(pg.props?.flash?.success ?? 'Pesanan diterima. Vote akan masuk setelah pembayaran diverifikasi.') });
+        form.post(`/voting/${event.id}/beli`, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (pg: any) => {
+                const f = (pg.props?.flash ?? {}) as { pay_online?: boolean; order_code?: string };
+                if (f.pay_online && f.order_code) void pay(f.order_code);
+                else setDone('Pesanan diterima.');
+            },
+        });
     };
 
     return (
@@ -77,7 +126,7 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
                 {done ? (
                     <div className="space-y-4 p-8 text-center">
                         <div className="text-5xl">🎉</div>
-                        <p className="text-lg font-extrabold">Pesanan diterima</p>
+                        <p className="text-lg font-extrabold">Terima kasih</p>
                         <p className="text-sm text-slate-300">{done}</p>
                         <button type="button" onClick={onClose} className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-600 px-8 py-3 text-sm font-extrabold tracking-widest uppercase">Kembali ke arena</button>
                     </div>
@@ -118,19 +167,19 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
                                 <div className="flex items-end justify-between"><span className="text-slate-300">Total pembayaran</span><span className="text-2xl font-black text-cyan-300">{rp(amount)}</span></div>
                                 <div className="mt-0.5 text-xs text-slate-400">{nf(votes)} vote</div>
                                 {hasBank ? (
-                                    <p className="mt-3 text-slate-300">Transfer ke {bank.bank_name} <b className="text-white">{bank.bank_account_number}</b> a.n. {bank.bank_account_holder}, lalu unggah bukti transfer.</p>
+                                    <p className="mt-3 text-slate-300">Bayar lewat QRIS, e-wallet, virtual account, atau kartu. Vote masuk otomatis setelah pembayaran berhasil.</p>
                                 ) : <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">Pembayaran belum tersedia. Silakan coba lagi nanti.</p>}
-                                <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-white/20 px-4 py-3 hover:bg-white/5">
-                                    <Upload className="h-5 w-5 text-cyan-300" />
-                                    <span className="min-w-0 flex-1 truncate text-sm font-bold">{d.payment_proof ? d.payment_proof.name : 'Unggah bukti transfer'}</span>
-                                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => form.setData('payment_proof', e.target.files?.[0] ?? null)} />
-                                </label>
-                                {err.payment_proof && <span className="text-xs text-rose-400">{err.payment_proof}</span>}
+                                {payMsg && <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">{payMsg}</p>}
+                                {pendingCode && (
+                                    <button type="button" onClick={() => void pay(pendingCode)} disabled={paying} className="mt-3 w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-extrabold text-black disabled:opacity-60">
+                                        {paying ? 'Membuka...' : 'Lanjutkan pembayaran'}
+                                    </button>
+                                )}
                             </div>
                             {(err.participant_id || err.gift_id) && <p className="rounded-xl bg-rose-400/10 p-3 text-sm font-bold text-rose-300">{err.participant_id ?? err.gift_id}</p>}
                         </div>
                         <div className="border-t border-white/10 p-4">
-                            <button type="submit" disabled={!ok || !hasBank || form.processing} className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 py-3.5 text-sm font-extrabold tracking-[0.25em] uppercase shadow-lg shadow-fuchsia-900/40 transition disabled:cursor-not-allowed disabled:opacity-40">{form.processing ? 'Mengirim…' : 'Kirim pesanan'}</button>
+                            <button type="submit" disabled={!ok || !hasBank || form.processing || paying || !!pendingCode} className="w-full rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 py-3.5 text-sm font-extrabold tracking-[0.25em] uppercase shadow-lg shadow-fuchsia-900/40 transition disabled:cursor-not-allowed disabled:opacity-40">{form.processing ? 'Mengirim…' : 'Kirim pesanan'}</button>
                         </div>
                     </>
                 )}

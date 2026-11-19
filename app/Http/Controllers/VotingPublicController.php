@@ -159,6 +159,7 @@ class VotingPublicController extends Controller
             'gifts' => DB::table('voting_gifts')->where('event_id', $event->id)->where('active', 1)->orderBy('votes')->get(['id', 'emoji', 'name', 'votes', 'price'])
                 ->map(fn ($r) => ['id' => (int) $r->id, 'emoji' => $r->emoji, 'name' => $r->name, 'votes' => (int) $r->votes, 'price' => (int) $r->price])->all(),
             'bank' => (array) \App\Models\Setting::bank(),
+            'online' => (string) config('midtrans.server_key') !== '',
             'live' => $this->state($event, $s),
         ]);
     }
@@ -170,6 +171,7 @@ class VotingPublicController extends Controller
 
     public function buy(Request $request, Event $event): RedirectResponse
     {
+        abort_unless((string) config('midtrans.server_key') !== '', 503);
         $s = $this->open($event);
         [$start, $end] = $this->period($event, $s);
         if (($start && now()->lt($start)) || now()->gt($end)) {
@@ -181,14 +183,11 @@ class VotingPublicController extends Controller
             'gift_id' => ['nullable', 'integer'],
             'votes' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'buyer_name' => ['required', 'string', 'max:80'],
-            'buyer_email' => ['required', 'email', 'max:120'],
+            'buyer_email' => ['required', 'email:rfc,dns', 'max:120'],
             'message' => ['nullable', 'string', 'max:200'],
-            'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
             'required' => ':attribute wajib diisi.', 'email' => 'Format email tidak valid.',
-            'payment_proof.mimes' => 'Bukti transfer harus JPG, PNG, WebP, atau PDF.',
-            'payment_proof.max' => 'Ukuran bukti transfer maksimal 5 MB.',
-        ], ['participant_id' => 'Peserta', 'buyer_name' => 'Nama', 'buyer_email' => 'Email', 'payment_proof' => 'Bukti transfer']);
+        ], ['participant_id' => 'Peserta', 'buyer_name' => 'Nama', 'buyer_email' => 'Email']);
 
         abort_unless(DB::table('voting_participants')->where('id', $data['participant_id'])->where('event_id', $event->id)->where('active', 1)->exists(), 422);
 
@@ -209,15 +208,14 @@ class VotingPublicController extends Controller
 
         $msg = $s->message_enabled ? Str::limit(trim((string) ($data['message'] ?? '')), (int) $s->message_max, '') : null;
         $code = strtoupper(Str::random(10));
-        $proof = $request->file('payment_proof')->store('voting-proofs', 'local');
 
         DB::table('voting_orders')->insert([
             'code' => $code, 'event_id' => $event->id, 'participant_id' => (int) $data['participant_id'],
             'gift_id' => $data['gift_id'] ?? null, 'buyer_name' => trim($data['buyer_name']), 'buyer_email' => $data['buyer_email'],
-            'votes' => $votes, 'amount' => $amount, 'message' => $msg ?: null, 'status' => 'menunggu_verifikasi',
-            'payment_proof' => $proof, 'created_at' => now(), 'updated_at' => now(),
+            'votes' => $votes, 'amount' => $amount, 'message' => $msg ?: null, 'status' => 'menunggu',
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        return back()->with('success', "Pesanan {$code} diterima. Vote akan masuk setelah pembayaran diverifikasi.");
+        return back()->with('order_code', $code)->with('pay_online', true);
     }
 }

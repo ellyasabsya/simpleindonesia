@@ -339,3 +339,6 @@ Route::get('/klasemen/{event}', fn (\Illuminate\Http\Request $r, \App\Models\Eve
 Route::post('/midtrans/notification', [\App\Http\Controllers\MidtransController::class, 'notification']);
 Route::post('/midtrans/token/{code}', [\App\Http\Controllers\MidtransController::class, 'token'])
     ->where('code', 'TKT-[A-Z0-9]{8}')->middleware('throttle:20,1');
+
+Route::post('/midtrans/vote-token/{code}', [\App\Http\Controllers\MidtransController::class, 'voteToken'])
+    ->where('code', '[A-Z0-9]{10}')->middleware('throttle:20,1');
