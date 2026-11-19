@@ -1,5 +1,6 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import { Link } from '@inertiajs/react';
+import { useId } from 'react';
 import { Banknote, ChevronRight, Clock, Layers, ScanLine, UserCheck, UserX, Users } from 'lucide-react';
 
 type Sum = { total: number; lunas: number; menunggu: number; batal: number; revenue: number; tickets: number; hadir: number };
@@ -17,6 +18,69 @@ type Props = {
 const box = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 const th = 'px-3 py-3';
+
+function TrenLunas({ trend }: { trend: { date: string; n: number }[] }) {
+    const gid = 'tren' + useId().replace(/[^a-zA-Z0-9]/g, '');
+    const W = 640;
+    const H = 220;
+    const L = 34;
+    const R = 20;
+    const T = 28;
+    const B = 34;
+    const top = Math.max(1, ...trend.map((t) => t.n));
+    const step = top <= 4 ? 1 : Math.ceil(top / 4);
+    const yMax = Math.ceil(top / step) * step;
+    const ticks = Array.from({ length: Math.floor(yMax / step) + 1 }, (_, i) => i * step);
+    const px = (i: number) => (trend.length === 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (trend.length - 1));
+    const py = (n: number) => T + (1 - n / yMax) * (H - T - B);
+    const pts = trend.map((t, i) => ({ x: px(i), y: py(t.n), t }));
+    let line = '';
+    pts.forEach((p, i) => {
+        if (i === 0) line = `M${p.x},${p.y}`;
+        else {
+            const q = pts[i - 1];
+            const cx = (q.x + p.x) / 2;
+            line += ` C${cx},${q.y} ${cx},${p.y} ${p.x},${p.y}`;
+        }
+    });
+    const base = H - B;
+    const area = pts.length > 1 ? `${line} L${pts[pts.length - 1].x},${base} L${pts[0].x},${base} Z` : '';
+    const every = Math.max(1, Math.ceil(pts.length / 8));
+
+    return (
+        <div className="mt-4 w-full">
+            <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Grafik tren pendaftaran lunas per hari">
+                <defs>
+                    <linearGradient id={`${gid}a`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id={`${gid}l`} x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#4f46e5" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                    </linearGradient>
+                </defs>
+                {ticks.map((v) => (
+                    <g key={v}>
+                        <line x1={L} x2={W - R} y1={py(v)} y2={py(v)} stroke="currentColor" strokeOpacity={v === 0 ? 0.25 : 0.1} strokeDasharray={v === 0 ? undefined : '4 4'} />
+                        <text x={L - 8} y={py(v) + 4} textAnchor="end" className="fill-slate-500" fontSize="11" fontWeight="600">{v}</text>
+                    </g>
+                ))}
+                {pts.length === 1 && <line x1={pts[0].x} x2={pts[0].x} y1={pts[0].y} y2={base} stroke="#8b5cf6" strokeOpacity="0.35" strokeWidth="2" strokeDasharray="4 4" />}
+                {area && <path d={area} fill={`url(#${gid}a)`} />}
+                {pts.length > 1 && <path d={line} fill="none" stroke={`url(#${gid}l)`} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+                {pts.map((p, i) => (
+                    <g key={p.t.date}>
+                        <circle cx={p.x} cy={p.y} r="9" fill="#8b5cf6" fillOpacity="0.18" />
+                        <circle cx={p.x} cy={p.y} r="5" fill="#fff" stroke="#6d28d9" strokeWidth="3" />
+                        <text x={p.x} y={p.y - 14} textAnchor="middle" className="fill-slate-800 dark:fill-slate-100" fontSize="13" fontWeight="800">{p.t.n}</text>
+                        {i % every === 0 && <text x={p.x} y={H - 10} textAnchor="middle" className="fill-slate-500" fontSize="11" fontWeight="600">{p.t.date}</text>}
+                    </g>
+                ))}
+            </svg>
+        </div>
+    );
+}
 
 export default function Laporan({ isParent, summary: s, subs, types, cats, trend }: Props) {
     const pct = s.tickets > 0 ? Math.round((s.hadir / s.tickets) * 100) : 0;
@@ -64,15 +128,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
                     {trend.length === 0 ? (
                         <p className="py-8 text-center text-sm font-semibold text-slate-500">Belum ada pendaftaran lunas.</p>
                     ) : (
-                        <div className="mt-4 flex h-40 items-end gap-2 overflow-x-auto">
-                            {trend.map((t) => (
-                                <div key={t.date} className="flex h-full min-w-[34px] flex-1 flex-col items-center justify-end gap-1">
-                                    <span className="text-[11px] font-bold">{t.n}</span>
-                                    <div className="w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-violet-500" style={{ height: `${Math.max(6, (t.n / max) * 100)}%` }} />
-                                    <span className="whitespace-nowrap text-[10px] font-semibold text-slate-500">{t.date}</span>
-                                </div>
-                            ))}
-                        </div>
+                        <TrenLunas trend={trend} />
                     )}
                 </div>
 
