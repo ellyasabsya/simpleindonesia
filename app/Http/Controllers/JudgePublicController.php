@@ -52,7 +52,7 @@ class JudgePublicController extends Controller
             'enabled' => (bool) $s->enabled && empty($s->saved_at) && empty($s->finalized_at),
             'scale' => (int) $s->scale,
             'criteria' => $crit->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'description' => $c->description, 'weight' => round((float) $c->eff_weight, 2), 'max_score' => (int) $c->max_score, 'group' => $c->parent_name])->values(),
-            'participants' => Judging::participants($j->event_id, $cid),
+            'participants' => array_map(fn ($p) => ['name' => $p['code'], 'school' => null] + $p, Judging::participants($j->event_id, $cid)),
             'scores' => (object) $scores,
         ]);
     }
@@ -63,7 +63,7 @@ class JudgePublicController extends Controller
         $s = Judging::settings($j->event_id, $cid);
         $crit = Judging::leaves($j->event_id, $cid);
         $catName = $cid > 0 ? DB::table('event_participant_categories')->where('id', $cid)->value('name') : null;
-        $list = collect(Judging::participants($j->event_id, $cid));
+        $list = collect(Judging::participants($j->event_id, $cid))->map(fn ($p) => ['name' => $p['code'], 'school' => null] + $p);
         $reg = (int) $request->query('peserta');
         $idx = $list->search(fn ($x) => $x['id'] === $reg);
         abort_unless($idx !== false, 404);
@@ -135,6 +135,6 @@ class JudgePublicController extends Controller
             }
         });
 
-        return redirect('/juri/'.$token)->with('success', 'Nilai '.$part['code'].' ('.$part['name'].') terkirim.');
+        return redirect('/juri/'.$token)->with('success', 'Nilai '.$part['code'].' terkirim.');
     }
 }
