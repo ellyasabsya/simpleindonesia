@@ -32,7 +32,7 @@ class TicketPurchaseController extends Controller
             $m[] = 'transfer_manual';
         }
 
-        if ((string) config('midtrans.server_key') !== '') {
+        if (\App\Models\Setting::midtransOn() && (string) config('midtrans.server_key') !== '') {
             $m[] = 'midtrans';
         }
 

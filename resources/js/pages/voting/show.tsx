@@ -168,7 +168,7 @@ function BuyModal({ p, props, onClose }: { p: P; props: Props; onClose: () => vo
                                 <div className="mt-0.5 text-xs text-slate-400">{nf(votes)} vote</div>
                                 {hasBank ? (
                                     <p className="mt-3 text-slate-300">Bayar lewat QRIS, e-wallet, virtual account, atau kartu. Vote masuk otomatis setelah pembayaran berhasil.</p>
-                                ) : <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">Pembayaran belum tersedia. Silakan coba lagi nanti.</p>}
+                                ) : <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">Voting sedang dijeda sementara. Pembayaran online belum tersedia.</p>}
                                 {payMsg && <p className="mt-3 rounded-xl bg-amber-400/10 p-3 text-xs font-bold text-amber-300">{payMsg}</p>}
                                 {pendingCode && (
                                     <button type="button" onClick={() => void pay(pendingCode)} disabled={paying} className="mt-3 w-full rounded-2xl bg-amber-500 px-4 py-3 text-sm font-extrabold text-black disabled:opacity-60">

@@ -159,7 +159,7 @@ class VotingPublicController extends Controller
             'gifts' => DB::table('voting_gifts')->where('event_id', $event->id)->where('active', 1)->orderBy('votes')->get(['id', 'emoji', 'name', 'votes', 'price'])
                 ->map(fn ($r) => ['id' => (int) $r->id, 'emoji' => $r->emoji, 'name' => $r->name, 'votes' => (int) $r->votes, 'price' => (int) $r->price])->all(),
             'bank' => (array) \App\Models\Setting::bank(),
-            'online' => (string) config('midtrans.server_key') !== '',
+            'online' => \App\Models\Setting::votingOpen(),
             'live' => $this->state($event, $s),
         ]);
     }
@@ -171,7 +171,9 @@ class VotingPublicController extends Controller
 
     public function buy(Request $request, Event $event): RedirectResponse
     {
-        abort_unless((string) config('midtrans.server_key') !== '', 503);
+        if (! \App\Models\Setting::votingOpen()) {
+            throw ValidationException::withMessages(['participant_id' => 'Voting sedang dijeda sementara karena pembayaran online belum tersedia.']);
+        }
         $s = $this->open($event);
         [$start, $end] = $this->period($event, $s);
         if (($start && now()->lt($start)) || now()->gt($end)) {

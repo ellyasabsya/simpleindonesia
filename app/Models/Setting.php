@@ -60,9 +60,9 @@ class Setting extends Model
         return is_numeric($v) ? max(0.0, min(50.0, (float) $v)) : 10.0;
     }
 
-    /** Voting berbayar butuh konfirmasi otomatis: tutup kalau hanya transfer manual yang aktif. */
+    /** Voting butuh konfirmasi otomatis: buka hanya bila pembayaran online aktif dan Server Key terisi. */
     public static function votingOpen(): bool
     {
-        return static::midtransOn() || ! static::manualOn();
+        return static::midtransOn() && (string) config('midtrans.server_key') !== '';
     }
 }

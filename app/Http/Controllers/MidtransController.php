@@ -12,6 +12,7 @@ class MidtransController extends Controller
     /** Dipanggil frontend setelah pesanan dibuat: kembalikan Snap token. */
     public function token(string $code, MidtransService $midtrans): JsonResponse
     {
+        abort_unless(\App\Models\Setting::midtransOn(), 503);
         $o = DB::table('ticket_orders')->where('code', $code)->where('payment_method', 'midtrans')->first();
         abort_unless($o && $o->status === 'menunggu', 404);
 
@@ -83,6 +84,7 @@ class MidtransController extends Controller
     /** Snap token untuk pesanan vote. */
     public function voteToken(string $code, MidtransService $midtrans): JsonResponse
     {
+        abort_unless(\App\Models\Setting::votingOpen(), 503);
         $o = DB::table('voting_orders')->where('code', $code)->first();
         abort_unless($o && $o->status === 'menunggu', 404);
 
