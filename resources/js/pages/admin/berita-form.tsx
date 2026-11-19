@@ -111,7 +111,7 @@ export default function BeritaForm({ news }: { news: Item | null }) {
                     <label className={label}>
                         <span>Gambar sampul (16:9)</span>
                     </label>
-                    <div className="aspect-video w-full max-w-lg overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 dark:border-white/15 dark:bg-white/5">
+                    <div className="aspect-[21/9] w-full overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 dark:border-white/15 dark:bg-white/5">
                         {preview ? (
                             <img src={preview} alt="" className="h-full w-full object-cover" />
                         ) : (
