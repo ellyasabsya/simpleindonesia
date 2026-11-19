@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeft, LogOut, Menu, Moon, Sun, X, Newspaper } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import NotificationBell from '@/components/admin/notification-bell';
 import PageBackground from '@/components/page-background';

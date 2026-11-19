@@ -11,6 +11,7 @@ class HomeController extends Controller
     public function __invoke(): Response
     {
         return Inertia::render('welcome', [
+            'latestNews' => \App\Models\News::latestForHome(),
             'packages' => $this->cards(),
             'events' => $this->latestEvents(4),
             'votings' => $this->latestVotings(4),

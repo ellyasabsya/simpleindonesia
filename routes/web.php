@@ -3,6 +3,12 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', \App\Http\Controllers\HomeController::class)->name('home');
+
+// Berita (publik)
+Route::get('/berita', [\App\Http\Controllers\NewsController::class, 'index'])->name('berita.index');
+Route::get('/berita/{news:slug}', [\App\Http\Controllers\NewsController::class, 'show'])->name('berita.show');
+Route::middleware(['auth', 'throttle:10,1'])->post('/berita/{news:slug}/komentar', [\App\Http\Controllers\NewsCommentController::class, 'store'])->name('berita.komentar.store');
+Route::middleware('auth')->delete('/berita/komentar/{comment}', [\App\Http\Controllers\NewsCommentController::class, 'destroy'])->name('berita.komentar.destroy');
 Route::get('/paket', \App\Http\Controllers\PaketController::class)->name('paket.semua');
 Route::get('/events', \App\Http\Controllers\EventController::class)->name('events.semua');
 // Tiket hanya untuk pengguna yang sudah login.
@@ -301,6 +307,13 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::get('komentar', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('komentar');
         Route::patch('komentar/{comment}/abaikan', [\App\Http\Controllers\Admin\CommentController::class, 'dismiss'])->name('komentar.dismiss');
         Route::delete('komentar/{comment}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('komentar.destroy');
+        // Berita (admin)
+        Route::get('berita', [\App\Http\Controllers\Admin\NewsController::class, 'index'])->name('berita.index');
+        Route::get('berita/tambah', [\App\Http\Controllers\Admin\NewsController::class, 'create'])->name('berita.create');
+        Route::post('berita', [\App\Http\Controllers\Admin\NewsController::class, 'store'])->name('berita.store');
+        Route::get('berita/{news}/ubah', [\App\Http\Controllers\Admin\NewsController::class, 'edit'])->name('berita.edit');
+        Route::post('berita/{news}', [\App\Http\Controllers\Admin\NewsController::class, 'update'])->name('berita.update');
+        Route::delete('berita/{news}', [\App\Http\Controllers\Admin\NewsController::class, 'destroy'])->name('berita.destroy');
     });
 
 Route::middleware('auth')->get('/tickets', fn () => \Inertia\Inertia::render('tickets'))->name('tickets.semua');
