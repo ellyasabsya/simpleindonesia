@@ -207,7 +207,9 @@ Route::middleware([
         Route::post('event/{event}/kalender/agenda', [\App\Http\Controllers\Panel\CalendarController::class, 'store'])->whereNumber('event')->name('event.kalender.store');
         Route::put('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'update'])->whereNumber(['event', 'item'])->name('event.kalender.update');
         Route::delete('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'destroy'])->whereNumber(['event', 'item'])->name('event.kalender.destroy');
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':checkin')->group(function () {
         Route::post('event/{event}/registrasi/checkin', [\App\Http\Controllers\Panel\TicketScanController::class, 'store'])->name('event.scan');
+        });
         Route::put('event/{event}/registrasi/form', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'update'])->name('event.form');
         Route::get('event/{event}/registrasi/export', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'export'])->name('event.form.export');
         Route::delete('event/{event}/registrasi/pendaftar/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'destroy'])->whereNumber('reg')->name('event.form.destroy');
@@ -261,6 +263,7 @@ Route::middleware([
         Route::get('event/{event}/penilaian/rekap/lembar-kosong', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembarKosong'])->whereNumber('event')->name('event.judging.rekapLembarKosong');
         });
         Route::get('event/{event}/{menu}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'menu'])->name('event.menu');
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':tiket')->group(function () {
         Route::post('event/{event}/tiket/jual', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'toggle'])->whereNumber('event')->name('event.tiket.jual');
         // patch-248: buka/tutup penjualan seluruh rangkaian
         Route::get('event/{event}/tiket/rangkaian', [\App\Http\Controllers\Panel\SeriesTicketController::class, 'status'])->whereNumber('event');
@@ -268,6 +271,7 @@ Route::middleware([
         Route::post('event/{event}/tiket/jenis', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'store'])->whereNumber('event')->name('event.tiket.tambah');
         Route::put('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'update'])->whereNumber(['event', 'type'])->name('event.tiket.ubah');
         Route::delete('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'destroy'])->whereNumber(['event', 'type'])->name('event.tiket.hapus');
+        });
     });
 
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
