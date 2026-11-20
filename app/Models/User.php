@@ -13,7 +13,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $fillable = ['name', 'email', 'password', 'role', 'phone', 'institution'];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'withdrawal_pin', 'pin_attempts', 'pin_locked_until', 'two_factor_secret', 'two_factor_recovery_codes'];
 
     protected function casts(): array
     {
