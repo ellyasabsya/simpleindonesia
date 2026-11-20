@@ -38,7 +38,7 @@ function Avatar({ name, src, size }: { name: string; src?: string | null; size: 
     return src ? (
         <img src={src} alt={name} style={style} className="shrink-0 rounded-full object-cover" />
     ) : (
-        <span style={{ ...style, fontSize: size * 0.38 }} className="flex shrink-0 items-center justify-center rounded-full bg-[#007AFF] font-semibold text-white">
+        <span style={{ ...style, fontSize: size * 0.38 }} className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 font-semibold text-white">
             {ini}
         </span>
     );
@@ -63,9 +63,9 @@ export default function DashboardMobile(p: any) {
         setTimeout(() => setCopied(false), 1500);
     };
 
-    const surface = ios ? 'rounded-[12px] bg-white dark:bg-[#1c1c1e]' : 'rounded-[20px] bg-[#f3edf7] dark:bg-[#211f26]';
-    const accent = ios ? 'text-[#007AFF] dark:text-[#0A84FF]' : 'text-[#6750A4] dark:text-[#d0bcff]';
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-[#49454f] dark:text-[#cac4d0]';
+    const surface = ios ? 'rounded-[12px] bg-white dark:bg-[#1c1c1e]' : 'rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900';
+    const accent = ios ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-700 dark:text-indigo-300';
+    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
 
     const stats: { key: Role | 'teman'; label: string; n: number }[] = [
         { key: 'peserta', label: 'Peserta', n: count('peserta') },

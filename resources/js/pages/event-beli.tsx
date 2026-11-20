@@ -1,5 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import BeliMobile from '@/components/mobile/pages/beli-mobile';
 
 type TType = { id: number; name: string; price: number; remaining: number; valid_from: string; valid_until: string; max_per_order: number };
 type Props = {
@@ -37,7 +38,7 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
 
     const submit = () => {
         setData('holders', holders);
-        post(`/events/${event.id}/beli`, { transform: (d) => ({ ...d, holders }) } as never);
+        post(`/events/${event.id}/beli`, { transform: (d: Record<string, unknown>) => ({ ...d, holders }) } as never);
     };
 
     if (!type) {
@@ -50,6 +51,11 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
     }
 
     return (
+        <>
+            <div className="md:hidden">
+                <BeliMobile event={event} ticket_types={ticket_types} fee_percent={fee_percent} />
+            </div>
+            <div className="hidden md:contents">
         <div className="min-h-screen bg-slate-100 px-4 py-10 dark:bg-neutral-950">
             <div className="mx-auto max-w-2xl rounded-3xl bg-white p-6 shadow-xl dark:bg-neutral-900 md:p-8">
                 <div className="mb-6 flex items-start justify-between">
@@ -123,5 +129,7 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
                 </div>
             </div>
         </div>
+            </div>
+        </>
     );
 }

@@ -53,18 +53,18 @@ function Poster({ e }: { e: EventCard }) {
     );
 }
 
-const STATUS_COLOR = { berlangsung: 'text-[#34C759]', segera: 'text-[#007AFF] dark:text-[#0A84FF]', selesai: 'text-black/40 dark:text-white/40' } as const;
+const STATUS_COLOR = { berlangsung: 'text-[#34C759]', segera: 'text-indigo-600 dark:text-indigo-300', selesai: 'text-black/40 dark:text-white/40' } as const;
 
 /** Daftar event untuk HP: judul besar, kolom cari, chip kategori, lalu baris event dengan poster kecil. */
 export default function EventsMobile({ events, categories, total, filters, q, setQ, onVisit }: Props) {
     const ios = usePlatform() === 'ios';
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-[#49454f] dark:text-[#cac4d0]';
+    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
 
     const chip = (active: boolean) =>
         `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition active:opacity-60 ${
             ios
-                ? `h-8 rounded-full px-4 text-[15px] ${active ? 'bg-[#007AFF] text-white dark:bg-[#0A84FF]' : 'bg-black/[0.06] text-black dark:bg-white/10 dark:text-white'}`
-                : `h-8 rounded-lg px-3 text-sm font-medium ${active ? 'bg-[#e8def8] text-[#1d192b] dark:bg-[#4a4458] dark:text-[#e8def8]' : 'border border-[#79747e] text-[#1d1b20] dark:border-[#938f99] dark:text-[#e6e0e9]'}`
+                ? `h-8 rounded-full px-4 text-[15px] ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'bg-black/[0.06] text-black dark:bg-white/10 dark:text-white'}`
+                : `h-8 rounded-lg px-3 text-sm font-medium ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'border border-slate-300 bg-white text-slate-700 dark:border-white/20 dark:bg-white/5 dark:text-slate-200'}`
         }`;
 
     return (
@@ -82,7 +82,7 @@ export default function EventsMobile({ events, categories, total, filters, q, se
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Cari event atau lokasi"
                     className={`w-full pr-3 pl-9 text-[17px] outline-none ${
-                        ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-[#ece6f0] dark:bg-[#2b2930]'
+                        ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-slate-100 dark:bg-white/10'
                     }`}
                 />
             </div>

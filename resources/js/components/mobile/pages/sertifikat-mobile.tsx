@@ -40,7 +40,7 @@ export default function SertifikatMobile({ items, total, owned, years, types, f,
     const [tahun, setTahun] = useState(f.tahun ? String(f.tahun) : '');
     const [jenis, setJenis] = useState(f.jenis ?? '');
     const typeList = Object.entries(types ?? {});
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-[#49454f] dark:text-[#cac4d0]';
+    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
     const select = 'max-w-full bg-transparent text-right outline-none';
 
     const submit = (e?: FormEvent) => {
@@ -67,7 +67,7 @@ export default function SertifikatMobile({ items, total, owned, years, types, f,
                             placeholder="Cari event, nomor, atau nama"
                             maxLength={100}
                             className={`w-full pr-3 pl-9 text-[17px] outline-none ${
-                                ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-[#ece6f0] dark:bg-[#2b2930]'
+                                ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-slate-100 dark:bg-white/10'
                             }`}
                         />
                     </div>

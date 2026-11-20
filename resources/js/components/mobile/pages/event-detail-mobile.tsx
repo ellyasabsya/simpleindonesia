@@ -108,17 +108,17 @@ function useStyle() {
     const ios = usePlatform() === 'ios';
     return {
         ios,
-        muted: ios ? 'text-black/50 dark:text-white/50' : 'text-[#49454f] dark:text-[#cac4d0]',
-        accent: ios ? 'text-[#007AFF] dark:text-[#0A84FF]' : 'text-[#6750A4] dark:text-[#d0bcff]',
-        surface: ios ? 'rounded-[12px] bg-white dark:bg-[#1c1c1e]' : 'rounded-[20px] bg-[#f3edf7] dark:bg-[#211f26]',
-        field: ios ? 'rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'rounded-2xl bg-[#ece6f0] dark:bg-[#2b2930]',
+        muted: ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300',
+        accent: ios ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-700 dark:text-indigo-300',
+        surface: ios ? 'rounded-[12px] bg-white dark:bg-[#1c1c1e]' : 'rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900',
+        field: ios ? 'rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'rounded-2xl bg-slate-100 dark:bg-white/10',
     };
 }
 
 /** Baris informasi yang boleh turun ke baris berikutnya (nilai panjang seperti alamat tidak terpotong). */
 function InfoRow({ icon: Icon, tint, label, value, href }: { icon: Icon; tint: string; label: string; value: ReactNode; href?: string }) {
     const { ios, muted } = useStyle();
-    const cls = `flex w-full items-center gap-3 px-4 py-2.5 text-left ${ios ? 'min-h-11 text-[17px] text-black dark:text-white' : 'min-h-14 gap-4 text-base text-[#1d1b20] dark:text-[#e6e0e9]'}`;
+    const cls = `flex w-full items-center gap-3 px-4 py-2.5 text-left ${ios ? 'min-h-11 text-[17px] text-black dark:text-white' : 'min-h-14 gap-4 text-base text-[#0f172a] dark:text-[#f8fafc]'}`;
     const lead = ios ? (
         <span style={{ backgroundColor: tint }} className="flex size-[30px] shrink-0 items-center justify-center rounded-[7px] text-white">
             <Icon className="size-[18px]" />
@@ -159,8 +159,8 @@ function Chips<T extends string>({ options, value, onChange }: { options: { valu
     const chip = (active: boolean) =>
         `inline-flex shrink-0 items-center whitespace-nowrap transition active:opacity-60 ${
             ios
-                ? `h-8 rounded-full px-4 text-[15px] ${active ? 'bg-[#007AFF] text-white dark:bg-[#0A84FF]' : 'bg-black/[0.06] text-black dark:bg-white/10 dark:text-white'}`
-                : `h-8 rounded-lg px-3 text-sm font-medium ${active ? 'bg-[#e8def8] text-[#1d192b] dark:bg-[#4a4458] dark:text-[#e8def8]' : 'border border-[#79747e] text-[#1d1b20] dark:border-[#938f99] dark:text-[#e6e0e9]'}`
+                ? `h-8 rounded-full px-4 text-[15px] ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'bg-black/[0.06] text-black dark:bg-white/10 dark:text-white'}`
+                : `h-8 rounded-lg px-3 text-sm font-medium ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'border border-slate-300 bg-white text-slate-700 dark:border-white/20 dark:bg-white/5 dark:text-slate-200'}`
         }`;
     return (
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
@@ -321,7 +321,7 @@ function PesertaMobile({ data }: { data?: Participants }) {
                         {b.names.map((p, i) => (
                             <Row
                                 key={i}
-                                leading={<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#007AFF] text-xs font-semibold text-white">{initials(p.name)}</span>}
+                                leading={<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-xs font-semibold text-white">{initials(p.name)}</span>}
                                 label={p.name}
                                 sub={p.school ?? undefined}
                             />
@@ -382,7 +382,7 @@ function CommentsMobile({ event }: { event: Detail }) {
 
     return (
         <div className="space-y-3">
-            <h2 className={ios ? 'px-4 text-[13px] text-black/50 uppercase dark:text-white/50' : 'px-4 text-sm font-medium text-[#6750A4] dark:text-[#d0bcff]'}>Komentar</h2>
+            <h2 className={ios ? 'px-4 text-[13px] text-black/50 uppercase dark:text-white/50' : 'px-4 text-sm font-medium text-indigo-700 dark:text-indigo-300'}>Komentar</h2>
             {user ? (
                 <form onSubmit={submit} className="space-y-2">
                     <textarea
@@ -410,7 +410,7 @@ function CommentsMobile({ event }: { event: Detail }) {
                 <Section>
                     {event.comments.map((c) => (
                         <div key={c.id} className="flex gap-3 px-4 py-3">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#007AFF] text-xs font-semibold text-white">{initials(c.author)}</span>
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-xs font-semibold text-white">{initials(c.author)}</span>
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-semibold">{c.author}</span>
