@@ -8,7 +8,7 @@ const STATUS: Record<EventCard['status']['key'], string> = {
     selesai: 'bg-neutral-600',
 };
 
-const day = (s: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(s + 'T00:00:00'));
+const day = (s: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(s.length > 10 ? s : s + 'T00:00:00'));
 
 export function eventRange(start: string | null, end: string | null): string | null {
     if (!start && !end) return null;
@@ -24,11 +24,15 @@ type Props = {
     href: string;
     /** true = lebar 16:10 (untuk voting), false = potret 4:5. */
     wide?: boolean;
+    /** true = kartu kecil untuk grid 2 kolom. */
+    compact?: boolean;
+    /** Baris tambahan tebal di bawah (mis. harga per vote). */
+    note?: string;
     className?: string;
 };
 
 /** Kartu poster penuh: foto jadi pusat, judul putih di atas gradasi gelap. */
-export default function PosterCard({ event, href, wide, className = '' }: Props) {
+export default function PosterCard({ event, href, wide, compact, note, className = '' }: Props) {
     const range = eventRange(event.starts_at, event.ends_at);
     const series = !!event.is_series;
 
@@ -54,16 +58,16 @@ export default function PosterCard({ event, href, wide, className = '' }: Props)
                 <span className="size-1.5 rounded-full bg-white" />
                 {event.status.label}
             </span>
-            {series && (
+            {series && !compact && (
                 <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
                     <Layers className="size-3.5" />
                     {event.sub_count ? event.sub_count + ' acara' : 'Rangkaian'}
                 </span>
             )}
 
-            <div className="absolute inset-x-0 bottom-0 p-4">
-                {event.category && <p className="mb-1 text-[11px] font-semibold tracking-[0.14em] text-white/70 uppercase">{event.category}</p>}
-                <h3 className="line-clamp-2 text-[19px] leading-tight font-extrabold text-white">{event.title}</h3>
+            <div className={'absolute inset-x-0 bottom-0 ' + (compact ? 'p-3' : 'p-4')}>
+                {event.category && !compact && <p className="mb-1 text-[11px] font-semibold tracking-[0.14em] text-white/70 uppercase">{event.category}</p>}
+                <h3 className={'line-clamp-2 leading-tight font-extrabold text-white ' + (compact ? 'text-[14px]' : 'text-[19px]')}>{event.title}</h3>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-white/80">
                     {range && (
                         <span className="inline-flex items-center gap-1">
@@ -71,13 +75,14 @@ export default function PosterCard({ event, href, wide, className = '' }: Props)
                             {range}
                         </span>
                     )}
-                    {event.location && (
+                    {event.location && !compact && (
                         <span className="inline-flex min-w-0 items-center gap-1">
                             <MapPin className="size-3.5 shrink-0" />
                             <span className="truncate">{event.location}</span>
                         </span>
                     )}
                 </div>
+                {note && <p className="mt-1.5 text-xs font-bold text-white">{note}</p>}
             </div>
         </Link>
     );

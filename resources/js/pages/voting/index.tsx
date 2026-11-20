@@ -5,6 +5,8 @@ import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
 import VotingMobile from '@/components/mobile/pages/voting-mobile';
+import PublicScreen from '@/components/mobile/public/public-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Item = {
     id: number;
@@ -150,6 +152,18 @@ export default function VotingIndex() {
     const pill = (on: boolean) => `inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-sm font-bold transition ${on ? 'bg-gradient-to-r from-indigo-800 to-violet-600 text-white shadow-md shadow-indigo-900/25' : 'bg-white text-slate-600 hover:bg-indigo-50 hover:text-indigo-800 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15'}`;
     const cnt = (on: boolean) => `rounded-full px-2 py-0.5 text-xs ${on ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300'}`;
 
+    const phone = usePhone();
+    if (phone) {
+        return (
+            <>
+                <Head title="Semua Voting - SIMPLE" />
+                <PublicScreen title="E-Voting" large>
+                    <VotingMobile items={items} />
+                </PublicScreen>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Semua Voting - SIMPLE" />
@@ -157,7 +171,6 @@ export default function VotingIndex() {
                 <PageBackground />
                 <SiteNavbar />
                 <div className="relative z-10">
-                    <VotingMobile items={items} />
                     <main className="hidden md:block mx-auto max-w-7xl px-6 pb-24 pt-32">
                         <section className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                             <div>

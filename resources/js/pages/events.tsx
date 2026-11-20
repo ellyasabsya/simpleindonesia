@@ -6,6 +6,8 @@ import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
 import EventsMobile from '@/components/mobile/pages/events-mobile';
+import PublicScreen from '@/components/mobile/public/public-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Paginated = {
     data: EventCard[];
@@ -116,6 +118,18 @@ export default function Events() {
     const count = (active: boolean) =>
         `rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300'}`;
 
+    const phone = usePhone();
+    if (phone) {
+        return (
+            <>
+                <Head title="Semua Event - SIMPLE" />
+                <PublicScreen title="Semua Event" large>
+                    <EventsMobile events={events} categories={categories} total={total} filters={filters} q={q} setQ={setQ} onVisit={visit} />
+                </PublicScreen>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Semua Event - SIMPLE" />
@@ -124,9 +138,6 @@ export default function Events() {
                 <SiteNavbar />
 
                 <div className="relative z-10">
-                    <div className="px-4 pt-24 pb-32 md:hidden">
-                        <EventsMobile events={events} categories={categories} total={total} filters={filters} q={q} setQ={setQ} onVisit={visit} />
-                    </div>
                     <main className="hidden md:block mx-auto max-w-7xl px-6 pb-24 pt-32">
                         {/* Judul: sama dengan "Event Terbaru" di beranda */}
                         <section className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">

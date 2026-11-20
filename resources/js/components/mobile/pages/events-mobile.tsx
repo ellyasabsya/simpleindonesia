@@ -2,8 +2,7 @@ import { CalendarDays, Search } from 'lucide-react';
 import type { EventCard } from '@/components/landing/event-section';
 import Button from '../kit/button';
 import EmptyState from '../kit/empty-state';
-import { Row, Section } from '../kit/section';
-import { usePlatform } from '../use-platform';
+import PosterCard from '../kit/poster-card';
 
 type Paginated = {
     data: EventCard[];
@@ -26,71 +25,31 @@ type Props = {
     onVisit: (p: Query) => void;
 };
 
-const fmt = (s: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${s}T00:00:00`));
+const chip = (active: boolean) =>
+    'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition active:scale-95 ' +
+    (active
+        ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-900/25'
+        : 'bg-white text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200');
 
-function dateRange(start: string | null, end: string | null): string | null {
-    if (!start && !end) return null;
-    if (!start || !end || start === end) return fmt((start ?? end)!);
-    return `${fmt(start)} – ${fmt(end)}`;
-}
-
-function initials(title: string): string {
-    return title
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase())
-        .join('');
-}
-
-function Poster({ e }: { e: EventCard }) {
-    return e.poster ? (
-        <img src={e.poster} alt="" loading="lazy" className="h-[60px] w-12 shrink-0 rounded-lg object-cover" />
-    ) : (
-        <span className="flex h-[60px] w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-sm font-bold text-white">
-            {initials(e.title)}
-        </span>
-    );
-}
-
-const STATUS_COLOR = { berlangsung: 'text-[#34C759]', segera: 'text-indigo-600 dark:text-indigo-300', selesai: 'text-black/40 dark:text-white/40' } as const;
-
-/** Daftar event untuk HP: judul besar, kolom cari, chip kategori, lalu baris event dengan poster kecil. */
+/** Daftar event HP: kolom cari, chip kategori, lalu grid poster 2 kolom. Dibungkus PublicScreen oleh halamannya. */
 export default function EventsMobile({ events, categories, total, filters, q, setQ, onVisit }: Props) {
-    const ios = usePlatform() === 'ios';
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
-
-    const chip = (active: boolean) =>
-        `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition active:opacity-60 ${
-            ios
-                ? `h-8 rounded-full px-4 text-[15px] ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'bg-black/[0.06] text-black dark:bg-white/10 dark:text-white'}`
-                : `h-8 rounded-lg px-3 text-sm font-medium ${active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'border border-slate-300 bg-white text-slate-700 dark:border-white/20 dark:bg-white/5 dark:text-slate-200'}`
-        }`;
-
     return (
         <div className="space-y-5">
-            <div>
-                <h1 className={ios ? 'text-[34px] leading-tight font-bold' : 'text-[28px] leading-tight'}>Semua Event</h1>
-                <p className={`mt-1 text-sm ${muted}`}>{total} event tersedia di SIMPLE.</p>
-            </div>
+            <p className="px-1 text-sm text-slate-500 dark:text-slate-400">{total} event tersedia di SIMPLE</p>
 
-            <div className="relative">
-                <Search className={`pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 ${muted}`} />
+            <label className="flex h-12 items-center gap-3 rounded-2xl bg-white px-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.3)] dark:bg-white/10">
+                <Search className="size-5 shrink-0 text-slate-400" />
                 <input
                     type="search"
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Cari event atau lokasi"
-                    className={`w-full pr-3 pl-9 text-[17px] outline-none ${
-                        ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-slate-100 dark:bg-white/10'
-                    }`}
+                    className="w-full bg-transparent text-base outline-none placeholder:text-slate-400"
                 />
-            </div>
+            </label>
 
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
-                <button type="button" onClick={() => onVisit({ q })} className={chip(!filters.kategori)}>
-                    Semua
-                </button>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+                <button type="button" onClick={() => onVisit({ q })} className={chip(!filters.kategori)}>Semua</button>
                 {categories.map((c) => (
                     <button key={c.key} type="button" onClick={() => onVisit({ q, kategori: c.key })} className={chip(filters.kategori === c.key)}>
                         {c.label}
@@ -103,47 +62,22 @@ export default function EventsMobile({ events, categories, total, filters, q, se
                 <EmptyState icon={CalendarDays} title="Tidak ada event" text="Tidak ada event yang cocok dengan pencarian atau kategori ini." />
             ) : (
                 <>
-                    <p className={`px-1 text-xs ${muted}`}>
-                        Menampilkan {events.from}–{events.to} dari {events.total} event
-                    </p>
-                    <Section>
-                        {events.data.map((e) => {
-                            const range = dateRange(e.starts_at, e.ends_at);
-                            const line1 = e.is_series ? ['Rangkaian', e.sub_count ? `${e.sub_count} acara` : null, range].filter(Boolean).join(' · ') : range;
-                            return (
-                                <Row
-                                    key={e.id}
-                                    leading={<Poster e={e} />}
-                                    label={e.title}
-                                    sub={
-                                        <>
-                                            {line1 && <span className="block truncate">{line1}</span>}
-                                            {e.location && <span className="block truncate">{e.location}</span>}
-                                        </>
-                                    }
-                                    value={<span className={`text-xs font-semibold ${STATUS_COLOR[e.status.key]}`}>{e.status.label}</span>}
-                                    href={e.href ?? `/events/${e.slug ?? e.id}`}
-                                />
-                            );
-                        })}
-                    </Section>
+                    <div className="grid grid-cols-2 gap-3">
+                        {events.data.map((e) => (
+                            <PosterCard key={e.id} compact event={e} href={e.href ?? '/events/' + (e.slug ?? e.id)} className="w-full" />
+                        ))}
+                    </div>
 
                     {events.last_page > 1 && (
                         <div className="flex items-center justify-between gap-2">
                             {events.current_page > 1 ? (
-                                <Button variant="tonal" onClick={() => onVisit({ q, kategori: filters.kategori, page: events.current_page - 1 })}>
-                                    Sebelumnya
-                                </Button>
+                                <Button variant="tonal" onClick={() => onVisit({ q, kategori: filters.kategori, page: events.current_page - 1 })}>Sebelumnya</Button>
                             ) : (
                                 <span />
                             )}
-                            <span className={`text-xs ${muted}`}>
-                                {events.current_page} / {events.last_page}
-                            </span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{events.current_page} / {events.last_page}</span>
                             {events.current_page < events.last_page ? (
-                                <Button variant="tonal" onClick={() => onVisit({ q, kategori: filters.kategori, page: events.current_page + 1 })}>
-                                    Berikutnya
-                                </Button>
+                                <Button variant="tonal" onClick={() => onVisit({ q, kategori: filters.kategori, page: events.current_page + 1 })}>Berikutnya</Button>
                             ) : (
                                 <span />
                             )}
