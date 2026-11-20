@@ -5,6 +5,7 @@ import { Card, type EventCard } from '@/components/landing/event-section';
 import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
+import EventsMobile from '@/components/mobile/pages/events-mobile';
 
 type Paginated = {
     data: EventCard[];
@@ -123,7 +124,10 @@ export default function Events() {
                 <SiteNavbar />
 
                 <div className="relative z-10">
-                    <main className="mx-auto max-w-7xl px-6 pb-24 pt-32">
+                    <div className="px-4 pt-24 pb-32 md:hidden">
+                        <EventsMobile events={events} categories={categories} total={total} filters={filters} q={q} setQ={setQ} onVisit={visit} />
+                    </div>
+                    <main className="hidden md:block mx-auto max-w-7xl px-6 pb-24 pt-32">
                         {/* Judul: sama dengan "Event Terbaru" di beranda */}
                         <section className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                             <div>
@@ -189,7 +193,9 @@ export default function Events() {
                             </>
                         )}
                     </main>
-                    <Footer />
+                    <div className="hidden md:block">
+                        <Footer />
+                    </div>
                 </div>
             </div>
         </>

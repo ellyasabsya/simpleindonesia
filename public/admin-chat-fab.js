@@ -15,7 +15,7 @@
     whatsapp: '6281277700335',            // nomor admin, format internasional tanpa + atau 0 di depan
     email: 'admin@gmail.com',    // email admin
     message: 'Halo Admin SIMPLE, saya butuh bantuan.',
-    storageKey: 'simple-admin-fab',
+    storageKey: 'simple-admin-fab-v2',
     size: 60,
     margin: 16
   };
@@ -111,7 +111,7 @@
     function reserve() { return phone.matches ? 80 + probe.offsetHeight : 0; }
 
     // pos: sisi (left/right) + posisi vertikal sebagai rasio, supaya tetap rapi saat layar berubah ukuran
-    var pos = { side: 'left', yr: 0.82 };
+    var pos = { side: 'right', yr: 1 };
     try {
       var saved = JSON.parse(localStorage.getItem(CONFIG.storageKey));
       if (saved && (saved.side === 'left' || saved.side === 'right') && typeof saved.yr === 'number') pos = saved;

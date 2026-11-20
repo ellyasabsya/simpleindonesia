@@ -1,5 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { QRCodeSVG } from 'qrcode.react';
+import TiketSayaMobile from '@/components/mobile/pages/tiket-saya-mobile';
+import UserLayout from '@/components/user/user-layout';
 
 type Tk = { code: string; holder_name: string; checked_in: boolean };
 type O = { code: string; event_title: string; location: string | null; date: string; tickets: Tk[] };
@@ -8,6 +10,12 @@ export default function TiketSaya({ orders }: { orders: O[] }) {
     return (
         <>
             <Head title="Tiket Saya" />
+            <div className="md:hidden">
+                <UserLayout title="Tiket Saya">
+                    <TiketSayaMobile orders={orders} />
+                </UserLayout>
+            </div>
+            <div className="hidden md:block">
             <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-8">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-extrabold">Tiket Saya</h1>
@@ -36,6 +44,7 @@ export default function TiketSaya({ orders }: { orders: O[] }) {
                         </div>
                     </div>
                 ))}
+            </div>
             </div>
         </>
     );

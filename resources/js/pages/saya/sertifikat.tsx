@@ -1,6 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useState, type FormEvent } from 'react';
 import { ArrowLeft, ArrowRight, Award, ChevronRight, Search } from 'lucide-react';
+import SertifikatMobile from '@/components/mobile/pages/sertifikat-mobile';
 import UserLayout from '@/components/user/user-layout';
 
 type Item = {
@@ -37,6 +38,10 @@ export default function Sertifikat({ items, total, owned, years, types, f, filte
 
     return (
         <UserLayout title="Sertifikat Saya">
+            <div className="md:hidden">
+                <SertifikatMobile items={items} total={total} owned={owned} years={years} types={types} f={f} filtered={filtered} page={page} pages={pages} prevUrl={prevUrl} nextUrl={nextUrl} />
+            </div>
+            <div className="hidden md:contents">
             <div className="w-full space-y-6">
                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:text-slate-300">
                     <ArrowLeft className="h-4 w-4" /> Kembali
@@ -115,6 +120,7 @@ export default function Sertifikat({ items, total, owned, years, types, f, filte
                     </div>
                 )}
             </div>
+        </div>
         </UserLayout>
     );
 }
