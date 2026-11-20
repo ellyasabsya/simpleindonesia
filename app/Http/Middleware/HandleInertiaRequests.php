@@ -31,6 +31,16 @@ class HandleInertiaRequests extends Middleware
                     ? $request->user()->only('id', 'name', 'email', 'role')
                     : null,
             ],
+            'userHasPanel' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return false;
+                }
+
+                return Institution::where('user_id', $user->id)->where('status', Institution::APPROVED)->exists()
+                    || \App\Models\InstitutionMember::where('user_id', $user->id)->where('status', 'aktif')
+                        ->whereIn('institution_id', Institution::where('status', Institution::APPROVED)->select('id'))->exists();
+            },
             'notifications' => fn () => $request->user()?->isAdmin()
                 ? [
                     'unread_count' => $request->user()->unreadNotifications()->count(),

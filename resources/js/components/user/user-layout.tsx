@@ -2,17 +2,18 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import Avatar from '@/components/user/avatar';
 import NotificationBell from '@/components/user/notification-bell';
 import { Toast } from '@/lib/toast';
-import { Building2, ChevronDown, LayoutDashboard, LogOut, Moon, Sun } from 'lucide-react';
+import { Award, Building2, ChevronDown, LayoutDashboard, LogOut, Moon, Sun } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import { useTheme } from '@/hooks/use-theme';
 import { useIdleLogout } from '@/hooks/use-idle-logout';
 
-export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel: boolean; children: ReactNode }) {
+export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel?: boolean; children: ReactNode }) {
     const { dark, toggle } = useTheme();
     const [open, setOpen] = useState(false);
-    const page = usePage<{ auth?: { user?: { name?: string; email?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null }>().props;
+    const page = usePage<{ auth?: { user?: { name?: string; email?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null; userHasPanel?: boolean }>().props;
     const user = page.auth?.user;
+    const panel = Boolean(hasPanel) || Boolean(page.userHasPanel);
     useIdleLogout(30, !!user);
     const avatar = page.profile?.avatar ?? user?.avatar ?? null;
     const name = user?.name ?? 'Pengguna';
@@ -56,8 +57,11 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
                                         <Link href="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
                                             <LayoutDashboard className="h-4 w-4" /> Dashboard
                                         </Link>
-                                        <Link href={hasPanel ? '/panel' : '/lembaga/daftar'} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
-                                            <Building2 className="h-4 w-4" /> {hasPanel ? 'Panel Lembaga' : 'Daftarkan Lembaga'}
+                                        <a href="/sertifikat-saya" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
+                                            <Award className="h-4 w-4" /> Sertifikat Saya
+                                        </a>
+                                        <Link href={panel ? '/panel' : '/lembaga/daftar'} onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
+                                            <Building2 className="h-4 w-4" /> {panel ? 'Panel Lembaga' : 'Daftarkan Lembaga'}
                                         </Link>
                                         <button onClick={() => router.post('/logout')} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
                                             <LogOut className="h-4 w-4" /> Keluar
