@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Anda sedang offline - SIMPLE</title>
+<style>
+:root{--bg:#f4f6fc;--card:#fff;--ink:#0f1a3d;--muted:#56608a;--brand:#1e3a8a;--brand-2:#2563eb;--ok:#15803d;--line:rgba(15,26,61,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--card:#151b34;--ink:#eef1ff;--muted:#a3abcf;--brand:#93a8ff;--brand-2:#3b82f6;--ok:#4ade80;--line:rgba(255,255,255,.1)}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+main{width:100%;max-width:420px;padding:32px 28px;border-radius:28px;background:var(--card);box-shadow:0 24px 60px -24px rgba(15,26,61,.35),0 0 0 1px var(--line);text-align:center}
+img{width:84px;height:84px;border-radius:22px;display:block;margin:0 auto 20px}
+h1{margin:0 0 10px;font-size:1.5rem;line-height:1.25}
+p{margin:0 0 14px;color:var(--muted);line-height:1.55;font-size:.98rem}
+.status{display:inline-flex;align-items:center;gap:8px;margin:4px 0 22px;padding:8px 14px;border-radius:999px;background:var(--bg);font-size:.88rem;font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%;background:#f59e0b}
+.status.is-online .dot{background:var(--ok)}
+button{min-height:48px;width:100%;border:0;border-radius:14px;background:linear-gradient(90deg,var(--brand-2),#0ea5e9);color:#fff;font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation}
+button:active{transform:scale(.98)}
+button:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+.note{margin:18px 0 0;font-size:.85rem}
+@media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+</head>
+<body>
+<main>
+    <img src="/icons/icon-192.png" alt="SIMPLE" width="84" height="84">
+    <h1>Anda sedang offline</h1>
+    <p>Koneksi internet terputus. SIMPLE butuh koneksi untuk menampilkan event, tiket, dan pembayaran terbaru.</p>
+    <div class="status" id="status" role="status" aria-live="polite"><span class="dot"></span><span id="status-text">Tidak ada koneksi</span></div>
+    <button type="button" id="retry">Coba lagi</button>
+    <p class="note">Tidak ada pembayaran, pendaftaran, atau penilaian yang tersimpan saat offline. Ulangi setelah koneksi kembali.</p>
+</main>
+<script>
+(function () {
+    var box = document.getElementById('status');
+    var text = document.getElementById('status-text');
+    function sync() {
+        var on = navigator.onLine;
+        box.classList.toggle('is-online', on);
+        text.textContent = on ? 'Koneksi kembali, memuat ulang…' : 'Tidak ada koneksi';
+        if (on) setTimeout(function () { location.reload(); }, 600);
+    }
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    document.getElementById('retry').addEventListener('click', function () {
+        text.textContent = 'Memeriksa koneksi…';
+        setTimeout(function () { location.reload(); }, 300);
+    });
+})();
+</script>
+</body>
+</html>

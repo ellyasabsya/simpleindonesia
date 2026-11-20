@@ -1,0 +1,24 @@
+{
+    "id": "/",
+    "name": "SIMPLE - Sistem Informasi Perlombaan",
+    "short_name": "SIMPLE",
+    "description": "Kelola pendaftaran peserta, penilaian juri, tiket, dan voting event Anda.",
+    "lang": "id",
+    "dir": "ltr",
+    "start_url": "/dashboard?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#1e3a8a",
+    "categories": ["business", "productivity"],
+    "icons": [
+        { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Tiket saya", "url": "/tiket?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Event", "url": "/events?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+        { "name": "Sertifikat saya", "url": "/sertifikat-saya?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    ]
+}
