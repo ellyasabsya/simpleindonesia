@@ -18,5 +18,6 @@
     </head>
     <body class="font-sans antialiased">
         <x-inertia::app />
-    </body>
+        <script src="/admin-chat-fab.js" defer></script>
+</body>
 </html>
