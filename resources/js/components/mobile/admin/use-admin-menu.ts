@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { adminMenu } from '@/data/admin-menu';
+import type { MenuBadge, MenuGroup } from '../menu/menu-types';
 
 type Counts = {
     pending_lembaga?: number;
@@ -9,18 +10,6 @@ type Counts = {
     pending_paket?: number;
     pending_penarikan?: number;
 };
-
-type Source = (typeof adminMenu)[number]['items'][number];
-
-export type MenuBadge = { count: number; tone: 'red' | 'amber' };
-export type MenuItem = {
-    label: string;
-    href: string;
-    Icon: Source['icon'];
-    active: boolean;
-    badge: MenuBadge | null;
-};
-export type MenuGroup = { title: string; items: MenuItem[] };
 
 /** Menu admin + penanda aktif + angka lencana, dihitung dari data yang sama dengan sidebar desktop. */
 export function useAdminMenu(): MenuGroup[] {
@@ -58,5 +47,3 @@ export function useAdminMenu(): MenuGroup[] {
         }),
     }));
 }
-
-export const badgeText = (n: number) => (n > 99 ? '99+' : String(n));

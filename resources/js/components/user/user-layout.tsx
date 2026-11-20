@@ -8,6 +8,8 @@ import PageBackground from '@/components/page-background';
 import MobileBottomNav from '@/components/mobile/bottom-nav';
 import { useTheme } from '@/hooks/use-theme';
 import { useIdleLogout } from '@/hooks/use-idle-logout';
+import { usePhone } from '@/components/mobile/use-phone';
+import UserScreen from '@/components/mobile/user/user-screen';
 
 export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel?: boolean; children: ReactNode }) {
     const { dark, toggle } = useTheme();
@@ -18,6 +20,15 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
     useIdleLogout(30, !!user);
     const avatar = page.profile?.avatar ?? user?.avatar ?? null;
     const name = user?.name ?? 'Pengguna';
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <UserScreen title={title} name={name} email={user?.email} avatar={avatar} panel={panel} dark={dark} toggleTheme={toggle}>
+                {children}
+            </UserScreen>
+        );
+    }
 
     return (
         <>

@@ -4,10 +4,21 @@ import type { ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import Avatar from '@/components/user/avatar';
 import { useTheme } from '@/hooks/use-theme';
+import JuriScreen from '@/components/mobile/juri/juri-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 export default function JuriLayout({ title, judgeName, children }: { title: string; judgeName: string; children: ReactNode }) {
     const { dark, toggle } = useTheme();
     const loggedIn = Boolean(usePage<{ auth?: { user?: unknown } }>().props.auth?.user);
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <JuriScreen title={title} judgeName={judgeName} loggedIn={loggedIn} dark={dark} toggleTheme={toggle}>
+                {children}
+            </JuriScreen>
+        );
+    }
 
     return (
         <>

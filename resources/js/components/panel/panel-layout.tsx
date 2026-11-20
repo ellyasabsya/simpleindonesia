@@ -7,6 +7,8 @@ import MobileBottomNav from '@/components/mobile/bottom-nav';
 import { eventMenuIcons } from '@/data/event-menu-icons';
 import { panelMenu, type PanelMenuGroup } from '@/data/panel-menu';
 import { useTheme } from '@/hooks/use-theme';
+import PanelScreen from '@/components/mobile/panel/panel-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type PageProps = {
     auth?: { user?: { name?: string } };
@@ -112,6 +114,15 @@ export default function PanelLayout({ title, children }: { title: string; childr
     const [open, setOpen] = useState(false);
     const { auth, institution } = usePage<PageProps>().props;
     const name = auth?.user?.name ?? 'Pengguna';
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <PanelScreen title={title} name={name} institution={institution?.name} dark={dark} toggleTheme={toggle}>
+                {children}
+            </PanelScreen>
+        );
+    }
 
     return (
         <>
