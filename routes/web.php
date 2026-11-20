@@ -166,7 +166,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
         ];
 
         Route::get('pendapatan', [\App\Http\Controllers\Panel\WithdrawalController::class, 'index'])->name('pendapatan');
-        Route::post('penarikan', [\App\Http\Controllers\Panel\WithdrawalController::class, 'store'])->name('penarikan.store');
+        Route::post('penarikan', [\App\Http\Controllers\Panel\WithdrawalController::class, 'store'])->middleware('throttle:10,1')->name('penarikan.store');
         Route::post('pin/kode', [\App\Http\Controllers\Panel\WithdrawalController::class, 'sendCode'])->middleware('throttle:3,1')->name('pin.kode');
         Route::post('pin', [\App\Http\Controllers\Panel\WithdrawalController::class, 'savePin'])->middleware('throttle:6,1')->name('pin.simpan');
         Route::put('rekening', [\App\Http\Controllers\Panel\WithdrawalController::class, 'saveAccount'])->middleware('throttle:10,1')->name('rekening.simpan');
@@ -227,7 +227,7 @@ Route::middleware([
         Route::get('event/{event}/sertifikat/berkas/{certificate}', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'file'])->whereNumber(['event', 'certificate'])->name('event.sertifikat.berkas');
         Route::get('event/{event}/sertifikat/desain', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'index'])->whereNumber('event')->name('event.sertifikat.desain');
         Route::post('event/{event}/sertifikat/desain', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'store'])->whereNumber('event')->name('event.sertifikat.desain.simpan');
-        Route::post('event/{event}/sertifikat/desain/pratinjau', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'preview'])->whereNumber('event')->name('event.sertifikat.desain.pratinjau');
+        Route::post('event/{event}/sertifikat/desain/pratinjau', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'preview'])->whereNumber('event')->middleware('throttle:15,1')->name('event.sertifikat.desain.pratinjau');
         Route::put('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'update'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.ubah');
         Route::delete('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'destroy'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.hapus');
         Route::get('event/{event}/sertifikat/desain/aset/{template}/{kind}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'asset'])->whereNumber(['event', 'template'])->where('kind', 'logo|background|signature')->name('event.sertifikat.desain.aset');
@@ -243,7 +243,7 @@ Route::middleware([
         Route::post('event/{event}/penilaian/juri/{item}/tugas-saudara', [\App\Http\Controllers\Panel\JudgingController::class, 'assignFromSibling'])->whereNumber(['event', 'item'])->name('event.judging.assignFromSibling');
         Route::get('event/{event}/penilaian/juri-event', [\App\Http\Controllers\Panel\JudgingController::class, 'eventJudges'])->whereNumber('event')->name('event.judging.eventJudges');
         Route::post('event/{event}/penilaian/juri/{item}/kategori', [\App\Http\Controllers\Panel\JudgingController::class, 'addToCategory'])->whereNumber(['event', 'item'])->name('event.judging.addToCategory');
-        Route::get('event/{event}/penilaian/juri-undangan/cari', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteLookup'])->whereNumber('event')->name('event.judging.inviteLookup');
+        Route::get('event/{event}/penilaian/juri-undangan/cari', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteLookup'])->whereNumber('event')->middleware('throttle:20,1')->name('event.judging.inviteLookup');
         Route::post('event/{event}/penilaian/juri-undangan', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteStore'])->whereNumber('event')->name('event.judging.inviteStore');
         Route::delete('event/{event}/penilaian/juri-undangan/{inv}', [\App\Http\Controllers\Panel\JudgingController::class, 'inviteCancel'])->whereNumber(['event', 'inv'])->name('event.judging.inviteCancel');
         Route::post('event/{event}/penilaian/publikasi', [\App\Http\Controllers\Panel\JudgingController::class, 'publish'])->whereNumber('event')->name('event.judging.publish');
