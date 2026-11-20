@@ -39,3 +39,24 @@ it('opens voting settings when the package includes voting', function () {
 
     actingAs($user)->get("/panel/event/{$event->id}/voting")->assertOk();
 });
+
+it('closes judging settings when the package has no judging feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'voting_event']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/penilaian")->assertForbidden();
+});
+
+it('closes the standings page when the package has no judging feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'voting_event']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/klasemen")->assertForbidden();
+});
+
+it('opens judging settings when the package includes judging', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'penilaian_juri']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/penilaian")->assertOk();
+});

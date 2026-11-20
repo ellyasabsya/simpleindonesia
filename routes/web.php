@@ -225,6 +225,7 @@ Route::middleware([
         Route::put('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'update'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.ubah');
         Route::delete('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'destroy'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.hapus');
         Route::get('event/{event}/sertifikat/desain/aset/{template}/{kind}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'asset'])->whereNumber(['event', 'template'])->where('kind', 'logo|background|signature')->name('event.sertifikat.desain.aset');
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':penilaian')->group(function () {
         Route::get('event/{event}/penilaian', [\App\Http\Controllers\Panel\JudgingController::class, 'index'])->whereNumber('event')->name('event.judging.index');
         Route::post('event/{event}/penilaian/aktif', [\App\Http\Controllers\Panel\JudgingController::class, 'toggle'])->whereNumber('event')->name('event.judging.toggle');
         Route::put('event/{event}/penilaian/kriteria', [\App\Http\Controllers\Panel\JudgingController::class, 'saveCriteria'])->whereNumber('event')->name('event.judging.criteria');
@@ -258,6 +259,7 @@ Route::middleware([
         Route::get('event/{event}/penilaian/rekap/excel', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapExcel'])->whereNumber('event')->name('event.judging.rekapExcel');
         Route::get('event/{event}/penilaian/rekap/lembar', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembar'])->whereNumber('event')->name('event.judging.rekapLembar');
         Route::get('event/{event}/penilaian/rekap/lembar-kosong', [\App\Http\Controllers\Panel\JudgingController::class, 'rekapLembarKosong'])->whereNumber('event')->name('event.judging.rekapLembarKosong');
+        });
         Route::get('event/{event}/{menu}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'menu'])->name('event.menu');
         Route::post('event/{event}/tiket/jual', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'toggle'])->whereNumber('event')->name('event.tiket.jual');
         // patch-248: buka/tutup penjualan seluruh rangkaian
