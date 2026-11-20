@@ -32,7 +32,7 @@ export default function AndroidAuth({ badge, title, subtitle, dark, toggleTheme,
             </div>
 
             <main
-                className={`-mt-6 flex-1 rounded-t-[28px] bg-[#fef7ff] px-6 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] text-[#1d1b20] dark:bg-[#141218] dark:text-[#e6e0e9] ${submit}`}
+                className={`-mt-6 flex-1 rounded-t-[28px] bg-[#f4f6fb] px-6 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))] text-[#0f172a] dark:bg-[#0b1020] dark:text-[#f8fafc] ${submit}`}
             >
                 {children}
             </main>

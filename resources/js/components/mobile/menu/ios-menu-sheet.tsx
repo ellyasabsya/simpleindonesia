@@ -53,7 +53,7 @@ export default function IosMenuSheet({ open, onClose, groups, user, dark, toggle
                                         key={item.href}
                                         item={item}
                                         onClick={onClose}
-                                        className={`${row} ${item.active ? 'font-semibold text-[#007AFF] dark:text-[#0A84FF]' : ''}`}
+                                        className={`${row} ${item.active ? 'font-semibold text-indigo-600 dark:text-indigo-300' : ''}`}
                                     >
                                         <item.Icon className="size-5 shrink-0" />
                                         <span className="flex-1 truncate">{item.label}</span>

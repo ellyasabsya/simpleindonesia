@@ -63,7 +63,7 @@ export default function VotingMobile({ items }: { items: VotingItem[] }) {
         : 'flex h-12 items-center gap-3 rounded-full border border-slate-300 bg-white px-4 dark:border-white/15 dark:bg-white/10';
 
     return (
-        <main className={bp + ':hidden px-4 pt-24 pb-32'}>
+        <main className="md:hidden px-4 pt-24 pb-32">
             <h1 className={ios ? 'text-[34px] leading-tight font-bold text-black dark:text-white' : 'text-3xl font-semibold text-slate-900 dark:text-white'}>E-Voting</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 {items.length} event · {nf(totalParticipants)} peserta voting

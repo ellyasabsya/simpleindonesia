@@ -3,29 +3,23 @@ import { usePlatform } from '../use-platform';
 type Option<T extends string> = { value: T; label: string; badge?: number };
 type Props<T extends string> = { options: Option<T>[]; value: T; onChange: (v: T) => void };
 
-/** Pemilih tab: segmented control iOS, atau segmented button Material 3. */
+const ACTIVE = 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-600/25';
+
+/** Pemilih tab: segmented control iOS, atau segmented button Material; tab aktif memakai warna merek. */
 export default function Segmented<T extends string>({ options, value, onChange }: Props<T>) {
     const ios = usePlatform() === 'ios';
 
     return (
-        <div
-            className={
-                ios
-                    ? 'flex rounded-[9px] bg-black/[0.06] p-0.5 dark:bg-white/10'
-                    : 'flex overflow-hidden rounded-full border border-[#79747e] dark:border-[#938f99]'
-            }
-        >
+        <div className={ios ? 'flex rounded-[10px] bg-slate-200/80 p-0.5 dark:bg-white/10' : 'flex overflow-hidden rounded-full border border-slate-300 bg-white dark:border-white/20 dark:bg-slate-900'}>
             {options.map((o, i) => {
                 const on = o.value === value;
                 const cls = ios
-                    ? `flex flex-1 items-center justify-center gap-1.5 rounded-[7px] py-1.5 text-[13px] font-medium ${on ? 'bg-white text-black shadow-sm dark:bg-[#636366] dark:text-white' : 'text-black/80 dark:text-white/80'}`
-                    : `flex h-10 flex-1 items-center justify-center gap-1.5 text-sm font-medium ${i > 0 ? 'border-l border-[#79747e] dark:border-[#938f99]' : ''} ${on ? 'bg-[#e8def8] text-[#1d192b] dark:bg-[#4a4458] dark:text-[#e8def8]' : 'text-[#1d1b20] dark:text-[#e6e0e9]'}`;
+                    ? `flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-2 text-[13px] font-semibold ${on ? ACTIVE : 'text-slate-700 dark:text-slate-200'}`
+                    : `flex h-10 flex-1 items-center justify-center gap-1.5 text-sm font-semibold ${i > 0 && !on ? 'border-l border-slate-200 dark:border-white/10' : ''} ${on ? ACTIVE : 'text-slate-700 dark:text-slate-200'}`;
                 return (
                     <button key={o.value} type="button" onClick={() => onChange(o.value)} className={cls}>
                         {o.label}
-                        {o.badge !== undefined && o.badge > 0 && (
-                            <span className={`rounded-full px-1.5 text-[11px] font-bold text-white ${ios ? 'bg-[#FF3B30]' : 'bg-[#b3261e]'}`}>{o.badge}</span>
-                        )}
+                        {o.badge !== undefined && o.badge > 0 && <span className={`rounded-full px-1.5 text-[11px] font-bold text-white ${on ? 'bg-white/30' : ios ? 'bg-[#FF3B30]' : 'bg-[#dc2626]'}`}>{o.badge}</span>}
                     </button>
                 );
             })}

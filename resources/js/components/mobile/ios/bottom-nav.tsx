@@ -11,7 +11,7 @@ const TAB =
     'flex h-[49px] min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-[3px] select-none transition-opacity active:opacity-60';
 
 const tint = (active: boolean) =>
-    active ? 'text-[#007AFF] dark:text-[#0A84FF]' : 'text-[#8E8E93]';
+    active ? 'text-indigo-600 dark:text-indigo-300' : 'text-[#8E8E93]';
 
 function Tab({ item, path }: { item: NavItem; path: string }) {
     const active = isActive(path, item);

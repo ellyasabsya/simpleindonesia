@@ -1,4 +1,6 @@
 import { Head } from '@inertiajs/react';
+import HomeMobile from '@/components/mobile/pages/home-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import EventSection from '@/components/landing/event-section';
 import Footer from '@/components/landing/footer';
 import Hero from '@/components/landing/hero';
@@ -10,6 +12,9 @@ import VotingSection from '@/components/landing/voting-section';
 import PageBackground from '@/components/page-background';
 
 export default function Welcome() {
+    const phone = usePhone();
+    if (phone) return <HomeMobile />;
+
     return (
         <>
             <Head title="SIMPLE - Kelola Event Lebih Cerdas" />

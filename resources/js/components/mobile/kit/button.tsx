@@ -13,20 +13,23 @@ type Props = {
     children: ReactNode;
 };
 
+const BRAND = 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-600/30';
+const TONAL = 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/25 dark:text-indigo-100';
+
 const IOS = {
-    base: 'inline-flex items-center justify-center gap-2 text-[17px] font-semibold transition active:opacity-60',
-    filled: 'h-[50px] rounded-[14px] bg-[#007AFF] px-5 text-white dark:bg-[#0A84FF]',
-    tonal: 'h-[50px] rounded-[14px] bg-[#007AFF]/15 px-5 text-[#007AFF] dark:bg-[#0A84FF]/20 dark:text-[#0A84FF]',
-    plain: 'h-11 px-3 font-normal text-[#007AFF] dark:text-[#0A84FF]',
+    base: 'inline-flex items-center justify-center gap-2 text-[17px] font-semibold transition active:opacity-70',
+    filled: `h-[50px] rounded-[14px] px-5 ${BRAND}`,
+    tonal: `h-[50px] rounded-[14px] px-5 ${TONAL}`,
+    plain: 'h-11 px-3 font-normal text-indigo-600 dark:text-indigo-300',
 };
 const ANDROID = {
-    base: 'inline-flex items-center justify-center gap-2 text-sm font-medium transition active:opacity-80',
-    filled: 'h-10 rounded-full bg-[#6750A4] px-6 text-white dark:bg-[#d0bcff] dark:text-[#381e72]',
-    tonal: 'h-10 rounded-full bg-[#e8def8] px-6 text-[#1d192b] dark:bg-[#4a4458] dark:text-[#e8def8]',
-    plain: 'h-10 px-3 text-[#6750A4] dark:text-[#d0bcff]',
+    base: 'inline-flex items-center justify-center gap-2 text-sm font-semibold transition active:opacity-80',
+    filled: `h-11 rounded-full px-6 ${BRAND}`,
+    tonal: `h-11 rounded-full px-6 ${TONAL}`,
+    plain: 'h-11 px-3 text-indigo-700 dark:text-indigo-300',
 };
 
-/** Tombol native: biru iOS membulat 14pt, atau tombol pil Material 3. */
+/** Tombol bermerek: gradien indigo-biru-violet seperti di web, bentuk mengikuti platform. */
 export default function Button({ variant = 'filled', icon: Icon, full, href, onClick, children }: Props) {
     const set = usePlatform() === 'ios' ? IOS : ANDROID;
     const cls = `${set.base} ${set[variant]} ${full ? 'w-full' : ''} [&_svg]:size-[18px]`;

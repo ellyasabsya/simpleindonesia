@@ -24,26 +24,26 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                     transitionDelay: open ? '0s' : '0s, 0.3s',
                     visibility: open ? 'visible' : 'hidden',
                 }}
-                className="absolute inset-y-0 left-0 flex w-[min(86vw,360px)] flex-col rounded-r-[28px] bg-[#f3edf7] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-[#1d1b20] dark:bg-[#211f26] dark:text-[#e6e0e9]"
+                className="absolute inset-y-0 left-0 flex w-[min(86vw,360px)] flex-col rounded-r-[28px] bg-[#ffffff] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-[#0f172a] dark:bg-[#1e293b] dark:text-[#f8fafc]"
             >
                 <div className="flex items-center gap-3 px-7 pt-6 pb-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">S</span>
                     <div className="min-w-0">
                         <p className="truncate text-base font-medium">{user.name ?? 'Akun'}</p>
-                        {user.subtitle && <p className="truncate text-xs text-[#49454f] uppercase dark:text-[#cac4d0]">{user.subtitle}</p>}
+                        {user.subtitle && <p className="truncate text-xs text-[#475569] uppercase dark:text-[#cbd5e1]">{user.subtitle}</p>}
                     </div>
                 </div>
 
                 <nav className="flex-1 space-y-2 overflow-y-auto px-3 pb-2">
                     {groups.map((g) => (
                         <section key={g.title}>
-                            {g.title && <p className="px-4 pt-3 pb-1 text-sm font-medium text-[#49454f] dark:text-[#cac4d0]">{g.title}</p>}
+                            {g.title && <p className="px-4 pt-3 pb-1 text-sm font-medium text-slate-600 dark:text-slate-300">{g.title}</p>}
                             {g.items.map((item) => (
                                 <ItemLink
                                     key={item.href}
                                     item={item}
                                     onClick={onClose}
-                                    className={`${itemCls} ${item.active ? 'bg-[#e8def8] text-[#1d192b] dark:bg-[#4a4458] dark:text-[#e8def8]' : 'active:bg-black/10 dark:active:bg-white/10'}`}
+                                    className={`${itemCls} ${item.active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'active:bg-black/10 dark:active:bg-white/10'}`}
                                 >
                                     <item.Icon className="size-6 shrink-0" />
                                     <span className="flex-1 truncate">{item.label}</span>
@@ -58,7 +58,7 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                     ))}
                 </nav>
 
-                <div className="mx-3 space-y-1 border-t border-[#cac4d0] py-2 dark:border-[#49454f]">
+                <div className="mx-3 space-y-1 border-t border-[#cbd5e1] py-2 dark:border-[#475569]">
                     <button type="button" onClick={toggleTheme} className={`${itemCls} w-full active:bg-black/10 dark:active:bg-white/10`}>
                         {dark ? <Sun className="size-6" /> : <Moon className="size-6" />}
                         <span className="flex-1 text-left">{dark ? 'Mode terang' : 'Mode gelap'}</span>
