@@ -134,3 +134,12 @@ it('does not block the registration form when the package has the registration f
     $status = actingAs($user)->put("/panel/event/{$event->id}/registrasi/form", [])->status();
     expect($status)->not->toBe(403);
 });
+
+it('closes certificate pages when the package has no certificate feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/sertifikat")->assertForbidden();
+    actingAs($user)->get("/panel/event/{$event->id}/sertifikat/desain")->assertForbidden();
+    actingAs($user)->get("/panel/event/{$event->id}/sertifikat/terbitkan")->assertForbidden();
+});
