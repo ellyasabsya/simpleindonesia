@@ -9,7 +9,7 @@ const ID = 'simple-snap-backdrop';
 const STYLE_ID = 'simple-snap-backdrop-style';
 
 const CSS = `
-#snap-midtrans{background:transparent !important}
+#snap-midtrans{background:transparent !important;z-index:2147483647 !important}
 #${ID}{position:fixed;inset:0;z-index:2147482000;display:flex;align-items:center;justify-content:center;overflow:hidden;
  font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#fff;opacity:0;transition:opacity .35s ease;
  background:radial-gradient(1200px 700px at 15% 10%,#3b82f6 0%,transparent 55%),
