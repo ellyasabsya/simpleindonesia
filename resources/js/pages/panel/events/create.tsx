@@ -987,6 +987,18 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         registration_method: d.registration_method === 'ticket' && !p.can_ticket ? '' : d.registration_method,
         competition_type: d.competition_type === 'team' && !p.can_team ? '' : d.competition_type,
     }));
+    // Paket series: panitia memilih jumlah event total (minimal 1). Event di atas jumlah yang termasuk paket tetap berbayar.
+    const setTotal = (raw: number) => {
+        if (!pkg) return;
+        const n = Math.max(1, Math.min(50, Number.isFinite(raw) ? raw : 1));
+        if (n < data.subs.length) {
+            const lost = data.subs.slice(n).some((x) => x.title.trim());
+            if (lost && !confirm('Event yang sudah terisi akan dihapus. Lanjutkan?')) return;
+            setData('subs', data.subs.slice(0, n));
+        } else if (n > data.subs.length) {
+            setData('subs', [...data.subs, ...blanks(n - data.subs.length)]);
+        }
+    };
     // Isian = jumlah event TAMBAHAN di luar yang sudah termasuk paket.
     const setExtra = (raw: number) => {
         if (!pkg) return;
@@ -1153,18 +1165,18 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 {pkg.extra_sub_event_price !== null && (
                                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-indigo-200 pt-4 dark:border-white/10">
                                         <div>
-                                            <p className="font-bold">Tambah event?</p>
+                                            <p className="font-bold">{isSeriesPkg(pkg) ? 'Jumlah event' : 'Tambah event?'}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                {freeEvents(pkg)} event sudah termasuk. Tiap tambahan {rp(pkg.extra_sub_event_price)}.
+                                                {isSeriesPkg(pkg) ? `Paket mencakup sampai ${freeEvents(pkg)} event, boleh kurang sesuai kebutuhan. Event di atas ${freeEvents(pkg)}: ${rp(pkg.extra_sub_event_price)} per event.` : `${freeEvents(pkg)} event sudah termasuk. Tiap tambahan ${rp(pkg.extra_sub_event_price)}.`}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <button type="button" aria-label="Kurangi" disabled={c.extra === 0}
-                                                onClick={() => setExtra(c.extra - 1)}
+                                            <button type="button" aria-label="Kurangi" disabled={isSeriesPkg(pkg) ? data.subs.length <= 1 : c.extra === 0}
+                                                onClick={() => (isSeriesPkg(pkg) ? setTotal(data.subs.length - 1) : setExtra(c.extra - 1))}
                                                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-xl font-bold disabled:opacity-40 dark:border-white/20 dark:bg-slate-800">−</button>
-                                            <span className="w-10 text-center text-2xl font-extrabold">{c.extra}</span>
-                                            <button type="button" aria-label="Tambah" disabled={c.extra >= 49}
-                                                onClick={() => setExtra(c.extra + 1)}
+                                            <span className="w-10 text-center text-2xl font-extrabold">{isSeriesPkg(pkg) ? data.subs.length : c.extra}</span>
+                                            <button type="button" aria-label="Tambah" disabled={isSeriesPkg(pkg) ? data.subs.length >= 50 : c.extra >= 49}
+                                                onClick={() => (isSeriesPkg(pkg) ? setTotal(data.subs.length + 1) : setExtra(c.extra + 1))}
                                                 className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-xl font-bold text-white disabled:opacity-40">+</button>
                                         </div>
                                     </div>

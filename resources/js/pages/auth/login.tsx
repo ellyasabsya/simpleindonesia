@@ -12,6 +12,8 @@ export default function Login() {
         remember: false,
     });
 
+    const expired = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired') === '1';
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
         post('/login', { onFinish: () => reset('password') });
@@ -30,6 +32,11 @@ export default function Login() {
             }
             panelText="Masuk untuk mengelola pendaftaran peserta, penilaian juri, dan publikasi event seminar, festival, serta perlombaan Anda."
         >
+            {expired && (
+                <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                    Sesi Anda berakhir karena tidak ada aktivitas. Silakan masuk kembali.
+                </div>
+            )}
             <form onSubmit={submit} className="mt-7 space-y-5">
                 <Field
                     label="Alamat email"

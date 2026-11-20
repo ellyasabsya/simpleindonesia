@@ -21,9 +21,11 @@ abstract class EventScopedController extends Controller
         $cats = $db::table('event_participant_categories')->pluck('name', 'id');
         $types = $db::table('ticket_types')->whereIn('event_id', $ids)->pluck('name', 'id');
 
-        $forms = $db::table('event_registrations')->whereIn('event_id', $ids)->orderBy('id')->get()->map(fn ($r) => [
+        $regs = $db::table('event_registrations')->whereIn('event_id', $ids)->orderBy('id')->get();
+        $userNames = $db::table('users')->whereIn('id', $regs->pluck('user_id')->filter()->all())->pluck('name', 'id');
+        $forms = $regs->map(fn ($r) => [
             'code' => $r->reg_code,
-            'name' => $r->contact_name ?: ($db::table('users')->where('id', $r->user_id)->value('name') ?? '-'),
+            'name' => $r->contact_name ?: ($userNames[$r->user_id] ?? '-'),
             'kind' => $cats[$r->participant_category_id] ?? '-',
             'status' => (string) $r->status,
             'event' => $multi ? ($titles[$r->event_id] ?? null) : null,

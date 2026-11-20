@@ -24,4 +24,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // Sesi/CSRF kedaluwarsa (419): arahkan ke login, bukan halaman error.
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 419) {
+                return null;
+            }
+            if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+                return null;
+            }
+
+            return redirect('/login?expired=1');
+        });
     })->create();
