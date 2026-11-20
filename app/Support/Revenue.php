@@ -35,11 +35,13 @@ class Revenue
         $holdDays = (int) config('revenue.hold_days', 3);
 
         $agg = [];
+        $lastPaid = [];
         $sales = DB::table('ticket_orders')->where('status', 'lunas')
-            ->selectRaw('event_id, sum(subtotal) as subtotal, sum(fee) as fee, sum(total) as total, sum(mdr_fee) as mdr')
+            ->selectRaw('event_id, sum(subtotal) as subtotal, sum(fee) as fee, sum(total) as total, sum(mdr_fee) as mdr, max(paid_at) as last_paid')
             ->groupBy('event_id')->get();
         foreach ($sales as $s) {
             $main = $parentOf[$s->event_id] ?? $s->event_id;
+            $lastPaid[$main] = max($lastPaid[$main] ?? '', (string) $s->last_paid);
             $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0, 'mdr' => 0];
             $agg[$main]['subtotal'] += (int) $s->subtotal;
             $agg[$main]['fee'] += (int) $s->fee;
@@ -49,10 +51,11 @@ class Revenue
 
         // Vote lunas: harga vote = hak penyelenggara, biaya layanan = platform (sama seperti tiket).
         $votes = DB::table('voting_orders')->where('status', 'lunas')
-            ->selectRaw('event_id, sum(amount - service_fee) as subtotal, sum(service_fee) as fee, sum(amount) as total, sum(mdr_fee) as mdr')
+            ->selectRaw('event_id, sum(amount - service_fee) as subtotal, sum(service_fee) as fee, sum(amount) as total, sum(mdr_fee) as mdr, max(paid_at) as last_paid')
             ->groupBy('event_id')->get();
         foreach ($votes as $v) {
             $main = $parentOf[$v->event_id] ?? $v->event_id;
+            $lastPaid[$main] = max($lastPaid[$main] ?? '', (string) $v->last_paid);
             $agg[$main] ??= ['subtotal' => 0, 'fee' => 0, 'total' => 0, 'mdr' => 0];
             $agg[$main]['subtotal'] += (int) $v->subtotal;
             $agg[$main]['fee'] += (int) $v->fee;
@@ -108,9 +111,14 @@ class Revenue
             $disetujui = $x['disetujui'] ?? 0;
             $ditransfer = $x['ditransfer'] ?? 0;
             $free = max(0, $entitlement - $menunggu - $disetujui - $ditransfer);
-            $releaseAt = isset($endOf[$e->id]) ? $endOf[$e->id]->copy()->addDays($holdDays) : null;
+            $base = $endOf[$e->id] ?? null;
+            $lp = ! empty($lastPaid[$e->id]) ? \Illuminate\Support\Carbon::parse($lastPaid[$e->id]) : null;
+            if ($lp && (! $base || $lp->gt($base))) {
+                $base = $lp;
+            }
+            $releaseAt = $base?->copy()->addDays($holdDays);
             $rejected = $e->status === Event::REJECTED;
-            $held = $rejected || ($releaseAt !== null && now()->lt($releaseAt));
+            $held = $rejected || $releaseAt === null || now()->lt($releaseAt);
 
             $rows[] = [
                 'id' => $e->id,
