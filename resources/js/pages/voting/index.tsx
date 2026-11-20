@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
+import VotingMobile from '@/components/mobile/pages/voting-mobile';
 
 type Item = {
     id: number;
@@ -156,7 +157,8 @@ export default function VotingIndex() {
                 <PageBackground />
                 <SiteNavbar />
                 <div className="relative z-10">
-                    <main className="mx-auto max-w-7xl px-6 pb-24 pt-32">
+                    <VotingMobile items={items} />
+                    <main className="hidden md:block mx-auto max-w-7xl px-6 pb-24 pt-32">
                         <section className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                             <div>
                                 <div className="h-1.5 w-24 rounded-full bg-gradient-to-r from-indigo-600 via-violet-500 to-pink-500" />
@@ -204,7 +206,7 @@ export default function VotingIndex() {
                             </>
                         )}
                     </main>
-                    <Footer />
+                    <div className="hidden md:block"><Footer /></div>
                 </div>
             </div>
             {guide && <GuideModal onClose={() => setGuide(false)} />}
