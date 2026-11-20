@@ -202,20 +202,24 @@ Route::middleware([
         Route::delete('event/{event}/voting/gift/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyGift'])->whereNumber(['event', 'item'])->name('event.voting.destroyGift');
         Route::post('event/{event}/voting/peserta/{item}/link', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.voting.resetLink');
         });
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':kalender')->group(function () {
         Route::get('event/{event}/kalender', [\App\Http\Controllers\Panel\CalendarController::class, 'index'])->whereNumber('event')->name('event.kalender');
         Route::put('event/{event}/kalender/tahapan', [\App\Http\Controllers\Panel\CalendarController::class, 'updatePhases'])->whereNumber('event')->name('event.kalender.tahapan');
         Route::post('event/{event}/kalender/agenda', [\App\Http\Controllers\Panel\CalendarController::class, 'store'])->whereNumber('event')->name('event.kalender.store');
         Route::put('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'update'])->whereNumber(['event', 'item'])->name('event.kalender.update');
         Route::delete('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'destroy'])->whereNumber(['event', 'item'])->name('event.kalender.destroy');
+        });
         Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':checkin')->group(function () {
         Route::post('event/{event}/registrasi/checkin', [\App\Http\Controllers\Panel\TicketScanController::class, 'store'])->name('event.scan');
         });
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':registrasi')->group(function () {
         Route::put('event/{event}/registrasi/form', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'update'])->name('event.form');
         Route::get('event/{event}/registrasi/export', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'export'])->name('event.form.export');
         Route::delete('event/{event}/registrasi/pendaftar/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'destroy'])->whereNumber('reg')->name('event.form.destroy');
         Route::get('event/{event}/registrasi/berkas/{reg}/{key}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'berkas'])->whereNumber('reg')->where('key', 'f_[a-z0-9]+')->name('event.form.file');
         Route::patch('event/{event}/registrasi/pendaftar/{reg}/status', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'review'])->whereNumber('reg')->name('event.form.review');
         Route::get('event/{event}/registrasi/bukti/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'bukti'])->whereNumber('reg')->name('event.form.proof');
+        });
         Route::get('event/{event}/sertifikat', [\App\Http\Controllers\Panel\CertificateController::class, 'index'])->whereNumber('event')->name('event.sertifikat');
         Route::get('event/{event}/sertifikat/terbitkan', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'index'])->whereNumber('event')->name('event.sertifikat.terbit');
         Route::post('event/{event}/sertifikat/terbitkan', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'start'])->whereNumber('event')->name('event.sertifikat.terbit.mulai');

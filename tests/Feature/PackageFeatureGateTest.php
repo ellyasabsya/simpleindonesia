@@ -97,3 +97,40 @@ it('does not block check-in scan when the package has the check-in feature', fun
     $status = actingAs($user)->post("/panel/event/{$event->id}/registrasi/checkin", [])->status();
     expect($status)->not->toBe(403);
 });
+
+it('closes the calendar when the package has no calendar feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'registrasi_peserta']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/kalender")->assertForbidden();
+});
+
+it('closes the registration form when the package has no registration feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'kalender_kegiatan']);
+
+    actingAs($user)->put("/panel/event/{$event->id}/registrasi/form", [])->assertForbidden();
+});
+
+it('closes the registration export when the package has no registration feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'kalender_kegiatan']);
+
+    actingAs($user)->get("/panel/event/{$event->id}/registrasi/export")->assertForbidden();
+});
+
+it('does not block the calendar when the package has the calendar feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'kalender_kegiatan']);
+
+    $status = actingAs($user)->get("/panel/event/{$event->id}/kalender")->status();
+    expect($status)->not->toBe(403);
+});
+
+it('does not block the registration form when the package has the registration feature', function () {
+    $user = User::factory()->create();
+    $event = gateEvent($user, ['dashboard_event', 'registrasi_peserta']);
+
+    $status = actingAs($user)->put("/panel/event/{$event->id}/registrasi/form", [])->status();
+    expect($status)->not->toBe(403);
+});
