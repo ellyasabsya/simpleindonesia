@@ -148,11 +148,27 @@ class MidtransController extends Controller
             $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
                 ->update(['payment_status' => 'lunas', 'updated_at' => now()] + $this->mdr($p ?? []));
             if ($n > 0) {
-                \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
+                $this->publishPaidEvent($e);
             }
         }
 
         return response('ok');
+    }
+
+    /** Paket event yang sudah dibayar online langsung tayang (event utama + semua kegiatan). Event yang sudah ditolak tidak diubah. */
+    private function publishPaidEvent(\App\Models\Event $e): void
+    {
+        $n = \App\Models\Event::where(fn ($q) => $q->where('id', $e->id)->orWhere('parent_id', $e->id))
+            ->where('status', \App\Models\Event::PENDING)
+            ->update([
+                'status' => \App\Models\Event::PUBLISHED,
+                'rejection_reason' => null,
+                'reviewed_at' => now(),
+            ]);
+
+        if ($n > 0) {
+            \App\Support\AdminNotifier::send('Event dibayar online dan tayang', "Event \"{$e->title}\" sudah dibayar online dan tayang otomatis.", '/admin/transaksi');
+        }
     }
 
     /** Snap token untuk pesanan vote. */
@@ -243,7 +259,7 @@ class MidtransController extends Controller
                 $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'menunggu_pembayaran')
                     ->update(['payment_status' => 'lunas', 'updated_at' => now()] + $this->mdr($p ?? []));
                 if ($n > 0) {
-                    \App\Support\AdminNotifier::send('Event baru menunggu review', "Event \"{$e->title}\" sudah dibayar online.", '/admin/review');
+                    $this->publishPaidEvent($e);
                 }
             }
         } catch (\Throwable $ex) {
