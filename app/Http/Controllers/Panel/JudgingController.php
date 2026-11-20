@@ -1357,7 +1357,7 @@ class JudgingController extends EventScopedController
         for ($i = 0; $i < count($teams) + 10; $i++) {
             $rr = $first + $i;
             $in->setCellValue('A'.$rr, $i + 1);
-            $in->setCellValue('B'.$rr, $teams[$i]['code'] ?? '');
+            $in->setCellValueExplicit('B'.$rr, (string) ($teams[$i]['code'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         }
         $in->getStyle('C'.$first.':'.$lastIn.$last)->getFill()->setFillType('solid')->getStartColor()->setARGB($yellow);
         $in->getStyle('B'.$first.':B'.$last)->getFill()->setFillType('solid')->getStartColor()->setARGB($yellow);
@@ -2174,7 +2174,7 @@ class JudgingController extends EventScopedController
         abort_if($sub !== null && $kid !== null && $cat === null, 404);
         $ready = $this->klasemenReady($parent);
         if ($public) {
-            abort_unless($ready, 404);
+            abort_unless($ready && $parent->status === Event::PUBLISHED, 404);
         }
 
         return \Inertia\Inertia::render('panel/events/klasemen', [
