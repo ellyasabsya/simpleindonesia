@@ -46,6 +46,13 @@ class MidtransController extends Controller
         if (! $midtrans->validSignature($p)) {
             return response('invalid signature', 403);
         }
+        try {
+            $p = $midtrans->status((string) ($p['order_id'] ?? ''));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response('retry', 503);
+        }
 
         $oid = (string) ($p['order_id'] ?? '');
         if (preg_match('/^PKT-(\d+)-\d+$/', $oid, $m)) {

@@ -36,9 +36,14 @@ class MidtransService
 
     public function validSignature(array $p): bool
     {
-        $expected = hash('sha512', ($p['order_id'] ?? '').($p['status_code'] ?? '').($p['gross_amount'] ?? '').config('midtrans.server_key'));
+        $key = (string) config('midtrans.server_key');
+        $sig = (string) ($p['signature_key'] ?? '');
+        if ($key === '' || $sig === '') {
+            return false;
+        }
+        $expected = hash('sha512', ($p['order_id'] ?? '').($p['status_code'] ?? '').($p['gross_amount'] ?? '').$key);
 
-        return hash_equals($expected, (string) ($p['signature_key'] ?? ''));
+        return hash_equals($expected, $sig);
     }
 
     public function isPaid(array $p): bool
