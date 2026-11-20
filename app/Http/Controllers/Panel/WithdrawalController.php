@@ -160,7 +160,6 @@ class WithdrawalController extends Controller
         $user = $request->user();
         $code = (string) random_int(100000, 999999);
         Cache::put('wd_code:'.$user->id, Hash::make($code), now()->addMinutes(10));
-        Cache::forget('wd_code_try:'.$user->id);
 
         try {
             Mail::raw("Kode verifikasi PIN penarikan SIMPLE Anda: {$code}\nBerlaku 10 menit. Jangan berikan kode ini kepada siapa pun.", function ($m) use ($user) {
@@ -249,7 +248,10 @@ class WithdrawalController extends Controller
             return back()->with('success', 'Tidak ada perubahan rekening.');
         }
 
-        if (filled($user->getAttributes()['withdrawal_pin'] ?? null)) {
+        if ($hadAccount) {
+            if (! filled($user->getAttributes()['withdrawal_pin'] ?? null)) {
+                return back()->withErrors(['pin' => 'Buat PIN penarikan dulu sebelum mengganti rekening.']);
+            }
             if (empty($data['pin'])) {
                 return back()->withErrors(['pin' => 'Masukkan PIN untuk menyimpan rekening.']);
             }
@@ -352,8 +354,8 @@ class WithdrawalController extends Controller
         abort_unless($canView && $withdrawal->institution_id === $inst->id, 403);
 
         $path = $withdrawal->transfer_proof;
-        abort_unless($path && Storage::disk('public')->exists($path), 404);
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('local')->response($path);
     }
 }

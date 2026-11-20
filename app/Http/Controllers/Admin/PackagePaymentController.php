@@ -82,9 +82,9 @@ class PackagePaymentController extends Controller
     public function proof(Event $event)
     {
         $path = $event->package_snapshot['payment_proof'] ?? null;
-        abort_unless($path && Storage::disk('public')->exists($path), 404);
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('local')->response($path);
     }
 
     public function approve(Event $event): RedirectResponse

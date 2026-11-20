@@ -111,7 +111,7 @@ class EventController extends Controller
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:2000'],
             'starts_at' => ['required', 'date', 'after_or_equal:today'],
-            'ends_at' => ['required', 'date', 'after_or_equal:starts_at'],
+            'ends_at' => ['required', 'date', 'after_or_equal:starts_at', 'after_or_equal:today'],
             'poster' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:30720'],
             'juknis' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'assessment_addon' => ['nullable', 'boolean'],
@@ -313,7 +313,7 @@ class EventController extends Controller
                 'payment_proof.mimes' => 'Bukti pembayaran harus JPG, PNG, WebP, atau PDF.',
                 'payment_proof.max' => 'Ukuran file terlalu besar (maksimal 30 MB).',
             ]);
-            $payProof = \App\Support\ImageUploader::store($request->file('payment_proof'), 'payment-proofs', 'payment_proof');
+            $payProof = \App\Support\ImageUploader::store($request->file('payment_proof'), 'payment-proofs', 'payment_proof', 1600, 'local');
         }
         $posterPath = $request->hasFile('poster') ? \App\Support\ImageUploader::store($request->file('poster'), 'posters', 'poster') : null;
         $juknisPath = $request->hasFile('juknis') ? $request->file('juknis')->store('juknis', 'public') : null;

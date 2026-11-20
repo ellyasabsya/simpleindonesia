@@ -138,7 +138,7 @@ class RevenueController extends Controller
             'proof.max' => 'Ukuran file terlalu besar (maksimal 30 MB).',
         ]);
 
-        $path = ImageUploader::store($request->file('proof'), 'withdrawal-proofs', 'proof');
+        $path = ImageUploader::store($request->file('proof'), 'withdrawal-proofs', 'proof', 1600, 'local');
 
         $n = Withdrawal::where('id', $withdrawal->id)->where('status', Withdrawal::DISETUJUI)->update([
             'status' => Withdrawal::DITRANSFER,
@@ -147,7 +147,7 @@ class RevenueController extends Controller
         ]);
 
         if ($n !== 1) {
-            Storage::disk('public')->delete($path);
+            Storage::disk('local')->delete($path);
 
             return back()->withErrors(['proof' => 'Status permintaan sudah berubah. Muat ulang halaman.']);
         }
@@ -158,9 +158,9 @@ class RevenueController extends Controller
     public function proof(Withdrawal $withdrawal)
     {
         $path = $withdrawal->transfer_proof;
-        abort_unless($path && Storage::disk('public')->exists($path), 404);
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return Storage::disk('local')->response($path);
     }
 
     private function query(string $status, string $q)
