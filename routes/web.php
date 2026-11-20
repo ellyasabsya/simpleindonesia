@@ -212,6 +212,17 @@ Route::middleware([
         Route::get('event/{event}/registrasi/berkas/{reg}/{key}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'berkas'])->whereNumber('reg')->where('key', 'f_[a-z0-9]+')->name('event.form.file');
         Route::patch('event/{event}/registrasi/pendaftar/{reg}/status', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'review'])->whereNumber('reg')->name('event.form.review');
         Route::get('event/{event}/registrasi/bukti/{reg}', [\App\Http\Controllers\Panel\RegistrationFormController::class, 'bukti'])->whereNumber('reg')->name('event.form.proof');
+        Route::get('event/{event}/sertifikat', [\App\Http\Controllers\Panel\CertificateController::class, 'index'])->whereNumber('event')->name('event.sertifikat');
+        Route::get('event/{event}/sertifikat/terbitkan', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'index'])->whereNumber('event')->name('event.sertifikat.terbit');
+        Route::post('event/{event}/sertifikat/terbitkan', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'start'])->whereNumber('event')->name('event.sertifikat.terbit.mulai');
+        Route::get('event/{event}/sertifikat/terbitkan/progres', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'progress'])->whereNumber('event')->name('event.sertifikat.terbit.progres');
+        Route::get('event/{event}/sertifikat/berkas/{certificate}', [\App\Http\Controllers\Panel\CertificateIssueController::class, 'file'])->whereNumber(['event', 'certificate'])->name('event.sertifikat.berkas');
+        Route::get('event/{event}/sertifikat/desain', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'index'])->whereNumber('event')->name('event.sertifikat.desain');
+        Route::post('event/{event}/sertifikat/desain', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'store'])->whereNumber('event')->name('event.sertifikat.desain.simpan');
+        Route::post('event/{event}/sertifikat/desain/pratinjau', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'preview'])->whereNumber('event')->name('event.sertifikat.desain.pratinjau');
+        Route::put('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'update'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.ubah');
+        Route::delete('event/{event}/sertifikat/desain/{template}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'destroy'])->whereNumber(['event', 'template'])->name('event.sertifikat.desain.hapus');
+        Route::get('event/{event}/sertifikat/desain/aset/{template}/{kind}', [\App\Http\Controllers\Panel\CertificateDesignController::class, 'asset'])->whereNumber(['event', 'template'])->where('kind', 'logo|background|signature')->name('event.sertifikat.desain.aset');
         Route::get('event/{event}/penilaian', [\App\Http\Controllers\Panel\JudgingController::class, 'index'])->whereNumber('event')->name('event.judging.index');
         Route::post('event/{event}/penilaian/aktif', [\App\Http\Controllers\Panel\JudgingController::class, 'toggle'])->whereNumber('event')->name('event.judging.toggle');
         Route::put('event/{event}/penilaian/kriteria', [\App\Http\Controllers\Panel\JudgingController::class, 'saveCriteria'])->whereNumber('event')->name('event.judging.criteria');
@@ -330,7 +341,7 @@ Route::post('/foto-peserta/{token}', [\App\Http\Controllers\VotingPhotoControlle
 Route::get('/juri/{token}', [\App\Http\Controllers\JudgePublicController::class, 'show'])->where('token', '[A-Za-z0-9]{32}')->middleware('throttle:juri');
 Route::post('/juri/{token}', [\App\Http\Controllers\JudgePublicController::class, 'store'])->where('token', '[A-Za-z0-9]{32}')->middleware('throttle:juri');
 Route::get('/tiket/{code}', [\App\Http\Controllers\TicketViewController::class, 'show'])->where('code', '[A-Z0-9]{24}')->middleware('throttle:60,1')->name('tiket.lihat');
-Route::middleware('auth')->get('/tiket-saya', [\App\Http\Controllers\TicketViewController::class, 'mine'])->name('tiket.saya');
+Route::middleware('auth')->get('/tiket-saya', fn () => redirect('/tiket'))->name('tiket.saya.lama');
 
 Route::get('/tiket-data', [\App\Http\Controllers\TicketSeriesController::class, 'cards']); // patch-248
 
@@ -354,3 +365,8 @@ Route::post('/midtrans/event-sync/{id}', [\App\Http\Controllers\MidtransControll
 
 Route::post('/midtrans/ticket-sync/{code}', [\App\Http\Controllers\MidtransController::class, 'ticketSync'])
     ->where('code', 'TKT-[A-Z0-9]{8}')->middleware('throttle:30,1');
+
+// Sertifikat: unduh lewat tautan bertanda tangan, dan halaman "Sertifikat Saya" untuk penerima.
+Route::middleware('auth')->get('/sertifikat-saya', [\App\Http\Controllers\MyCertificateController::class, 'index'])->name('sertifikat.saya');
+Route::middleware('auth')->get('/sertifikat-saya/{certificate}', [\App\Http\Controllers\MyCertificateController::class, 'show'])->whereNumber('certificate')->name('sertifikat.saya.detail');
+Route::middleware('auth')->get('/sertifikat-saya/{certificate}/unduh', [\App\Http\Controllers\MyCertificateController::class, 'download'])->whereNumber('certificate')->name('sertifikat.saya.unduh');
