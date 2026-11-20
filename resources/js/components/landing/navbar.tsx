@@ -4,6 +4,7 @@ import { goTo } from '@/lib/scroll';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/use-theme';
+import MobileBottomNav from '@/components/mobile/bottom-nav';
 
 const links = [
     { label: 'Hero', id: 'hero' },
@@ -54,8 +55,10 @@ export default function Navbar() {
     const current = onHome ? active : pathActive;
 
     return (
+        <>
+        <MobileBottomNav variant="public" />
         <header
-            className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+            className={`fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 ${
                 scrolled
                     ? 'border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-lg dark:border-white/10 dark:bg-indigo-950/60'
                     : 'border-b border-transparent bg-transparent'
@@ -104,5 +107,6 @@ export default function Navbar() {
                 </div>
             </div>
         </header>
+        </>
     );
 }

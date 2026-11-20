@@ -96,3 +96,24 @@ html::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) {
     .smoke { animation: none; }
 }
+
+/* ===== Mobile / PWA ===== */
+a,
+button,
+[role='button'],
+summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+/* iOS Safari memperbesar halaman saat input berfont < 16px difokuskan. */
+@media (max-width: 767px) {
+    input:is([class~='text-xs'], [class~='text-sm']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+    select:is([class~='text-xs'], [class~='text-sm']),
+    textarea:is([class~='text-xs'], [class~='text-sm']) {
+        font-size: 16px;
+    }
+}

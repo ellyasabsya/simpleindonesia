@@ -103,6 +103,13 @@
     var size = CONFIG.size;
     var margin = CONFIG.margin;
 
+    // Sisakan ruang di atas bottom navigation (hanya layar HP, < 768px).
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';
+    document.body.appendChild(probe);
+    var phone = window.matchMedia('(max-width: 767px)');
+    function reserve() { return phone.matches ? 80 + probe.offsetHeight : 0; }
+
     // pos: sisi (left/right) + posisi vertikal sebagai rasio, supaya tetap rapi saat layar berubah ukuran
     var pos = { side: 'left', yr: 0.82 };
     try {
@@ -110,7 +117,7 @@
       if (saved && (saved.side === 'left' || saved.side === 'right') && typeof saved.yr === 'number') pos = saved;
     } catch (e) { /* abaikan */ }
 
-    function maxY() { return Math.max(margin, window.innerHeight - size - margin); }
+    function maxY() { return Math.max(margin, window.innerHeight - size - margin - reserve()); }
     function clampY(y) { return Math.min(Math.max(y, margin), maxY()); }
     function clampX(x) { return Math.min(Math.max(x, 0), window.innerWidth - size); }
 

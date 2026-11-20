@@ -14,8 +14,8 @@ export default function JuriLayout({ title, judgeName, children }: { title: stri
             <Head title={`${title} - SIMPLE`} />
             <PageBackground />
 
-            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
-                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/60 bg-white/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">S</span>
                         <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
@@ -44,7 +44,7 @@ export default function JuriLayout({ title, judgeName, children }: { title: stri
             </header>
 
             <div className="relative z-10 min-h-screen text-slate-900 dark:text-white">
-                <main className="mx-auto max-w-7xl space-y-6 px-6 pb-16 pt-28">{children}</main>
+                <main className="mx-auto max-w-7xl space-y-6 px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] md:px-6 md:pb-16 md:pt-28">{children}</main>
             </div>
         </>
     );

@@ -5,6 +5,7 @@ import { Toast } from '@/lib/toast';
 import { Award, Building2, ChevronDown, LayoutDashboard, LogOut, Moon, Sun } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
+import MobileBottomNav from '@/components/mobile/bottom-nav';
 import { useTheme } from '@/hooks/use-theme';
 import { useIdleLogout } from '@/hooks/use-idle-logout';
 
@@ -22,9 +23,10 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
         <>
             <Head title={`${title} - SIMPLE`} />
             <PageBackground />
+            <MobileBottomNav variant="user" hasPanel={panel} />
 
-            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
-                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/60 bg-white/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6">
                     <Link href="/" className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">S</span>
                         <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
@@ -75,7 +77,7 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
             </header>
 
             <div className="relative z-10 min-h-screen text-slate-900 dark:text-white">
-                <main className="mx-auto max-w-7xl space-y-6 px-6 pb-16 pt-28"><Toast />
+                <main className="mx-auto max-w-7xl space-y-6 px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] md:px-6 md:pb-16 md:pt-28"><Toast />
 {children}</main>
             </div>
         </>

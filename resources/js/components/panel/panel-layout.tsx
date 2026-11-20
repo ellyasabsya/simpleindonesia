@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Layers, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
+import MobileBottomNav from '@/components/mobile/bottom-nav';
 import { eventMenuIcons } from '@/data/event-menu-icons';
 import { panelMenu, type PanelMenuGroup } from '@/data/panel-menu';
 import { useTheme } from '@/hooks/use-theme';
@@ -116,6 +117,7 @@ export default function PanelLayout({ title, children }: { title: string; childr
         <>
             <Head title={`${title} - Panel SIMPLE`} />
             <PageBackground />
+            <MobileBottomNav variant="panel" onMenu={() => setOpen(true)} />
 
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/60 bg-white/60 backdrop-blur-xl lg:block dark:border-white/10 dark:bg-indigo-950/40">
                 <Sidebar />
@@ -134,7 +136,7 @@ export default function PanelLayout({ title, children }: { title: string; childr
             )}
 
             <div className="relative z-10 min-h-screen text-slate-900 lg:pl-64 dark:text-white">
-                <header className="sticky top-0 z-20 border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
+                <header className="sticky top-0 z-20 border-b border-white/60 bg-white/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
                     <div className="flex h-16 items-center justify-between px-5 lg:px-8">
                         <div className="flex items-center gap-3">
                             <button onClick={() => setOpen(true)} aria-label="Buka menu" className="rounded-lg p-2 text-slate-600 hover:bg-white/80 lg:hidden dark:text-slate-200 dark:hover:bg-white/10">
@@ -168,7 +170,7 @@ export default function PanelLayout({ title, children }: { title: string; childr
                     </div>
                 </header>
 
-                <main className="space-y-6 p-5 lg:p-8"><Toast />
+                <main className="space-y-6 p-5 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-5 lg:p-8"><Toast />
 {children}</main>
             </div>
         </>
