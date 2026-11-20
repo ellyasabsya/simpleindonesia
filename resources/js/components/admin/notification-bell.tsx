@@ -25,12 +25,16 @@ export default function NotificationBell({
     const items = notifications?.items ?? [];
 
     useEffect(() => {
-        const close = (e: MouseEvent) => {
+        const close = (e: Event) => {
             if (ref.current && !ref.current.contains(e.target as Node))
                 setOpen(false);
         };
         document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
+        document.addEventListener('touchstart', close, { passive: true });
+        return () => {
+            document.removeEventListener('mousedown', close);
+            document.removeEventListener('touchstart', close);
+        };
     }, []);
 
     // Cek ulang tiap 30 detik supaya pengajuan baru muncul tanpa refresh manual.
@@ -58,7 +62,7 @@ export default function NotificationBell({
     };
 
     return (
-        <div className="relative" ref={ref}>
+        <div className="sm:relative" ref={ref}>
             <button
                 onClick={() => setOpen((o) => !o)}
                 aria-label="Notifikasi"
@@ -73,7 +77,7 @@ export default function NotificationBell({
             </button>
 
             {open && (
-                <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-indigo-950">
+                <div className="absolute top-full right-3 left-3 z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:top-auto sm:right-0 sm:left-auto sm:w-80 dark:border-white/10 dark:bg-indigo-950">
                     <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/10">
                         <span className="text-sm font-bold">Notifikasi</span>
                         {unread > 0 && (
@@ -91,7 +95,7 @@ export default function NotificationBell({
                             </button>
                         )}
                     </div>
-                    <ul className="max-h-96 overflow-y-auto">
+                    <ul className="max-h-[60vh] overflow-y-auto sm:max-h-96">
                         {items.length === 0 && (
                             <li className="px-4 py-6 text-center text-sm text-slate-500">
                                 Belum ada notifikasi.

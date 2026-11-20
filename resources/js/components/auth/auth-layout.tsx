@@ -3,6 +3,8 @@ import { ArrowLeft, Megaphone, Moon, Star, Sun, UserPlus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import { useTheme } from '@/hooks/use-theme';
+import AuthScreen from '@/components/mobile/auth/auth-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 const features = [
     { icon: UserPlus, title: 'Pendaftaran Peserta', text: 'Data peserta terkumpul rapi.', color: 'from-sky-400 to-blue-500' },
@@ -22,6 +24,15 @@ type Props = {
 
 export default function AuthLayout({ pageTitle, badge, title, subtitle, panelHeading, panelText, children }: Props) {
     const { dark, toggle } = useTheme();
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <AuthScreen pageTitle={pageTitle} badge={badge} title={title} subtitle={subtitle} dark={dark} toggleTheme={toggle}>
+                {children}
+            </AuthScreen>
+        );
+    }
 
     return (
         <>
@@ -29,8 +40,8 @@ export default function AuthLayout({ pageTitle, badge, title, subtitle, panelHea
             <PageBackground />
 
             {/* Bar atas: ukuran dan jarak tepi sama dengan navbar landing page */}
-            <div className="fixed inset-x-0 top-0 z-30">
-                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+            <div className="fixed inset-x-0 top-0 z-30 pt-[env(safe-area-inset-top)]">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6">
                     <Link
                         href="/"
                         className="group flex h-11 items-center gap-2 rounded-full bg-white/70 px-5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20 dark:hover:text-white"
@@ -49,8 +60,8 @@ export default function AuthLayout({ pageTitle, badge, title, subtitle, panelHea
                 </div>
             </div>
 
-            <div className="relative z-10 min-h-screen text-slate-900 dark:text-white">
-                <div className="mx-auto grid min-h-screen max-w-5xl items-center gap-8 px-6 py-10 lg:grid-cols-[0.95fr_1fr]">
+            <div className="relative z-10 min-h-dvh text-slate-900 dark:text-white">
+                <div className="mx-auto grid min-h-dvh max-w-5xl items-center gap-8 px-4 pt-[calc(5rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-10 lg:grid-cols-[0.95fr_1fr]">
                     {/* Panel brand */}
                     <aside className="relative hidden overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-10 text-white shadow-xl shadow-indigo-900/20 lg:block">
                         <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10" />

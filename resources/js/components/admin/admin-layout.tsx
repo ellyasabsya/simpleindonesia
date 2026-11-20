@@ -8,6 +8,8 @@ import { adminMenu } from '@/data/admin-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { useIdleLogout } from '@/hooks/use-idle-logout';
 import type { NotificationsProp } from '@/types';
+import AdminScreen from '@/components/mobile/admin/admin-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type PageProps = {
     auth?: { user?: { name?: string; role?: string } };
@@ -130,6 +132,15 @@ export default function AdminLayout({
     const { auth, notifications } = usePage<PageProps>().props;
     const user = auth?.user;
     const initial = (user?.name ?? 'A').charAt(0).toUpperCase();
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <AdminScreen title={title} user={user} notifications={notifications ?? null} dark={dark} toggleTheme={toggle}>
+                {children}
+            </AdminScreen>
+        );
+    }
 
     return (
         <>
@@ -149,11 +160,11 @@ export default function AdminLayout({
                         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                         onClick={() => setOpen(false)}
                     />
-                    <aside className="absolute inset-y-0 left-0 w-64 bg-white/95 shadow-2xl dark:bg-indigo-950/95">
+                    <aside className="absolute inset-y-0 left-0 w-64 max-w-[85vw] bg-white/95 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-2xl dark:bg-indigo-950/95">
                         <button
                             onClick={() => setOpen(false)}
                             aria-label="Tutup menu"
-                            className="absolute top-4 right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+                            className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -164,20 +175,20 @@ export default function AdminLayout({
 
             <div className="relative z-10 min-h-screen text-slate-900 lg:pl-64 dark:text-white">
                 {/* Topbar */}
-                <header className="sticky top-0 z-20 border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
-                    <div className="flex h-16 items-center justify-between px-5 lg:px-8">
-                        <div className="flex items-center gap-3">
+                <header className="sticky top-0 z-20 border-b border-white/60 bg-white/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
+                    <div className="flex h-16 items-center justify-between gap-2 px-4 sm:px-5 lg:px-8">
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-3">
                             <button
                                 onClick={() => setOpen(true)}
                                 aria-label="Buka menu"
-                                className="rounded-lg p-2 text-slate-600 hover:bg-white/80 lg:hidden dark:text-slate-200 dark:hover:bg-white/10"
+                                className="rounded-lg p-2.5 text-slate-600 hover:bg-white/80 lg:hidden dark:text-slate-200 dark:hover:bg-white/10"
                             >
                                 <Menu className="h-5 w-5" />
                             </button>
-                            <h1 className="text-lg font-extrabold">{title}</h1>
+                            <h1 className="truncate text-lg font-extrabold">{title}</h1>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                             <NotificationBell
                                 notifications={notifications ?? null}
                             />
@@ -193,7 +204,7 @@ export default function AdminLayout({
                                 )}
                             </button>
 
-                            <div className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pr-4 pl-1 shadow-sm dark:bg-white/10">
+                            <div className="flex items-center gap-2.5 rounded-full bg-white/70 py-1 pr-1 pl-1 shadow-sm sm:pr-4 dark:bg-white/10">
                                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-bold text-white">
                                     {initial}
                                 </span>
@@ -218,7 +229,7 @@ export default function AdminLayout({
                     </div>
                 </header>
 
-                <main className="space-y-6 p-5 lg:p-8">{children}</main>
+                <main className="space-y-6 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:p-8">{children}</main>
             </div>
         </>
     );
