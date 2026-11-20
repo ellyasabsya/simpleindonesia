@@ -187,6 +187,7 @@ Route::middleware([
     ->name('panel.')
     ->group(function () {
         Route::get('event/{event}', [\App\Http\Controllers\Panel\EventDashboardController::class, 'show'])->name('event.show');
+        Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':voting')->group(function () {
         Route::get('event/{event}/voting', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'index'])->whereNumber('event')->name('event.voting.index');
         Route::post('event/{event}/voting/aktif', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggle'])->whereNumber('event')->name('event.voting.toggle');
         Route::put('event/{event}/voting/pengaturan', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'settingsUpdate'])->whereNumber('event')->name('event.voting.settingsUpdate');
@@ -200,6 +201,7 @@ Route::middleware([
         Route::post('event/{event}/voting/gift/{item}/toggle', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggleGift'])->whereNumber(['event', 'item'])->name('event.voting.toggleGift');
         Route::delete('event/{event}/voting/gift/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyGift'])->whereNumber(['event', 'item'])->name('event.voting.destroyGift');
         Route::post('event/{event}/voting/peserta/{item}/link', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.voting.resetLink');
+        });
         Route::get('event/{event}/kalender', [\App\Http\Controllers\Panel\CalendarController::class, 'index'])->whereNumber('event')->name('event.kalender');
         Route::put('event/{event}/kalender/tahapan', [\App\Http\Controllers\Panel\CalendarController::class, 'updatePhases'])->whereNumber('event')->name('event.kalender.tahapan');
         Route::post('event/{event}/kalender/agenda', [\App\Http\Controllers\Panel\CalendarController::class, 'store'])->whereNumber('event')->name('event.kalender.store');
