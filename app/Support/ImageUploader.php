@@ -24,6 +24,11 @@ class ImageUploader
             return $file->store($dir, $disk);
         }
 
+        $info = @getimagesize($file->getRealPath());
+        if (! $info || $info[0] * $info[1] > 40000000) {
+            throw ValidationException::withMessages([$field => 'Dimensi gambar terlalu besar atau tidak valid.']);
+        }
+
         @ini_set('memory_limit', '512M');
 
         $img = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
