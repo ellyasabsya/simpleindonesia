@@ -16,16 +16,16 @@ it('creates a revenue share package with the chosen features', function () {
         'name' => 'Ticketing Pro',
         'payment_type' => 'revenue_share',
         'share_percent' => 10,
-        'modules' => ['ticketing'],
-        'features' => ['dashboard_event', 'ticket_sales', 'ticket_checkin', 'ticket_report'],
+        'modules' => ['ticketing', 'starter'],
+        'features' => ['dashboard_event', 'tiket_multi', 'qr_checkin', 'laporan_gabungan'],
     ])->assertRedirect();
 
     $package = Package::where('slug', 'ticketing-pro')->firstOrFail();
 
     expect($package->share_percent)->toBe(10.0)
         ->and($package->features)->toHaveCount(4)
-        // Check-in dan Laporan tiket membuka satu menu yang sama
-        ->and($package->menus())->toBe(['dashboard', 'pengaturan-tiket', 'checkin-laporan']);
+        // Tiap fitur membuka menunya sendiri
+        ->and($package->menus())->toBe(['dashboard', 'tiket', 'checkin', 'laporan']);
 });
 
 it('drops features whose module is not selected', function () {
@@ -33,7 +33,7 @@ it('drops features whose module is not selected', function () {
         'name' => 'Tanpa Modul',
         'payment_type' => 'free',
         'modules' => [],
-        'features' => ['dashboard_event', 'ticket_sales'],
+        'features' => ['dashboard_event', 'tiket_multi'],
     ]);
 
     expect(Package::where('slug', 'tanpa-modul')->first()->features)->toBe(['dashboard_event']);

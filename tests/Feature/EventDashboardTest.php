@@ -28,40 +28,40 @@ function makeEventFor(User $user, string $status, array $features): Event
 
 it('shows the event dashboard with menus from the package snapshot', function () {
     $user = User::factory()->create();
-    $event = makeEventFor($user, 'published', ['dashboard_event', 'ticket_sales', 'ticket_checkin', 'ticket_report']);
+    $event = makeEventFor($user, 'published', ['dashboard_event', 'tiket_multi', 'qr_checkin', 'laporan_gabungan']);
 
     actingAs($user)->get("/panel/event/{$event->id}")
         ->assertOk()
         ->assertInertia(fn ($p) => $p
             ->component('panel/events/show')
-            ->where('eventNav.items', fn ($items) => collect($items)->pluck('key')->all() === ['dashboard', 'pengaturan-tiket', 'checkin-laporan']));
+            ->where('eventNav.items', fn ($items) => collect($items)->pluck('key')->all() === ['dashboard', 'checkin', 'laporan', 'tiket']));
 });
 
 it('opens a menu that is part of the package', function () {
     $user = User::factory()->create();
-    $event = makeEventFor($user, 'published', ['ticket_sales']);
+    $event = makeEventFor($user, 'published', ['tiket_multi']);
 
-    actingAs($user)->get("/panel/event/{$event->id}/pengaturan-tiket")->assertOk();
+    actingAs($user)->get("/panel/event/{$event->id}/tiket")->assertOk();
 });
 
 it('forbids a menu that is not in the package', function () {
     $user = User::factory()->create();
-    $event = makeEventFor($user, 'published', ['ticket_sales']);
+    $event = makeEventFor($user, 'published', ['tiket_multi']);
 
-    actingAs($user)->get("/panel/event/{$event->id}/pengaturan-voting")->assertForbidden();
+    actingAs($user)->get("/panel/event/{$event->id}/voting")->assertForbidden();
 });
 
 it('keeps feature menus closed until the event is published', function () {
     $user = User::factory()->create();
-    $event = makeEventFor($user, 'pending', ['ticket_sales']);
+    $event = makeEventFor($user, 'pending', ['tiket_multi']);
 
-    actingAs($user)->get("/panel/event/{$event->id}/pengaturan-tiket")->assertRedirect('/panel');
+    actingAs($user)->get("/panel/event/{$event->id}/tiket")->assertRedirect('/panel');
     actingAs($user)->get("/panel/event/{$event->id}")->assertRedirect('/panel');
 });
 
 it('hides events of other institutions', function () {
     $owner = User::factory()->create();
-    $event = makeEventFor($owner, 'published', ['ticket_sales']);
+    $event = makeEventFor($owner, 'published', ['tiket_multi']);
     $other = User::factory()->create();
     Institution::factory()->approved()->for($other)->create();
 

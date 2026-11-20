@@ -15,7 +15,7 @@ function ticketing(): Package
 {
     return Package::create([
         'name' => 'Ticketing', 'slug' => 'ticketing', 'payment_type' => 'revenue_share', 'share_percent' => 10,
-        'modules' => ['ticketing'], 'features' => ['dashboard_event', 'ticket_sales', 'ticket_checkin', 'ticket_report'],
+        'modules' => ['ticketing', 'starter'], 'features' => ['dashboard_event', 'tiket_multi', 'qr_checkin', 'laporan_gabungan'],
     ]);
 }
 
@@ -24,10 +24,24 @@ function payload(Package $package, array $over = []): array
     return array_merge([
         'title' => 'Batam Bernyanyi 2026',
         'category' => 'perlombaan',
+        'competition_type' => 'individual',
         'location' => 'Ballroom Hotel Pacific',
         'starts_at' => now()->addDays(7)->toDateString(),
         'ends_at' => now()->addDays(8)->toDateString(),
         'package_id' => $package->id,
+        'agree_terms' => true,
+        'agree_revenue' => true,
+        'registration_method' => 'ticket',
+        'ticket_types' => [[
+            'name' => 'Umum', 'price' => 50000, 'quota' => 100,
+            'valid_from' => now()->addDays(7)->toDateString(),
+            'valid_until' => now()->addDays(8)->toDateString(),
+        ]],
+        'participant_categories' => [[
+            'name' => 'Umum', 'quota' => 100, 'competition_name' => 'Lomba Menyanyi',
+        ]],
+        'contact_name' => 'Panitia Uji',
+        'contact_phone' => '081234567890',
     ], $over);
 }
 
@@ -45,13 +59,13 @@ it('submits an event with a package snapshot and poster', function () {
 
     actingAs(organizer())
         ->post('/panel/ajukan', payload($package, ['poster' => UploadedFile::fake()->image('poster.jpg', 400, 500)]))
-        ->assertRedirect('/panel/event');
+        ->assertRedirect('/panel');
 
     $event = Event::firstOrFail();
     expect($event->status)->toBe('pending')
         ->and($event->slug)->toBe('batam-bernyanyi-2026')
         ->and($event->package_snapshot['share_percent'])->toEqual(10)
-        ->and($event->menus())->toBe(['dashboard', 'pengaturan-tiket', 'checkin-laporan']);
+        ->and($event->menus())->toBe(['dashboard', 'tiket', 'checkin', 'laporan']);
 
     Storage::disk('public')->assertExists($event->poster_path);
 });
@@ -64,7 +78,7 @@ it('keeps the snapshot when the package changes later', function () {
 
     $event = Event::firstOrFail();
     expect($event->package_snapshot['share_percent'])->toEqual(10)
-        ->and($event->hasFeature('ticket_checkin'))->toBeTrue();
+        ->and($event->hasFeature('qr_checkin'))->toBeTrue();
 });
 
 it('validates dates and inactive packages', function () {

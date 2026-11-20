@@ -46,8 +46,8 @@ class Package extends Model
             $snap = (array) $event->package_snapshot;
             $oldF = array_values((array) ($snap['features'] ?? []));
             $oldM = array_values((array) ($snap['modules'] ?? []));
-            $features = array_values(array_unique((array) $this->features));
-            $modules = array_values(array_unique((array) $this->modules));
+            $features = array_values(array_unique(array_merge($oldF, (array) $this->features)));
+            $modules = array_values(array_unique(array_merge($oldM, (array) $this->modules)));
             if ($features === $oldF && $modules === $oldM) {
                 continue;
             }
