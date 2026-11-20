@@ -49,6 +49,3 @@ database/*.bak-*
 *.bak*
 *.sqlite*
 patch_*.py
-
-*.bak*
-*.sqlite*
