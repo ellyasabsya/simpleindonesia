@@ -13,7 +13,7 @@ Route::middleware(['auth', 'throttle:10,1'])->post('/berita/komentar/{comment}/l
 Route::get('/paket', \App\Http\Controllers\PaketController::class)->name('paket.semua');
 Route::get('/events', \App\Http\Controllers\EventController::class)->name('events.semua');
 // Tiket hanya untuk pengguna yang sudah login.
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/events/{event}/tiket', function (\App\Models\Event $event) {
     // patch-248: rangkaian dengan tiket kegiatan yang sedang dijual -> jendela beli gabungan
     if ($event->children()->where('status', \App\Models\Event::PUBLISHED)->where('registration_method', 'ticket')->where('ticket_sales_open', true)->whereHas('ticketTypes')->exists()) {
@@ -36,9 +36,9 @@ Route::post('/events/{event}/beli', [\App\Http\Controllers\TicketPurchaseControl
 Route::get('/events/{event}/beli-rangkaian-data', [\App\Http\Controllers\TicketSeriesController::class, 'data'])->whereNumber('event');
 Route::post('/events/{event}/beli-rangkaian', [\App\Http\Controllers\TicketSeriesController::class, 'store'])->whereNumber('event')->middleware('throttle:10,1');
 });
-Route::get('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'show'])->whereNumber('event')->middleware('auth')->name('daftar.show');
-Route::post('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'store'])->whereNumber('event')->middleware(['auth', 'throttle:10,1'])->name('daftar.store');
-Route::post('events/{event}/daftar/lengkapi', [\App\Http\Controllers\EventRegistrationFormController::class, 'complete'])->whereNumber('event')->middleware(['auth', 'throttle:10,1'])->name('daftar.complete');
+Route::get('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'show'])->whereNumber('event')->middleware(['auth', 'verified'])->name('daftar.show');
+Route::post('/events/{event}/daftar', [\App\Http\Controllers\EventRegistrationFormController::class, 'store'])->whereNumber('event')->middleware(['auth', 'verified', 'throttle:10,1'])->name('daftar.store');
+Route::post('events/{event}/daftar/lengkapi', [\App\Http\Controllers\EventRegistrationFormController::class, 'complete'])->whereNumber('event')->middleware(['auth', 'verified', 'throttle:10,1'])->name('daftar.complete');
 Route::get('/events/{key}', \App\Http\Controllers\EventDetailController::class)->name('events.show');
 Route::middleware(['auth', 'throttle:10,1'])->post('/events/{event}/komentar', [\App\Http\Controllers\EventCommentController::class, 'store'])->name('events.komentar.store');
 Route::middleware('auth')->delete('/komentar/{comment}', [\App\Http\Controllers\EventCommentController::class, 'destroy'])->name('events.komentar.destroy');
@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function () {
         });
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lembaga/daftar', [\App\Http\Controllers\LembagaController::class, 'create'])->name('lembaga.daftar');
     Route::post('/lembaga', [\App\Http\Controllers\LembagaController::class, 'store'])->name('lembaga.store');
 });
@@ -123,7 +123,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::get('transaksi/csv', [\App\Http\Controllers\Admin\TransactionController::class, 'csv'])->name('transaksi.csv');
     });
 
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
     ->prefix('panel')
     ->name('panel.')
     ->group(function () {
@@ -152,7 +152,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::patch('pesanan-tiket/{order}/tolak', [\App\Http\Controllers\Admin\TicketOrderController::class, 'reject'])->whereNumber('order');
     });
 
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
     ->prefix('panel')
     ->name('panel.')
     ->group(function () {
@@ -180,6 +180,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
 
 Route::middleware([
     'auth',
+    'verified',
     \App\Http\Middleware\EnsureUserHasApprovedInstitution::class,
     \App\Http\Middleware\EnsureEventMenuAccess::class,
 ])
@@ -278,7 +279,7 @@ Route::middleware([
         });
     });
 
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
     ->prefix('panel')
     ->name('panel.')
     ->group(function () {
@@ -286,7 +287,7 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution
         Route::post('profil', [\App\Http\Controllers\Panel\ProfileController::class, 'update'])->name('profil.update');
     });
 
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class])
     ->prefix('panel')
     ->name('panel.')
     ->group(function () {
@@ -371,7 +372,7 @@ Route::post('/midtrans/vote-sync/{code}', [\App\Http\Controllers\MidtransControl
     ->where('code', '[A-Z0-9]{10}')->middleware('throttle:30,1');
 
 Route::post('/midtrans/event-token/{id}', [\App\Http\Controllers\MidtransController::class, 'eventToken'])
-    ->whereNumber('id')->middleware(['auth', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class, 'throttle:20,1']);
+    ->whereNumber('id')->middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserHasApprovedInstitution::class, 'throttle:20,1']);
 Route::post('/midtrans/event-sync/{id}', [\App\Http\Controllers\MidtransController::class, 'eventSync'])
     ->whereNumber('id')->middleware(['auth', 'throttle:30,1']);
 
