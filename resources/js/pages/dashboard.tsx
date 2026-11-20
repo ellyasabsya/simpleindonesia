@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import UserLayout from '@/components/user/user-layout';
 import { Pager, usePaged } from '@/lib/pager';
 import { SocialChips } from '@/lib/socials';
+import DashboardMobile from '@/components/mobile/pages/dashboard-mobile';
 
 type Role = 'peserta' | 'penyelenggara' | 'juri';
 type Item = { id: number | string; role: Role; title: string; subtitle?: string | null; date: string; status?: string | null; tone?: 'ok' | 'wait' | 'bad'; href?: string };
@@ -157,6 +158,10 @@ export default function Dashboard({ history = [], friends = [], invitations = []
 
     return (
         <UserLayout title="Profil" hasPanel>
+            <div className="md:hidden">
+                <DashboardMobile user={user} name={name} isJudge={isJudge} judgeTasks={judgeTasks} lembagaReady={lembagaReady} shareUrl={shareUrl} joined={joined} pct={pct} info={info} tab={tab} setTab={setTab} filter={filter} setFilter={setFilter} count={count} friendList={friendList} invites={invites} years={years} hp={hp} fp={fp} ip={ip} answer={answer} fmt={fmt} renderScanner={(onResult: (t: string) => void) => <Scanner onResult={onResult} />} />
+            </div>
+            <div className="hidden md:contents">
             <section className={`${card} overflow-hidden`}>
                 <div className="relative h-24 overflow-hidden bg-gradient-to-r from-indigo-900 via-blue-600 to-fuchsia-500 sm:h-28">
                     {user.avatar && <img src={user.avatar} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl" />}
@@ -425,6 +430,7 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                     )}
                 </Modal>
             )}
+        </div>
         </UserLayout>
     );
 }
