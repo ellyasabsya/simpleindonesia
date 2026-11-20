@@ -125,7 +125,6 @@ class VotingSettingsController extends Controller
 
     public function storeCategory(Request $request, Event $event): RedirectResponse
     {
-        \Log::info('DEBUG voting kategori masuk', $request->all());
         $this->guard($request, $event);
         $data = $request->validate(['name' => ['required', 'string', 'max:60']], ['name.required' => 'Isi nama kategori.']);
         $name = trim($data['name']);
