@@ -2,10 +2,13 @@ import { router, useForm } from '@inertiajs/react';
 import { Bell, CalendarDays, ChevronLeft, ChevronRight, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import PanelLayout from '@/components/panel/panel-layout';
+import KalenderPanelMobile from '@/components/mobile/pages/kalender-panel-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
+import { InfoBar, InfoSections, type InfoProps, type Section } from '@/components/panel/event-info';
 
 type Agenda = { id: number; title: string; date: string; start_time: string | null; end_time: string | null; location: string | null; description: string | null; type: string; remind_minutes: number | null };
 type Range = { start: string | null; end: string | null };
-type Props = { eventId: number; event: { title: string; starts_at: string; ends_at: string }; phases: { registration: Range; preparation: Range }; agendas: Agenda[]; subAgendas?: { id: number; sub_title: string; title: string; date: string; start_time: string | null }[] };
+type Props = { info?: InfoProps; eventId: number; event: { title: string; starts_at: string; ends_at: string }; phases: { registration: Range; preparation: Range }; agendas: Agenda[]; subAgendas?: { id: number; sub_title: string; title: string; date: string; start_time: string | null }[] };
 type Tone = 'start' | 'end' | 'phase' | 'agenda';
 type Entry = { key: string; date: string; time: string | null; title: string; tone: Tone; agenda?: Agenda };
 
@@ -19,7 +22,7 @@ const TYPES: Record<string, string> = { agenda: 'Agenda', rapat: 'Rapat', latiha
 const REMIND: [string, string][] = [['', 'Tanpa pengingat'], ['15', '15 menit sebelum'], ['60', '1 jam sebelum'], ['180', '3 jam sebelum'], ['1440', '1 hari sebelum'], ['4320', '3 hari sebelum']];
 
 const glass = 'border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
-const inp = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-900/70 dark:text-white';
+const inp = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base sm:px-3.5 sm:py-2.5 sm:text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-900/70 dark:text-white';
 const lbl = 'text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400';
 const TONE: Record<Tone, { box: string; text: string }> = {
     start: { box: 'border-l-blue-600 bg-blue-50/90 dark:bg-blue-500/10', text: 'text-blue-700 dark:text-blue-300' },
@@ -41,7 +44,7 @@ const rangeText = (r: Range) => (r.start && r.end ? (r.start === r.end ? fmt(r.s
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
     return (
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-            <div className="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 text-slate-900 shadow-2xl sm:rounded-3xl dark:bg-slate-900 dark:text-white">
+            <div className="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-900 shadow-2xl sm:rounded-3xl sm:p-6 dark:bg-slate-900 dark:text-white">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xl font-extrabold">{title}</h3>
                     <button type="button" aria-label="Tutup" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
@@ -118,9 +121,11 @@ function PhaseModal({ eventId, phases, onClose }: { eventId: number; phases: Pro
     );
 }
 
-export default function Kalender({ eventId, event, phases, agendas, subAgendas }: Props) {
+export default function Kalender({ eventId, event, phases, agendas, subAgendas, info }: Props) {
     const todayStr = useMemo(() => iso(new Date()), []);
+    const phone = usePhone();
     const [view, setView] = useState<'linimasa' | 'kalender'>('linimasa');
+    const [section, setSection] = useState<Section>('jadwal');
     const [agendaModal, setAgendaModal] = useState<{ item: Agenda | null; date: string } | null>(null);
     const [phaseModal, setPhaseModal] = useState(false);
     const [cur, setCur] = useState(() => { const d = D(event.starts_at); return { y: d.getFullYear(), m: d.getMonth() }; });
@@ -193,23 +198,27 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas }
 
     return (
         <PanelLayout title="Kalender Kegiatan">
-            <div className="grid gap-4 md:grid-cols-3">
-                {stat('Kegiatan dimulai', fmt(event.starts_at), startNote, 'text-blue-600')}
-                {stat('Pendaftaran', reg.label, phases.registration.start && phases.registration.end ? rangeText(phases.registration) : '- sampai -')}
-                {stat('Agenda kegiatan', String(agendas.length + (subAgendas?.length ?? 0)), subAgendas?.length ? 'Termasuk agenda semua lomba' : 'Selain tonggak otomatis')}
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-                {phase('Pendaftaran', rangeText(phases.registration), reg, () => setPhaseModal(true))}
-                {phase('Persiapan', rangeText(phases.preparation), prep, () => setPhaseModal(true))}
-                {phase('Pelaksanaan', rangeText({ start: event.starts_at, end: event.ends_at }), run)}
-            </div>
-
+            {info && <InfoBar eventId={eventId} eventTitle={event.title} info={info} phases={phases} section={section} setSection={setSection} compact={phone} view={view} setView={setView}
+                meta={{ startsAt: event.starts_at, startNote, agendaCount: agendas.length + (subAgendas?.length ?? 0), reg, prep, run, regText: rangeText(phases.registration), prepText: rangeText(phases.preparation), runText: rangeText({ start: event.starts_at, end: event.ends_at }), onPhase: () => setPhaseModal(true) }} />}
+            {section !== 'jadwal' && info && !phone ? <InfoSections section={section} eventId={eventId} eventTitle={event.title} startsAt={event.starts_at} endsAt={event.ends_at} info={info} /> : phone ? (
+                <KalenderPanelMobile
+                    startsAt={event.starts_at} startNote={startNote} agendaCount={agendas.length + (subAgendas?.length ?? 0)}
+                    reg={reg} prep={prep} run={run}
+                    regText={rangeText(phases.registration)} prepText={rangeText(phases.preparation)} runText={rangeText({ start: event.starts_at, end: event.ends_at })}
+                    onPhase={() => setPhaseModal(true)}
+                    section={section} setSection={setSection} rundownCount={info?.rundown.length ?? 0} announcementCount={info?.announcements.length ?? 0}
+                    view={view} setView={setView} todayStr={todayStr}
+                    groups={groups} nowIdx={nowIdx} hLabel={hLabel} fmt={fmt}
+                    cur={cur} cells={cells} byDate={byDate} shift={shift}
+                    onAdd={(date) => setAgendaModal({ item: null, date })}
+                    onEdit={(a, date) => setAgendaModal({ item: a, date })}
+                    onDelete={del}>
+                    {section !== 'jadwal' && info ? <InfoSections section={section} eventId={eventId} eventTitle={event.title} startsAt={event.starts_at} endsAt={event.ends_at} info={info} /> : null}
+                </KalenderPanelMobile>
+            ) : (
+            <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className={`inline-flex rounded-2xl p-1.5 ${glass}`}>
-                    {(['linimasa', 'kalender'] as const).map((v) => (
-                        <button key={v} type="button" onClick={() => setView(v)} className={`rounded-xl px-5 py-2.5 text-sm font-bold capitalize transition ${view === v ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : 'text-slate-600 dark:text-slate-300'}`}>{v}</button>
-                    ))}
-                </div>
+                <span />
                 <button type="button" onClick={() => setAgendaModal({ item: null, date: todayStr })} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/25"><Plus className="h-4 w-4" /> Tambah agenda</button>
             </div>
 
@@ -234,9 +243,9 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas }
                                         {list.map((e) => (
                                             <div key={e.key} className={`rounded-2xl border-l-4 px-5 py-4 shadow-sm ${TONE[e.tone].box}`}>
                                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                                                    <span className="font-extrabold">{e.agenda ? (e.agenda.start_time ? `${e.agenda.start_time}${e.agenda.end_time ? ` – ${e.agenda.end_time}` : ''}` : 'Seharian') : 'Seharian'}</span>
+                                                    <span className="font-extrabold">{e.agenda ? (e.agenda.start_time ? `${e.agenda.start_time}${e.agenda.end_time ? ` – ${e.agenda.end_time}` : ''}` : 'Seharian') : e.time ?? 'Seharian'}</span>
                                                     <span className={`text-lg font-extrabold ${TONE[e.tone].text}`}>{e.title}</span>
-                                                    <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{e.agenda ? TYPES[e.agenda.type] ?? 'Agenda' : 'Otomatis'}</span>
+                                                    <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{e.agenda ? TYPES[e.agenda.type] ?? 'Agenda' : /^s\d/.test(e.key) ? 'Lomba' : 'Otomatis'}</span>
                                                     {e.agenda?.remind_minutes && <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600"><Bell className="h-3.5 w-3.5" />{REMIND.find(([k]) => k === String(e.agenda!.remind_minutes))?.[1]}</span>}
                                                     {e.agenda && (
                                                         <span className="ml-auto flex gap-1">
@@ -276,6 +285,9 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas }
                         ))}
                     </div>
                 </div>
+            )}
+
+            </>
             )}
 
             {agendaModal && <AgendaModal eventId={eventId} initial={agendaModal.item} date={agendaModal.date} onClose={() => setAgendaModal(null)} />}

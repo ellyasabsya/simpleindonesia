@@ -4,7 +4,7 @@ import { type FormEvent, useState } from 'react';
 import Button from '../kit/button';
 import EmptyState from '../kit/empty-state';
 import { Row, Section } from '../kit/section';
-import { usePlatform } from '../use-platform';
+import { FIELD, MUTED } from '../kit/soft';
 
 type Item = {
     id: number;
@@ -35,12 +35,11 @@ type Props = {
 
 /** Sertifikat saya untuk HP: pencarian, filter lewat pemilih bawaan perangkat, lalu daftar bergrup. */
 export default function SertifikatMobile({ items, total, owned, years, types, f, filtered, page, pages, prevUrl, nextUrl }: Props) {
-    const ios = usePlatform() === 'ios';
     const [cari, setCari] = useState(f.cari ?? '');
     const [tahun, setTahun] = useState(f.tahun ? String(f.tahun) : '');
     const [jenis, setJenis] = useState(f.jenis ?? '');
     const typeList = Object.entries(types ?? {});
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
+    const muted = MUTED;
     const select = 'max-w-full bg-transparent text-right outline-none';
 
     const submit = (e?: FormEvent) => {
@@ -66,9 +65,7 @@ export default function SertifikatMobile({ items, total, owned, years, types, f,
                             onChange={(e) => setCari(e.target.value)}
                             placeholder="Cari event, nomor, atau nama"
                             maxLength={100}
-                            className={`w-full pr-3 pl-9 text-[17px] outline-none ${
-                                ios ? 'h-10 rounded-[10px] bg-black/[0.06] dark:bg-white/10' : 'h-12 rounded-full bg-slate-100 dark:bg-white/10'
-                            }`}
+                            className={'h-12 w-full rounded-full pr-3 pl-9 text-base outline-none ' + FIELD}
                         />
                     </div>
                     <Section>
@@ -123,10 +120,10 @@ export default function SertifikatMobile({ items, total, owned, years, types, f,
                         <Row
                             key={it.id}
                             icon={Award}
-                            tint="#FF9500"
+                            tint="#D97706"
                             label={it.event}
                             sub={`${it.label} · ${it.number}${it.date ? ' · ' + it.date : ''}`}
-                            value={<span className={it.valid ? 'text-[#34C759]' : 'text-[#FF3B30]'}>{it.valid ? 'Berlaku' : 'Tidak berlaku'}</span>}
+                            value={<span className={it.valid ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}>{it.valid ? 'Berlaku' : 'Tidak berlaku'}</span>}
                             href={it.url}
                             external
                         />

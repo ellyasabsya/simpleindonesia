@@ -27,10 +27,10 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                 className="absolute inset-y-0 left-0 flex w-[min(86vw,360px)] flex-col rounded-r-[28px] bg-[#ffffff] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-[#0f172a] dark:bg-[#1e293b] dark:text-[#f8fafc]"
             >
                 <div className="flex items-center gap-3 px-7 pt-6 pb-4">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">S</span>
+                    <img src="/logo-s-sm.png" alt="SIMPLE" className="size-11 shrink-0 object-contain" />
                     <div className="min-w-0">
                         <p className="truncate text-base font-medium">{user.name ?? 'Akun'}</p>
-                        {user.subtitle && <p className="truncate text-xs text-[#475569] uppercase dark:text-[#cbd5e1]">{user.subtitle}</p>}
+                        {user.subtitle && <p className="truncate text-xs text-[#475569] dark:text-[#cbd5e1]">{user.subtitle}</p>}
                     </div>
                 </div>
 
@@ -43,7 +43,7 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                                     key={item.href}
                                     item={item}
                                     onClick={onClose}
-                                    className={`${itemCls} ${item.active ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white' : 'active:bg-black/10 dark:active:bg-white/10'}`}
+                                    className={`${itemCls} ${item.active ? 'bg-indigo-600 text-white dark:bg-indigo-500' : 'active:bg-black/10 dark:active:bg-white/10'}`}
                                 >
                                     <item.Icon className="size-6 shrink-0" />
                                     <span className="flex-1 truncate">{item.label}</span>
@@ -63,7 +63,7 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                         {dark ? <Sun className="size-6" /> : <Moon className="size-6" />}
                         <span className="flex-1 text-left">{dark ? 'Mode terang' : 'Mode gelap'}</span>
                     </button>
-                    <Link href="/" onClick={onClose} className={`${itemCls} active:bg-black/10 dark:active:bg-white/10`}>
+                    <Link href="/?publik=1" onClick={onClose} className={`${itemCls} active:bg-black/10 dark:active:bg-white/10`}>
                         <House className="size-6" />
                         <span className="flex-1">Halaman Utama</span>
                     </Link>

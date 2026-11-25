@@ -89,7 +89,7 @@ export default function TicketCardVertical(p: TicketCardProps) {
                     <div className="min-w-0">
                         <p className="text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">Mulai dari</p>
                         <p className="text-base font-extrabold text-rose-600 dark:text-rose-400">{rupiah(p.price)}</p>
-                        {p.validUntil && <p className="truncate text-[11px] text-neutral-400">Sampai {p.validUntil} · Tanpa akun</p>}
+                        {p.validUntil && <p className="truncate text-[11px] text-neutral-400">Sampai {p.validUntil}</p>}
                     </div>
                     <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-pink-600 to-orange-500 px-3 py-2 text-xs font-bold text-white shadow transition group-hover:shadow-lg">
                         Beli tiket <ArrowRight className="size-3.5" />

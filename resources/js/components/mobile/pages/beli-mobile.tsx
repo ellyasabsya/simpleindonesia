@@ -3,7 +3,7 @@ import { Minus, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import Button from '../kit/button';
 import { Section } from '../kit/section';
-import { usePlatform } from '../use-platform';
+import { FIELD, MUTED, PAGE } from '../kit/soft';
 
 type TType = { id: number; name: string; price: number; remaining: number; valid_from: string; valid_until: string; max_per_order: number };
 export type BeliMobileProps = {
@@ -15,7 +15,6 @@ export type BeliMobileProps = {
 const rp = (n: number) => 'Rp' + new Intl.NumberFormat('id-ID').format(n);
 
 export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMobileProps) {
-    const ios = usePlatform() === 'ios';
     const { data, setData, post, processing, errors, transform } = useForm({
         ticket_type_id: ticket_types[0]?.id ?? 0,
         quantity: 1,
@@ -50,12 +49,10 @@ export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMob
 
     if (!type) return null;
 
-    const inp = ios
-        ? 'w-full bg-transparent text-[17px] text-black outline-none placeholder:text-black/30 dark:text-white dark:placeholder:text-white/30'
-        : 'w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/30';
-    const lbl = ios ? 'text-[13px] text-black/50 dark:text-white/50' : 'text-xs font-medium text-slate-600 dark:text-slate-300';
-    const bg = ios ? 'bg-[#f2f2f7] dark:bg-black' : 'bg-[#f4f6fb] dark:bg-[#141218]';
-    const errCls = 'mt-1 text-xs text-red-600 dark:text-red-400';
+    const inp = 'w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/30';
+    const lbl = 'text-[13px] ' + MUTED;
+    const bg = PAGE;
+    const errCls = 'mt-1 text-xs text-rose-600 dark:text-rose-400';
     const infoRows: [string, string][] = [
         ['Tanggal', event.date],
         ['Lokasi', event.location ?? '-'],
@@ -65,15 +62,13 @@ export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMob
     ];
     const rowCls = 'flex items-start justify-between gap-4 px-4 py-3 text-sm';
     const field = 'px-4 py-2.5';
-    const stepBtn = ios
-        ? 'flex size-8 items-center justify-center rounded-full bg-black/5 text-black active:opacity-60 dark:bg-white/10 dark:text-white'
-        : 'flex size-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 active:opacity-70 dark:bg-white/10 dark:text-white';
+    const stepBtn = 'flex size-9 items-center justify-center rounded-full text-indigo-700 active:opacity-60 dark:text-indigo-300 ' + FIELD;
 
     return (
         <div className={'min-h-dvh pb-44 ' + bg}>
             <header className="flex items-center justify-between px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3">
                 <div className="min-w-0">
-                    <h1 className={ios ? 'text-[28px] font-bold text-black dark:text-white' : 'text-2xl font-semibold text-slate-900 dark:text-white'}>Beli Tiket</h1>
+                    <h1 className="text-[22px] leading-tight font-semibold tracking-tight text-slate-900 dark:text-white">Beli Tiket</h1>
                     <p className={'truncate ' + lbl}>{event.title}</p>
                 </div>
                 <Link href={'/events/' + event.slug} aria-label="Tutup" className="flex size-10 items-center justify-center rounded-full text-slate-500 active:opacity-60 dark:text-white/60">
@@ -111,7 +106,7 @@ export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMob
                     </div>
                     <div className={field}>
                         <label className={lbl}>Email *</label>
-                        <input className={inp} type="email" inputMode="email" placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />
+                        <input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp} type="email" placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />
                         {err('buyer_email') && <p className={errCls}>{err('buyer_email')}</p>}
                     </div>
                     <div className={field}>
@@ -121,12 +116,12 @@ export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMob
                     </div>
                 </Section>
 
-                <Section title={'Pemegang Tiket (' + data.quantity + ')'} footer={'Nama ini tercetak di tiket dan dipakai saat check-in. Maksimal ' + type.max_per_order + ' tiket per pesanan.'}>
+                <Section title={'Pemegang Tiket (' + data.quantity + ')'} footer={'Nama ini tercetak di tiket dan dipakai saat check-in.' + (type.max_per_order > 1 ? ' Maksimal ' + type.max_per_order + ' tiket per pesanan.' : '')}>
                     <div className={rowCls + ' items-center'}>
                         <span className="font-semibold text-slate-900 dark:text-white">Jumlah tiket</span>
                         <div className="flex items-center gap-4">
                             <button type="button" aria-label="Kurangi" onClick={() => setQty(data.quantity - 1)} className={stepBtn}><Minus className="size-4" /></button>
-                            <span className="w-5 text-center text-base font-bold text-slate-900 dark:text-white">{data.quantity}</span>
+                            <span className="w-5 text-center text-base font-semibold text-slate-900 dark:text-white">{data.quantity}</span>
                             <button type="button" aria-label="Tambah" onClick={() => setQty(data.quantity + 1)} className={stepBtn}><Plus className="size-4" /></button>
                         </div>
                     </div>
@@ -155,11 +150,11 @@ export default function BeliMobile({ event, ticket_types, fee_percent }: BeliMob
                 )}
             </div>
 
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-neutral-900/95">
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-900/[0.07] bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#0a0c1a]">
                 <div className="mb-2 flex items-end justify-between gap-3">
                     <div>
                         <p className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Total · {data.quantity} tiket</p>
-                        <p className="text-2xl font-extrabold text-indigo-700 dark:text-indigo-300">{rp(subtotal + fee)}</p>
+                        <p className="text-[22px] leading-tight font-semibold text-indigo-700 dark:text-indigo-300">{rp(subtotal + fee)}</p>
                     </div>
                     <p className="text-right text-[11px] text-slate-500">Tiket {rp(subtotal)}<br />Layanan {fee_percent}% {rp(fee)}</p>
                 </div>

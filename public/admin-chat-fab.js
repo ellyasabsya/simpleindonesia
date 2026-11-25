@@ -21,6 +21,13 @@
   };
   // =============================
 
+  // Nomor dari Pengaturan admin (atribut data-wa). Nomor di atas jadi cadangan.
+  try {
+    var tag = document.currentScript || document.querySelector('script[src*="admin-chat-fab"]');
+    var wa = tag && tag.getAttribute('data-wa');
+    if (wa && /^[0-9]{9,15}$/.test(wa)) CONFIG.whatsapp = wa;
+  } catch (e) { /* pakai cadangan */ }
+
   var css = [
     '.afab{position:fixed;z-index:2147483000;width:' + CONFIG.size + 'px;height:' + CONFIG.size + 'px;left:0;top:0;touch-action:none;-webkit-tap-highlight-color:transparent;font-family:inherit}',
     '.afab.is-snapping{transition:left .35s cubic-bezier(.34,1.56,.64,1),top .35s cubic-bezier(.34,1.56,.64,1)}',
@@ -33,7 +40,7 @@
     '.afab__btn:focus-visible{outline:3px solid #2b3a9a;outline-offset:4px}',
     '.afab.is-dragging .afab__btn{cursor:grabbing;transform:scale(1.14) rotate(-6deg);box-shadow:0 0 0 4px rgba(255,255,255,.95),0 22px 36px -8px rgba(232,80,26,.6)}',
     '.afab__btn svg{width:28px;height:28px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.2));pointer-events:none}',
-    '.afab__ring{position:absolute;inset:0;border-radius:50%;border:2px solid #ff8a2b;opacity:0;pointer-events:none;animation:afab-pulse 2.6s ease-out infinite}',
+    '.afab__ring{position:absolute;inset:0;border-radius:50%;border:2px solid #ff8a2b;opacity:0;pointer-events:none;animation:afab-pulse 2.6s ease-out 3}',
     '.afab__ring--2{animation-delay:1.3s}',
     '.afab.is-dragging .afab__ring,.afab.is-open .afab__ring{animation-play-state:paused;opacity:0}',
     '@keyframes afab-pulse{0%{transform:scale(1);opacity:.65}70%,100%{transform:scale(1.7);opacity:0}}',

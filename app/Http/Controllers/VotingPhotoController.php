@@ -40,7 +40,7 @@ class VotingPhotoController extends Controller
             ['photo.required' => 'Pilih foto dulu.', 'photo.image' => 'File harus berupa gambar.', 'photo.mimes' => 'Foto harus JPG, PNG, atau WebP.', 'photo.max' => 'Ukuran foto maksimal 3 MB.']
         );
 
-        $path = $request->file('photo')->store("voting/{$p->event_id}", 'public');
+        $path = \App\Support\ImageUploader::store($request->file('photo'), "voting/{$p->event_id}", 'photo', 600);
         if ($p->photo) {
             Storage::disk('public')->delete($p->photo);
         }

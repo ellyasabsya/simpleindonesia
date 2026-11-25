@@ -33,11 +33,11 @@ export default function AndroidAppBar({
     return (
         <header
             data-mobile-appbar="android"
-            className="sticky top-0 z-30 bg-[#f4f6fb] pt-[env(safe-area-inset-top)] shadow-[0_1px_3px_rgba(0,0,0,0.12)] dark:bg-[#0b1020]"
+            className="sticky top-0 z-30 border-b border-slate-900/[0.07] bg-[#f4f6fc]/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0c1a]/90"
         >
             <div className="flex h-16 items-center gap-1 px-1">
                 {backEl ?? leading}
-                <h1 className="min-w-0 flex-1 truncate px-3 text-[22px] font-normal text-[#0f172a] dark:text-[#f8fafc]">
+                <h1 className="min-w-0 flex-1 truncate px-3 text-[17px] font-semibold tracking-tight text-[#0f172a] dark:text-[#f8fafc]">
                     {title}
                 </h1>
                 <div className="flex items-center">{actions}</div>

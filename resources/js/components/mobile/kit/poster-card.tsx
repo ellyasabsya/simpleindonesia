@@ -1,11 +1,12 @@
 import { Link } from '@inertiajs/react';
 import { CalendarDays, Layers, MapPin } from 'lucide-react';
 import type { EventCard } from '@/components/landing/event-section';
+import { CARD, MUTED, PRESS } from './soft';
 
 const STATUS: Record<EventCard['status']['key'], string> = {
-    berlangsung: 'bg-emerald-500',
-    segera: 'bg-blue-600',
-    selesai: 'bg-neutral-600',
+    berlangsung: 'bg-emerald-400',
+    segera: 'bg-sky-400',
+    selesai: 'bg-neutral-400',
 };
 
 const day = (s: string) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(s.length > 10 ? s : s + 'T00:00:00'));
@@ -22,7 +23,7 @@ const initials = (t: string) =>
 type Props = {
     event: EventCard;
     href: string;
-    /** true = lebar 16:10 (untuk voting), false = potret 4:5. */
+    /** true = area gambar 16:10 (untuk voting), false = potret 4:5. */
     wide?: boolean;
     /** true = kartu kecil untuk grid 2 kolom. */
     compact?: boolean;
@@ -31,44 +32,44 @@ type Props = {
     className?: string;
 };
 
-/** Kartu poster penuh: foto jadi pusat, judul putih di atas gradasi gelap. */
+/**
+ * Kartu poster: poster tampil UTUH (object-contain) di atas latar buram dari gambar yang sama,
+ * judul dan info di bawah gambar dengan teks kontras tinggi.
+ */
 export default function PosterCard({ event, href, wide, compact, note, className = '' }: Props) {
     const range = eventRange(event.starts_at, event.ends_at);
     const series = !!event.is_series;
 
     return (
-        <Link
-            href={href}
-            className={
-                'group relative block shrink-0 snap-start overflow-hidden rounded-[28px] bg-neutral-200 shadow-[0_12px_28px_-12px_rgba(15,23,42,0.45)] transition-transform duration-200 active:scale-[0.97] dark:bg-neutral-800 ' +
-                (wide ? 'aspect-[16/10] ' : 'aspect-[4/5] ') +
-                className
-            }
-        >
-            {event.poster ? (
-                <img src={event.poster} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
-            ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600">
-                    <span className="text-6xl font-black tracking-wide text-white/90">{initials(event.title)}</span>
-                </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <Link href={href} className={'block shrink-0 snap-start overflow-hidden rounded-3xl ' + CARD + ' ' + PRESS + ' ' + className}>
+            <div className={'relative overflow-hidden bg-slate-200 dark:bg-neutral-800 ' + (wide ? 'aspect-[16/10]' : 'aspect-[4/5]')}>
+                {event.poster ? (
+                    <>
+                        <img src={event.poster} alt="" aria-hidden loading="lazy" className="absolute inset-0 size-full scale-125 object-cover opacity-60 blur-2xl" />
+                        <img src={event.poster} alt={event.title} loading="lazy" className="relative size-full object-contain" />
+                    </>
+                ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(120%_90%_at_20%_0%,#4f46e5_0%,#1e1b4b_55%,#0b0a1f_100%)]">
+                        <span className="text-7xl font-semibold tracking-tight text-white/25">{initials(event.title)}</span>
+                    </div>
+                )}
 
-            <span className={'absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold text-white shadow-lg ' + STATUS[event.status.key]}>
-                <span className="size-1.5 rounded-full bg-white" />
-                {event.status.label}
-            </span>
-            {series && !compact && (
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                    <Layers className="size-3.5" />
-                    {event.sub_count ? event.sub_count + ' acara' : 'Rangkaian'}
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-[11px] font-medium text-white ring-1 ring-white/20">
+                    <span className={'size-1.5 rounded-full ' + STATUS[event.status.key]} />
+                    {event.status.label}
                 </span>
-            )}
+                {series && !compact && (
+                    <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">
+                        <Layers className="size-3.5" />
+                        {event.sub_count ? event.sub_count + ' acara' : 'Rangkaian'}
+                    </span>
+                )}
+            </div>
 
-            <div className={'absolute inset-x-0 bottom-0 ' + (compact ? 'p-3' : 'p-4')}>
-                {event.category && !compact && <p className="mb-1 text-[11px] font-semibold tracking-[0.14em] text-white/70 uppercase">{event.category}</p>}
-                <h3 className={'line-clamp-2 leading-tight font-extrabold text-white ' + (compact ? 'text-[14px]' : 'text-[19px]')}>{event.title}</h3>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-white/80">
+            <div className={compact ? 'p-3' : 'p-4'}>
+                {event.category && !compact && <p className="mb-1 text-[11px] font-medium tracking-[0.2em] text-indigo-700 uppercase dark:text-indigo-300">{event.category}</p>}
+                <h3 className={'line-clamp-2 leading-tight font-semibold tracking-tight text-slate-900 dark:text-white ' + (compact ? 'text-[14px]' : 'text-[19px]')}>{event.title}</h3>
+                <div className={'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ' + MUTED}>
                     {range && (
                         <span className="inline-flex items-center gap-1">
                             <CalendarDays className="size-3.5" />
@@ -82,7 +83,7 @@ export default function PosterCard({ event, href, wide, compact, note, className
                         </span>
                     )}
                 </div>
-                {note && <p className="mt-1.5 text-xs font-bold text-white">{note}</p>}
+                {note && <p className="mt-1.5 text-xs font-bold text-slate-900 dark:text-white">{note}</p>}
             </div>
         </Link>
     );

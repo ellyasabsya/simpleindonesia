@@ -72,7 +72,7 @@ class NewsController extends Controller
         $news->slug = $this->uniqueSlug($data['title']);
         $news->user_id = $request->user()->id;
         if ($request->hasFile('cover')) {
-            $news->cover_path = $request->file('cover')->store('news', 'public');
+            $news->cover_path = \App\Support\ImageUploader::store($request->file('cover'), 'news', 'cover', 1200);
         }
         if ($data['status'] === News::PUBLISHED) {
             $news->published_at = now();
@@ -90,7 +90,7 @@ class NewsController extends Controller
 
         if ($request->hasFile('cover')) {
             $this->deleteCover($news);
-            $news->cover_path = $request->file('cover')->store('news', 'public');
+            $news->cover_path = \App\Support\ImageUploader::store($request->file('cover'), 'news', 'cover', 1200);
         } elseif ($request->boolean('remove_cover')) {
             $this->deleteCover($news);
             $news->cover_path = null;

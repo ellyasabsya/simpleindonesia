@@ -8,6 +8,14 @@ use Illuminate\Support\Str;
 
 class TicketIssuer
 {
+    /** Awalan kategori untuk ID pengunjung (tiket umum), mis. SK2-PGJ-2026-001. */
+    public const VISITOR_CATEGORY = 'PGJ';
+
+    public static function isVisitorCode(?string $code): bool
+    {
+        return (bool) preg_match('/^[A-Z0-9]+-'.self::VISITOR_CATEGORY.'-\d{4}-\d{3,}$/', (string) $code);
+    }
+
     /** Buat tiket per pemegang untuk order lunas, lalu kirim email. Aman dipanggil dua kali. */
     public static function issue(int $orderId): void
     {
@@ -34,22 +42,35 @@ class TicketIssuer
             ];
         }
         if ($rows) {
-            // patch-256: beri ID registrasi (mis. BB-UMUM-2026-001) pada setiap pemegang tiket
+            // patch-256: beri ID registrasi pada setiap pemegang tiket
             $__ev = DB::table('ticket_orders')->where('id', $orderId)->value('event_id');
             $__grp = DB::table('ticket_orders')->where('id', $orderId)->value('group_code'); // patch-257
             $__cat = DB::table('ticket_types as t')->leftJoin('event_participant_categories as c', 'c.id', '=', 't.participant_category_id')
                 ->where('t.id', $o->ticket_type_id)->value('c.name');
+            // Tiket umum = pengunjung: ID-nya berawalan PGJ dan punya counter sendiri, tidak berebut nomor dengan peserta.
+            $__vis = DB::table('ticket_types')->where('id', $o->ticket_type_id)->value('audience') === 'umum';
+            $__fit = fn ($c) => $c && self::isVisitorCode($c) === $__vis;
             foreach ($rows as &$__r) {
-                // patch-257: orang yang sama dalam satu pembelian gabungan memakai satu ID peserta
+                $__eid = (int) ($__r['event_id'] ?? $__ev);
+                $__name = (string) ($__r['holder_name'] ?? '');
+                // patch-257: orang yang sama dalam satu pembelian gabungan memakai satu ID
                 $__pc = null;
                 if ($__grp) {
                     $__pc = DB::table('ticket_holders as h')->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
                         ->where('o.group_code', $__grp)
-                        ->whereRaw('LOWER(TRIM(h.holder_name)) = ?', [mb_strtolower(trim((string) ($__r['holder_name'] ?? '')))])
+                        ->whereRaw('LOWER(TRIM(h.holder_name)) = ?', [mb_strtolower(trim($__name))])
                         ->whereNotNull('h.participant_code')->orderBy('h.id')->value('h.participant_code');
                 }
-                $__eid = (int) ($__r['event_id'] ?? $__ev);
-                $__pc = $__pc ?: \App\Support\RegistrationCode::existingTicketCode($__eid, (string) ($o->buyer_email ?? ''), (string) ($__r['holder_name'] ?? '')) ?: \App\Support\RegistrationCode::make($__eid, $__cat ?: null);
+                if (! $__fit($__pc)) {
+                    $__pc = null;
+                }
+                if (! $__pc) {
+                    $__ex = \App\Support\RegistrationCode::existingTicketCode($__eid, (string) ($o->buyer_email ?? ''), $__name);
+                    $__pc = $__fit($__ex) ? $__ex : null;
+                }
+                if (! $__pc) {
+                    $__pc = \App\Support\RegistrationCode::make($__eid, $__vis ? self::VISITOR_CATEGORY : ($__cat ?: null));
+                }
                 $__r['participant_code'] = $__pc;
                 $__r['reg_code'] = $__r['reg_code'] ?? \App\Support\RegistrationCode::regCode($__pc, $__eid);
             }

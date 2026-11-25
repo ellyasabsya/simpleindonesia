@@ -1,5 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { ArrowLeft, CalendarDays, Check, MapPin, Pencil, UserPlus, Users } from 'lucide-react';
+import ProfilMobile from '@/components/mobile/pages/profil-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import UserLayout from '@/components/user/user-layout';
 import { SocialChips } from '@/lib/socials';
 
@@ -9,6 +11,23 @@ const d = (s: string, o: Intl.DateTimeFormatOptions) => new Date(s).toLocaleDate
 
 export default function Show({ person, isMe, isFriend, since, friendsCount }: Props) {
     const ini = person.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <UserLayout title={person.name} hasPanel>
+                <ProfilMobile
+                    person={person}
+                    isMe={isMe}
+                    isFriend={isFriend}
+                    since={since ? d(since, { month: 'short', year: 'numeric' }) : null}
+                    joined={person.created_at ? d(person.created_at, { month: 'long', year: 'numeric' }) : null}
+                    friendsCount={friendsCount}
+                />
+            </UserLayout>
+        );
+    }
+
     return (
         <UserLayout title={person.name} hasPanel>
             <Link href="/dashboard" className="flex w-fit items-center gap-2 rounded-2xl bg-white/80 px-4 py-2.5 text-sm font-bold shadow-sm hover:bg-white dark:bg-white/10"><ArrowLeft className="h-4 w-4" /> Kembali</Link>

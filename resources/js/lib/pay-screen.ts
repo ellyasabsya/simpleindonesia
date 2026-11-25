@@ -68,6 +68,36 @@ const CSS = `
 @keyframes ps-pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
 `;
 
+const CSS_M = `
+#${ID}.m{background:#f4f6fc;color:#0f172a;flex-direction:column;align-items:stretch;justify-content:center}
+.dark #${ID}.m{background:#0a0c1a;color:#fff}
+#${ID}.m::before,#${ID}.m .orb{display:none}
+#${ID}.m .card{position:static;width:100%;background:transparent;border:0;box-shadow:none;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0 28px}
+#${ID}.m .steps{position:absolute;top:calc(env(safe-area-inset-top) + 16px);left:50%;transform:translateX(-50%);margin:0;padding:8px 16px;border-radius:9999px;background:#fff;box-shadow:0 0 0 1px rgba(15,23,42,.07);white-space:nowrap;color:#475569}
+.dark #${ID}.m .steps{background:rgba(255,255,255,.06);box-shadow:0 0 0 1px rgba(255,255,255,.1);color:#cbd5e1}
+#${ID}.m .steps span.on{color:#0f766e}
+.dark #${ID}.m .steps span.on{color:#5eead4}
+#${ID}.m .steps i{background:rgba(15,23,42,.15)}
+.dark #${ID}.m .steps i{background:rgba(255,255,255,.2)}
+#${ID}.m .i-load{background:linear-gradient(135deg,#0d9488,#14b8a6);box-shadow:0 10px 30px rgba(13,148,136,.35)}
+#${ID}.m .i-load::after{border-color:rgba(13,148,136,.2);border-top-color:#0d9488}
+.dark #${ID}.m .i-load::after{border-color:rgba(255,255,255,.2);border-top-color:#5eead4}
+#${ID}.m .brand{color:#0f766e;opacity:1;font-size:11px}
+.dark #${ID}.m .brand{color:#5eead4}
+#${ID}.m .title{font-size:22px;font-weight:600;letter-spacing:-.01em}
+#${ID}.m .sub{font-size:14px;color:#475569;opacity:1}
+.dark #${ID}.m .sub{color:#cbd5e1}
+#${ID}.m .detail{color:#475569;opacity:1}
+.dark #${ID}.m .detail{color:#cbd5e1}
+#${ID}.m .actions{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 44px);flex-direction:column;margin:0}
+#${ID}.m .btn{height:48px;border-radius:9999px;font-size:14px;font-weight:500;width:100%}
+#${ID}.m .btn.p{background:#0d9488;box-shadow:none;color:#fff}
+#${ID}.m .btn.g{background:rgba(15,23,42,.06);border:0;color:#0f766e}
+.dark #${ID}.m .btn.g{background:rgba(255,255,255,.1);color:#5eead4}
+#${ID}.m .foot{bottom:calc(env(safe-area-inset-bottom) + 14px);color:#475569;opacity:1}
+.dark #${ID}.m .foot{color:#cbd5e1}
+`;
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function xsrf(): string {
@@ -115,17 +145,18 @@ export function openPayScreen(opts: Opts) {
     if (!document.getElementById(STYLE_ID)) {
         const st = document.createElement('style');
         st.id = STYLE_ID;
-        st.textContent = CSS;
+        st.textContent = CSS + CSS_M;
         document.head.appendChild(st);
     }
 
     const el = document.createElement('div');
     el.id = ID;
+    if (window.matchMedia('(max-width: 767px)').matches) el.classList.add('m');
     el.innerHTML = `
         <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
         <div class="card">
             <div class="steps"><span data-s="1">Pesanan</span><i></i><span data-s="2">Bayar</span><i></i><span data-s="3">Selesai</span></div>
-            <div class="ic i-load">S</div>
+            <div class="ic i-load" style="background:none;box-shadow:none"><img src="/logo-s.png" alt="" style="width:100%;height:100%;object-fit:contain"></div>
             <div class="ic i-ok"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
             <div class="ic i-warn"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v8M12 18h.01"/></svg></div>
             <div class="brand">SIMPLE</div>

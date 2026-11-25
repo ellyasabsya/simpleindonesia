@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import LinkTidakAktifMobile from '@/components/mobile/pages/link-tidak-aktif-mobile';
 
 const TEXT: Record<string, { title: string; body: string }> = {
     dipakai: { title: 'Link sudah dipakai', body: 'Link ini hanya berlaku untuk satu kali simpan. Kalau perubahan Anda sudah tersimpan, tidak ada yang perlu dilakukan. Untuk mengedit lagi, minta link baru ke admin.' },
@@ -10,15 +11,20 @@ const TEXT: Record<string, { title: string; body: string }> = {
 export default function LinkTidakAktif({ reason }: { reason: string }) {
     const t = TEXT[reason] ?? TEXT.tidak_ditemukan;
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 dark:bg-slate-950">
+        <>
             <Head title="Link tidak aktif">
                 <meta name="robots" content="noindex" />
                 <meta name="referrer" content="no-referrer" />
             </Head>
-            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-slate-900">
-                <h1 className="text-xl font-extrabold">{t.title}</h1>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t.body}</p>
+            <div className="md:hidden">
+                <LinkTidakAktifMobile title={t.title} body={t.body} />
             </div>
-        </div>
+            <div className="hidden min-h-screen items-center justify-center bg-slate-50 p-6 md:flex dark:bg-slate-950">
+                <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-slate-900">
+                    <h1 className="text-xl font-extrabold">{t.title}</h1>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t.body}</p>
+                </div>
+            </div>
+        </>
     );
 }

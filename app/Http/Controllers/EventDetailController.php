@@ -41,6 +41,12 @@ class EventDetailController extends Controller
         $eventIds = $all->pluck('id')->all();
         $cats = \Illuminate\Support\Facades\DB::table('event_participant_categories')->whereIn('event_id', $eventIds)->get()->groupBy('event_id');
         $regs = \App\Models\EventRegistration::query()->with('user:id,name')->whereIn('event_id', $eventIds)->get();
+        $tix = \Illuminate\Support\Facades\DB::table('ticket_holders as h')
+            ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
+            ->join('ticket_types as t', 't.id', '=', 'h.ticket_type_id')
+            ->whereIn('h.event_id', $eventIds)->where('o.status', 'lunas')
+            ->where(fn ($q) => $q->where('t.audience', 'peserta')->orWhere('t.name', 'like', 'Pendaftaran%'))
+            ->get(['h.id', 'h.event_id', 'h.holder_name', 't.participant_category_id']);
 
         $branches = collect();
         foreach ($all as $ev) {
@@ -48,17 +54,18 @@ class EventDetailController extends Controller
             $evCats = $cats->get($ev->id, collect());
             $evRegs = $regs->where('event_id', $ev->id);
 
-            $push = function ($key, $title, $subtitle, $quota, $mine, $extra = []) use (&$branches) {
-                $ok = $mine->where('status', 'disetujui');
+            $push = function ($key, $title, $subtitle, $quota, $mine, $extra = [], $tx = null) use (&$branches) {
+                $tx = $tx ?? collect();
+                $ok = $mine->whereIn('status', ['terdaftar', 'disetujui', 'lunas']);
                 $branches->push([
                     'id' => $key,
                     'title' => $title,
                     'subtitle' => $subtitle,
                     'quota' => $quota,
-                    'registered' => $mine->count(),
-                    'approved' => $ok->count(),
+                    'registered' => $mine->count() + $tx->count(),
+                    'approved' => $ok->count() + $tx->count(),
                     'info' => $extra,
-                    'names' => $ok->map(fn ($r) => ['name' => $r->user?->name ?? 'Peserta', 'school' => $r->school])->values(),
+                    'names' => [],
                 ]);
             };
 
@@ -70,16 +77,16 @@ class EventDetailController extends Controller
                         $cat->competition_name ? $cat->name : ($isChild ? $cat->name : null),
                         (int) ($cat->quota ?? 0),
                         $evRegs->where('participant_category_id', $cat->id),
-                        ['min_age' => $cat->min_age, 'max_age' => $cat->max_age, 'requirements' => $cat->requirements, 'prizes' => $prizes]);
+                        ['min_age' => $cat->min_age, 'max_age' => $cat->max_age, 'requirements' => $cat->requirements, 'prizes' => $prizes], $tix->where('event_id', $ev->id)->filter(fn ($x) => $x->participant_category_id !== null ? (int) $x->participant_category_id === (int) $cat->id : $evCats->count() === 1));
                 }
             } elseif ((int) $ev->participant_quota > 0) {
-                $push('e'.$ev->id, $isChild ? $ev->title : 'Kuota peserta', null, (int) $ev->participant_quota, $evRegs);
+                $push('e'.$ev->id, $isChild ? $ev->title : 'Kuota peserta', null, (int) $ev->participant_quota, $evRegs, [], $tix->where('event_id', $ev->id));
             }
         }
 
         $participants = [
-            'registered' => $regs->count(),
-            'approved' => $regs->where('status', 'disetujui')->count(),
+            'registered' => $regs->count() + $tix->count(),
+            'approved' => $regs->whereIn('status', ['terdaftar', 'disetujui', 'lunas'])->count() + $tix->count(),
             'branches' => $branches->values(),
         ];
 

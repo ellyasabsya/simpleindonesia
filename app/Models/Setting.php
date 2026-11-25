@@ -32,6 +32,34 @@ class Setting extends Model
         static::updateOrCreate(['key' => $key], ['value' => trim((string) $value)]);
     }
 
+    /** Ubah 0812..., +62 812..., 812... menjadi 62812... (format wa.me). Kosong jika tidak valid. */
+    public static function normalizeWa(?string $raw): string
+    {
+        $d = preg_replace('/\D+/', '', (string) $raw) ?? '';
+        if ($d === '') {
+            return '';
+        }
+        if (str_starts_with($d, '0')) {
+            $d = '62'.substr($d, 1);
+        } elseif (str_starts_with($d, '8')) {
+            $d = '62'.$d;
+        }
+
+        return strlen($d) >= 9 && strlen($d) <= 15 ? $d : '';
+    }
+
+    /** Nomor WhatsApp admin untuk tombol chat. Memakai nomor lama bila belum diatur. */
+    public static function adminWhatsapp(): string
+    {
+        try {
+            $v = static::normalizeWa(static::text('admin_whatsapp'));
+        } catch (\Throwable $e) {
+            $v = '';
+        }
+
+        return $v !== '' ? $v : '6281277700335';
+    }
+
     public static function midtransOn(): bool
     {
         return static::flag('pay_midtrans', true);

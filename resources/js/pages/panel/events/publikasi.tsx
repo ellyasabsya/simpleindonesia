@@ -19,16 +19,16 @@ type EventPub = {
     pending: { id: number; name: string }[]; appeals: Appeal[];
 };
 
-const solid = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
-const h = 'text-lg font-black text-slate-900 dark:text-white';
-const sub = 'mt-0.5 text-sm text-slate-600 dark:text-slate-300';
-const field = 'h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+const solid = 'rounded-2xl bg-white md:rounded-3xl shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
+const h = 'text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white';
+const sub = 'mt-0.5 text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300';
+const field = 'h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-base font-semibold md:h-12 md:px-4 md:text-sm text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
 
 function Row({ k, v }: { k: string; v: string }) {
     return (
-        <div className="flex items-baseline justify-between gap-4 border-b border-slate-100 py-3 dark:border-white/10">
-            <span className="text-sm text-slate-500 dark:text-slate-400">{k}</span>
-            <span className="text-right text-sm font-extrabold text-slate-900 dark:text-white">{v}</span>
+        <div className="flex items-baseline justify-between gap-4 border-b border-slate-100 py-1.5 md:py-3 dark:border-white/10">
+            <span className="text-[13px] text-slate-500 md:text-sm dark:text-slate-400">{k}</span>
+            <span className="text-right text-[13px] font-extrabold text-slate-900 md:text-sm dark:text-white">{v}</span>
         </div>
     );
 }
@@ -67,32 +67,32 @@ function RulesCard({ pub, base, multi, onGoSettings }: { pub: Pub; base: string;
     };
 
     return (
-        <div className={`${solid} p-5 sm:p-6`}>
+        <div className={`${solid} p-3 md:p-6`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className={h}>Aturan penilaian{multi ? ` · ${pub.category.name}` : ''}</h3>
-                {multi && <span className="rounded-full bg-indigo-900 px-3 py-1 text-xs font-black text-white">{pub.category.name}</span>}
+                {multi && <span className="rounded-full bg-indigo-900 px-3 py-1 text-xs font-black text-white max-md:hidden">{pub.category.name}</span>}
             </div>
             <p className={sub}>Aturan yang dipakai di kategori ini. Peserta baru bisa melihatnya setelah saklar di bawah dinyalakan.</p>
 
             {!pub.enabled && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 dark:bg-amber-400/10">
-                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Penilaian{who || ' kategori ini'} belum disahkan, jadi aturan belum bisa dikirim ke peserta.</p>
-                    {onGoSettings && <button type="button" onClick={() => onGoSettings(pub.category.id)} className="rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white hover:bg-amber-600">Buka Pengaturan penilaian</button>}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 md:mt-4 md:gap-3 md:px-4 md:py-3 dark:bg-amber-400/10">
+                    <p className="text-[13px] leading-snug font-bold text-amber-900 md:text-sm dark:text-amber-200">Penilaian{who || ' kategori ini'} belum disahkan, jadi aturan belum bisa dikirim ke peserta.</p>
+                    {onGoSettings && <button type="button" onClick={() => onGoSettings(pub.category.id)} className="h-10 rounded-full bg-amber-500 px-4 text-xs font-extrabold text-white hover:bg-amber-600 max-md:w-full md:h-auto md:rounded-xl md:py-2">Buka Pengaturan penilaian</button>}
                 </div>
             )}
 
-            <div className="mt-4 grid gap-x-10 md:grid-cols-2">
+            <div className="mt-3 grid gap-x-10 md:mt-4 md:grid-cols-2">
                 <div><Row k="Metode" v={r.method} /><Row k="Batas nilai" v={r.scale} /><Row k="Urutan peringkat" v={r.ranking} /></div>
                 <div><Row k="Penggabungan nilai juri" v={r.combine} /><Row k="Pembulatan" v={r.rounding} /><Row k="Pengurangan nilai" v={r.deduction} /></div>
             </div>
 
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-3 space-y-2.5 md:mt-4 md:space-y-3">
                 {r.criteria.map((c) => (
                     <li key={c.name}>
-                        <div className="flex items-center gap-4">
-                            <span className="w-40 shrink-0 truncate text-sm font-bold text-slate-800 dark:text-slate-100">{c.name}</span>
-                            <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-blue-600 to-violet-600" style={{ width: `${c.weight}%` }} /></span>
-                            <span className="w-12 text-right text-sm font-extrabold text-slate-900 dark:text-white">{c.weight}%</span>
+                        <div className="flex items-center gap-2 md:gap-4">
+                            <span className="w-24 shrink-0 text-[13px] leading-tight font-bold text-slate-800 md:w-40 md:truncate md:text-sm dark:text-slate-100">{c.name}</span>
+                            <span className="h-2 flex-1 overflow-hidden md:h-2.5 rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-indigo-600 md:bg-gradient-to-r md:from-blue-600 md:to-violet-600" style={{ width: `${c.weight}%` }} /></span>
+                            <span className="w-10 text-right text-[13px] font-extrabold text-slate-900 md:w-12 md:text-sm dark:text-white">{c.weight}%</span>
                         </div>
                         {(c.subs ?? []).length > 0 && (
                             <ul className="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-200 pl-4 dark:border-white/10">
@@ -112,10 +112,10 @@ function RulesCard({ pub, base, multi, onGoSettings }: { pub: Pub; base: string;
                 </div>
             )}
 
-            <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+            <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2.5 md:mt-6 md:px-4 md:py-4 dark:bg-white/5">
                 <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                        <div className="font-extrabold text-slate-900 dark:text-white">Kirim aturan ke peserta</div>
+                        <div className="text-sm font-semibold text-slate-900 md:text-base md:font-extrabold dark:text-white">Kirim aturan ke peserta</div>
                         <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Kalau diaktifkan, aturan{who || ' penilaian ini'} akan dikirim dan tampil di akun semua peserta{multi ? ' kategori ini' : ' yang terdaftar'}.</div>
                         <div className="mt-2">
                             <Badge ok={pub.rules_sent && pub.up_to_date}>
@@ -129,7 +129,7 @@ function RulesCard({ pub, base, multi, onGoSettings }: { pub: Pub; base: string;
                 {pub.rules_sent && !pub.up_to_date && (
                     <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan perubahan untuk peserta (opsional)" className={`${field} flex-1`} />
-                        <button type="button" disabled={busy} onClick={() => send(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60"><Send className="h-4 w-4" /> Kirim perubahan</button>
+                        <button type="button" disabled={busy} onClick={() => send(true)} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 md:h-12 text-sm font-extrabold md:rounded-2xl text-white hover:bg-indigo-700 disabled:opacity-60"><Send className="h-4 w-4" /> Kirim perubahan</button>
                     </div>
                 )}
             </div>
@@ -168,30 +168,30 @@ function EventCards({ ev, base, multi, onGoSettings }: { ev: EventPub; base: str
 
     return (
         <>
-            <div className={`${solid} p-5 sm:p-6`}>
+            <div className={`${solid} p-3 md:p-6`}>
                 <h3 className={h}>Tampilkan hasil</h3>
                 <p className={sub}>Berlaku untuk seluruh event{multi ? ' (semua kategori)' : ''}. Pilih dulu apa yang boleh dilihat peserta, lalu aktifkan saklarnya. Hasil tampil sebagai "sementara" sampai tahap Tetapkan Hasil. Nama juri dan nilai per juri tidak pernah ditampilkan.</p>
 
                 {blocked && (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 dark:bg-amber-400/10">
-                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Hasil baru bisa ditampilkan setelah semua kategori disahkan. Belum disahkan: {ev.pending.map((p) => p.name).join(', ')}.</p>
-                        {onGoSettings && <button type="button" onClick={() => onGoSettings(ev.pending[0].id)} className="rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white hover:bg-amber-600">Buka Pengaturan penilaian</button>}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 md:mt-4 md:gap-3 md:px-4 md:py-3 dark:bg-amber-400/10">
+                        <p className="text-[13px] leading-snug font-bold text-amber-900 md:text-sm dark:text-amber-200">Hasil baru bisa ditampilkan setelah semua kategori disahkan. Belum disahkan: {ev.pending.map((p) => p.name).join(', ')}.</p>
+                        {onGoSettings && <button type="button" onClick={() => onGoSettings(ev.pending[0].id)} className="h-10 rounded-full bg-amber-500 px-4 text-xs font-extrabold text-white hover:bg-amber-600 max-md:w-full md:h-auto md:rounded-xl md:py-2">Buka Pengaturan penilaian</button>}
                     </div>
                 )}
 
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="mt-3 grid gap-2 md:mt-4 md:grid-cols-3 md:gap-3">
                     {visOptions.map(({ k, t, d, i: Icon }) => (
-                        <button key={k} type="button" disabled={visOn} onClick={() => setChoice(k)} className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-not-allowed ${choice === k ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-slate-300 dark:border-white/10'} ${visOn && choice !== k ? 'opacity-50' : ''}`}>
+                        <button key={k} type="button" disabled={visOn} onClick={() => setChoice(k)} className={`rounded-2xl border-2 p-3 text-left transition md:p-4 disabled:cursor-not-allowed ${choice === k ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 hover:border-slate-300 dark:border-white/10'} ${visOn && choice !== k ? 'opacity-50' : ''}`}>
                             <Icon className={`h-5 w-5 ${choice === k ? 'text-indigo-700' : 'text-slate-400'}`} />
-                            <div className="mt-2 font-extrabold text-slate-900 dark:text-white">{t}</div>
-                            <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">{d}</div>
+                            <div className="mt-1.5 text-sm font-semibold text-slate-900 md:mt-2 md:text-base md:font-extrabold dark:text-white">{t}</div>
+                            <div className="mt-0.5 text-[11px] leading-snug text-slate-600 md:text-xs dark:text-slate-300">{d}</div>
                         </button>
                     ))}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5 md:gap-4 md:px-4 md:py-4 dark:bg-white/5">
                     <div className="min-w-0">
-                        <div className="font-extrabold text-slate-900 dark:text-white">Aktifkan pilihan di atas</div>
+                        <div className="text-sm font-semibold text-slate-900 md:text-base md:font-extrabold dark:text-white">Aktifkan pilihan di atas</div>
                         <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
                             {visOn ? 'Pilihan terkunci selama aktif. Matikan saklar untuk mengganti.' : choice === 'hidden' ? 'Pilih "Nilai peserta sendiri" atau "Nilai semua peserta" dulu.' : 'Setelah diaktifkan, peserta langsung melihat hasil sesuai pilihan.'}
                         </div>
@@ -201,27 +201,27 @@ function EventCards({ ev, base, multi, onGoSettings }: { ev: EventPub; base: str
                 </div>
             </div>
 
-            <div className={`${solid} p-5 sm:p-6`}>
+            <div className={`${solid} p-3 md:p-6`}>
                 <h3 className={h}>Keberatan peserta</h3>
                 <p className={sub}>Berlaku untuk seluruh event{multi ? ' (semua kategori)' : ''}. Perubahan tersimpan otomatis.</p>
 
-                <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 dark:bg-white/5">
+                <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2.5 md:mt-4 md:px-4 md:py-4 dark:bg-white/5">
                     <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                            <div className="font-extrabold text-slate-900 dark:text-white">Buka pengajuan keberatan</div>
+                            <div className="text-sm font-semibold text-slate-900 md:text-base md:font-extrabold dark:text-white">Buka pengajuan keberatan</div>
                             <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Kalau diaktifkan, peserta bisa mengajukan keberatan dari akun mereka.</div>
                             <div className="mt-2"><Badge ok={open}>{open ? 'Pengajuan dibuka' : 'Pengajuan ditutup'}</Badge></div>
                         </div>
                         <Switch on={open} busy={busy === 'appeal'} onClick={toggleAppeals} />
                     </div>
                     <label className="mt-4 block">
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Batas waktu keberatan (opsional)</span>
+                        <span className="text-xs font-semibold text-slate-600 md:text-[11px] md:font-extrabold md:uppercase md:tracking-wider dark:text-slate-300">Batas waktu keberatan (opsional)</span>
                         <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} onBlur={saveDeadline} className={`${field} mt-1`} />
                     </label>
                 </div>
 
                 {ev.appeals.length === 0 ? (
-                    <div className="mt-4 flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center dark:border-white/10">
+                    <div className="mt-4 flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 px-4 py-5 text-center md:py-8 dark:border-white/10">
                         <MessageSquareWarning className="h-7 w-7 text-slate-400" />
                         <p className="mt-2 font-extrabold text-slate-900 dark:text-white">Belum ada keberatan</p>
                     </div>
@@ -262,7 +262,7 @@ export default function Publikasi({ onGoSettings }: { btn?: string; onGoSettings
 
     const multi = pubs.length > 1;
     return (
-        <div className="space-y-5">
+        <div className="space-y-3 pb-24 md:space-y-5 md:pb-0">
             {pubs.map((p) => <RulesCard key={p.category.id} pub={p} base={base} multi={multi} onGoSettings={onGoSettings} />)}
             <EventCards ev={ev} base={base} multi={multi} onGoSettings={onGoSettings} />
         </div>

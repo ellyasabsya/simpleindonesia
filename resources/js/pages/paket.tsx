@@ -1,8 +1,11 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Package as PackageIcon, Percent } from 'lucide-react';
 import Footer from '@/components/landing/footer';
+import SiteNavbar from '@/components/site-navbar';
 import PackageCardView, { cardCss, type PackageCard } from '@/components/landing/package-card';
 import PageBackground from '@/components/page-background';
+import PaketMobile from '@/components/mobile/pages/paket-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 const chip =
     'inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/80 px-5 py-3 text-sm font-bold text-slate-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-100';
@@ -10,21 +13,24 @@ const chip =
 export default function Paket() {
     const { packages = [] } = usePage<{ packages?: PackageCard[] }>().props;
     const hasShare = packages.some((p) => p.price.note === 'bagi hasil');
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <>
+                <Head title="Semua Paket - SIMPLE" />
+                <PaketMobile packages={packages} />
+            </>
+        );
+    }
 
     return (
         <>
             <Head title="Semua Paket - SIMPLE" />
             <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
                 <PageBackground />
-                <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-                    <Link href="/" className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-700 to-blue-600 text-lg font-extrabold text-white shadow-md">S</span>
-                        <span className="text-2xl font-extrabold tracking-[0.25em] text-indigo-900 dark:text-white">SIMPLE</span>
-                    </Link>
-                    <Link href="/dashboard" className="rounded-full bg-indigo-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/30 transition hover:-translate-y-0.5 hover:bg-indigo-800">
-                        Dashboard
-                    </Link>
-                </header>
+                <SiteNavbar />
+                <div className="h-20" />
                 <div className="relative z-10">
                     <style>{cardCss}</style>
                     <main className="mx-auto max-w-7xl px-6 pb-24 pt-4">

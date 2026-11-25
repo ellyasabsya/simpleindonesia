@@ -5,15 +5,19 @@ import type { AppBarProps } from '../app-bar-types';
 import MobileBottomNav from '../bottom-nav';
 import Screen from '../screen';
 
-type Props = Pick<AppBarProps, 'title' | 'back' | 'actions' | 'large'> & { children: ReactNode };
+type Props = Pick<AppBarProps, 'title' | 'back' | 'actions' | 'large'> & {
+    /** Ganti app bar bawaan dengan bar khusus (mis. pencarian di halaman Semua Event). */
+    bar?: ReactNode;
+    children: ReactNode;
+};
 
 /** Kerangka HP untuk halaman publik: app bar + bottom nav yang sama dengan halaman peserta. */
-export default function PublicScreen({ title, back, actions, large, children }: Props) {
+export default function PublicScreen({ title, back, actions, large, bar, children }: Props) {
     const { auth } = usePage<{ auth?: { user?: unknown } }>().props;
 
     return (
         <>
-            <Screen bottomNav bar={<AppBar title={title} back={back} actions={actions} large={large} />}>
+            <Screen bottomNav bar={bar ?? <AppBar title={title} back={back} actions={actions} large={large} />}>
                 {children}
             </Screen>
             <MobileBottomNav variant={auth?.user ? 'user' : 'public'} />

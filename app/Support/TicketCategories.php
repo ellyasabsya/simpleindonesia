@@ -32,7 +32,7 @@ class TicketCategories
         foreach ($cats as $i => $c) {
             $row = (array) $t;
             unset($row['id']);
-            $row['name'] = mb_substr('Pendaftaran Peserta Lomba - '.$c->name, 0, 60);
+            $row['name'] = mb_substr('Pendaftaran Peserta - '.$c->name, 0, 60);
             $row['quota'] = max((int) $c->quota, $i === 0 ? $used : 1);
             $row['max_per_order'] = 1;
             $row['participant_category_id'] = $c->id;

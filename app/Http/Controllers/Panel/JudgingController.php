@@ -155,6 +155,8 @@ class JudgingController extends EventScopedController
             'categories' => $categories,
             'settings' => [
                 'enabled' => (bool) $s->enabled,
+                'judging_open' => (bool) ($s->judging_open ?? false),
+                'result_locked' => ! empty($s->saved_at) || ! empty($s->finalized_at),
                 'scale' => (int) $s->scale,
                 'judge_count' => (int) $s->judge_count,
                 'avg_decimals' => (int) $s->avg_decimals,
@@ -214,9 +216,33 @@ class JudgingController extends EventScopedController
         }
 
         Judging::settings($event->id, $cid);
-        DB::table('judging_settings')->where('event_id', $event->id)->where('category_id', $cid)->update(['enabled' => $open, 'updated_at' => now()]);
+        DB::table('judging_settings')->where('event_id', $event->id)->where('category_id', $cid)->update(['enabled' => $open, 'judging_open' => 0, 'updated_at' => now()]);
 
         return back()->with('success', $open ? "Penilaian{$label} disahkan. Konfigurasi terkunci dan juri sudah bisa menilai." : "Penilaian{$label} dibuka kuncinya. Konfigurasi bisa diubah lagi.");
+    }
+
+    /** Saklar form penilaian juri: juri hanya bisa menilai selama saklar ini menyala. */
+    public function toggleOpen(Request $request, Event $event): RedirectResponse
+    {
+        $this->guard($request, $event);
+        $cid = $this->cat($request, $event);
+        $open = $request->boolean('open');
+        $name = $this->catName($event, $cid);
+        $label = count(Judging::categories($event->id)) > 1 || $cid > 0 ? " untuk kategori {$name}" : '';
+        $s = Judging::settings($event->id, $cid);
+
+        if ($open) {
+            if (! $s->enabled || Judging::problems($event->id, $cid)) {
+                return back()->with('error', "Form penilaian juri{$label} belum bisa dibuka: sahkan pengaturan penilaian dulu.");
+            }
+            if ($this->locked($event, $cid) || $this->saved($event, $cid)) {
+                return back()->with('error', "Form penilaian juri{$label} tidak bisa dibuka: hasil sudah disimpan atau ditetapkan.");
+            }
+        }
+
+        DB::table('judging_settings')->where('event_id', $event->id)->where('category_id', $cid)->update(['judging_open' => $open, 'updated_at' => now()]);
+
+        return back()->with('success', $open ? "Form penilaian juri{$label} dibuka. Juri sudah bisa menilai." : "Form penilaian juri{$label} ditutup. Juri tidak bisa menilai.");
     }
 
     /** Simpan pengaturan satu kategori: skala, kriteria, juri dan pembulatan, serta pengurangan nilai. */
@@ -2240,7 +2266,7 @@ class JudgingController extends EventScopedController
         if ($request->hasFile('logo')) {
             $request->validate(['logo' => 'image|mimes:png,jpg,jpeg,webp|max:2048']);
             $this->guard($request, $event);
-            $skLogoPath = $request->file('logo')->store('sk-logo', 'public');
+            $skLogoPath = \App\Support\ImageUploader::store($request->file('logo'), 'sk-logo', 'logo', 800);
             DB::table('judging_overall')->where('event_id', $event->id)->whereNull('finalized_at')->update(['logo_path' => $skLogoPath]);
         }
         $this->guard($request, $event);
@@ -2462,7 +2488,7 @@ class JudgingController extends EventScopedController
             return back()->with('error', 'SK belum bisa ditetapkan: '.implode(' ', $pre['blockers']));
         }
 
-        $skLogo = $request->file('logo') ? $request->file('logo')->store('sk-logo', 'public') : null;
+        $skLogo = $request->file('logo') ? \App\Support\ImageUploader::store($request->file('logo'), 'sk-logo', 'logo', 800) : null;
 
         DB::transaction(function () use ($event, $data, $request, $skLogo) {
             foreach (Judging::categories($event->id) as $k) {
@@ -2573,7 +2599,7 @@ class JudgingController extends EventScopedController
 
         DB::transaction(function () use ($event, $cid, $version, $snap, $by) {
             DB::table('judging_settings')->where('event_id', $event->id)->where('category_id', $cid)->update([
-                'saved_at' => now(), 'saved_by' => $by, 'saved_version' => $version, 'updated_at' => now(),
+                'saved_at' => now(), 'saved_by' => $by, 'saved_version' => $version, 'judging_open' => 0, 'updated_at' => now(),
             ]);
             DB::table('judging_result_history')->insert([
                 'event_id' => $event->id, 'category_id' => $cid, 'version' => $version, 'action' => 'simpan',
@@ -2606,7 +2632,7 @@ class JudgingController extends EventScopedController
 
         DB::transaction(function () use ($event, $cid, $s, $data, $by) {
             DB::table('judging_settings')->where('event_id', $event->id)->where('category_id', $cid)->update([
-                'saved_at' => null, 'saved_by' => null, 'updated_at' => now(),
+                'saved_at' => null, 'saved_by' => null, 'judging_open' => 0, 'updated_at' => now(),
             ]);
             DB::table('judging_result_history')->insert([
                 'event_id' => $event->id, 'category_id' => $cid, 'version' => (int) $s->saved_version, 'action' => 'buka_kembali',

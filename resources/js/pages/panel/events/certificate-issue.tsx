@@ -9,9 +9,9 @@ type Batch = { id: number; category: string; status: string; total: number; done
 type Recent = { id: number; name: string; category: string; number: string; issued_at: string | null };
 type Props = { eventId: number; categories: Cat[]; templates: Tpl[]; batches: Batch[]; recent: Recent[]; queue: string };
 
-const card = 'rounded-3xl border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const card = 'rounded-2xl border border-white/70 bg-white/85 p-3 shadow-sm md:rounded-3xl md:p-6 md:backdrop-blur dark:border-white/10 dark:bg-white/5';
 const select =
-    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-slate-900';
+    'h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base outline-none md:h-auto md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-slate-900';
 
 const BATCH: Record<string, { text: string; cls: string }> = {
     queued: { text: 'Antre', cls: 'bg-slate-100 text-slate-600' },
@@ -66,34 +66,34 @@ export default function CertificateIssue({ eventId, categories, templates, batch
 
     return (
         <PanelLayout title="Terbitkan Sertifikat">
-            <div className="space-y-6">
+            <div className="space-y-3 pb-24 md:space-y-6 md:pb-0">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <a href={base} onClick={(e) => { e.preventDefault(); router.visit(base); }} className="text-sm text-indigo-600 hover:underline">
+                    <a href={base} onClick={(e) => { e.preventDefault(); router.visit(base); }} className="inline-flex h-10 items-center text-sm text-indigo-600 hover:underline md:h-auto">
                         ← Kembali ke Sertifikat Digital
                     </a>
                     <a
                         href={`${base}/desain`}
                         onClick={(e) => { e.preventDefault(); router.visit(`${base}/desain`); }}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
+                        className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm hover:bg-slate-50 md:h-auto md:rounded-xl md:px-3 md:py-2 dark:border-white/10 dark:hover:bg-white/5"
                     >
                         <Palette className="h-4 w-4" /> Buka desainer
                     </a>
                 </div>
 
                 {queue === 'sync' && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 md:p-4">
                         Antrean masih berjalan serentak (sync), sehingga penerbitan massal dikerjakan saat Anda menunggu dan bisa terputus. Ubah QUEUE_CONNECTION ke database dan jalankan worker.
                     </div>
                 )}
 
                 <div className={card}>
-                    <h2 className="mb-4 text-base font-semibold">Terbitkan sertifikat</h2>
+                    <h2 className="mb-3 text-[17px] font-semibold md:mb-4 md:text-base">Terbitkan sertifikat</h2>
                     {templates.length === 0 ? (
                         <p className="text-sm text-slate-600 dark:text-slate-300">
                             Belum ada template. Buat dan simpan template di desainer dahulu.
                         </p>
                     ) : (
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-3 md:grid-cols-3 md:gap-4">
                             <div>
                                 <label className="mb-1 block text-xs font-medium text-slate-500">Kategori penerima</label>
                                 <select className={select} value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -119,7 +119,7 @@ export default function CertificateIssue({ eventId, categories, templates, batch
                                     type="button"
                                     onClick={start}
                                     disabled={busy || active || !cat || cat.waiting === 0}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 md:h-auto md:rounded-xl md:py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busy || active ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                     Terbitkan {cat?.waiting ?? 0} sertifikat
@@ -138,16 +138,16 @@ export default function CertificateIssue({ eventId, categories, templates, batch
                 </div>
 
                 <div className={card}>
-                    <h2 className="mb-4 text-base font-semibold">Penerbitan terakhir</h2>
+                    <h2 className="mb-3 text-[17px] font-semibold md:mb-4 md:text-base">Penerbitan terakhir</h2>
                     {batches.length === 0 ? (
                         <p className="text-sm text-slate-500">Belum ada penerbitan.</p>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2 md:space-y-3">
                             {batches.map((b) => {
                                 const pct = b.total ? Math.round(((b.done + b.failed) / b.total) * 100) : 0;
                                 const st = BATCH[b.status] ?? BATCH.queued;
                                 return (
-                                    <div key={b.id} className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                                    <div key={b.id} className="rounded-2xl border border-slate-200 p-3 md:p-4 dark:border-white/10">
                                         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                             <span className="font-medium">{b.category}</span>
                                             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${st.cls}`}>{st.text}</span>
@@ -169,19 +169,19 @@ export default function CertificateIssue({ eventId, categories, templates, batch
                 </div>
 
                 <div className={card}>
-                    <h2 className="mb-4 text-base font-semibold">Sertifikat terbit terbaru</h2>
+                    <h2 className="mb-3 text-[17px] font-semibold md:mb-4 md:text-base">Sertifikat terbit terbaru</h2>
                     {recent.length === 0 ? (
                         <p className="text-sm text-slate-500">Belum ada sertifikat terbit.</p>
                     ) : (
                         <ul className="divide-y divide-slate-100 dark:divide-white/10">
                             {recent.map((r) => (
-                                <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                                    <span className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm md:py-2">
+                                    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                                         <span className="font-medium">{r.name}</span>
-                                        <span className="text-slate-500">{r.category} · {r.number}</span>
+                                        <span className="w-full pl-6 text-[11px] text-slate-600 md:w-auto md:pl-0 md:text-sm md:text-slate-500 dark:text-slate-300">{r.category} · {r.number}</span>
                                     </span>
-                                    <a href={`${base}/berkas/${r.id}`} className="inline-flex items-center gap-1 text-indigo-600 hover:underline">
+                                    <a href={`${base}/berkas/${r.id}`} className="inline-flex h-10 items-center gap-1 text-indigo-600 hover:underline md:h-auto">
                                         <Download className="h-4 w-4" /> Unduh
                                     </a>
                                 </li>

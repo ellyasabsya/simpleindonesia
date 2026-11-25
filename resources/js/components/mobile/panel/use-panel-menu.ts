@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { ArrowLeft, Layers } from 'lucide-react';
 import { eventMenuIcons } from '@/data/event-menu-icons';
+import { groupEventItems } from '@/data/event-menu-groups';
 import { panelMenu } from '@/data/panel-menu';
 import type { MenuGroup, MenuIcon } from '../menu/menu-types';
 
@@ -41,12 +42,9 @@ export function usePanelMenu(): { groups: MenuGroup[]; parent?: { title: string;
 
     const raw: RawGroup[] = eventNav
         ? [
-              {
-                  title: eventNav.title,
-                  items: eventNav.items
+              ...groupEventItems(eventNav.title, eventNav.items
                       .filter((i) => !(eventNav.parent && (i.href.endsWith('/kalender') || i.href.endsWith('/registrasi'))))
-                      .map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
-              },
+                      .map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard }))),
               ...(eventNav.subs?.length
                   ? [{ title: 'Sub-event', items: eventNav.subs.map((s) => ({ label: s.label, href: s.href, icon: Layers })) }]
                   : []),

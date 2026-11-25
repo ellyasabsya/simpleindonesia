@@ -9,28 +9,28 @@ import EmptyState from '../kit/empty-state';
 import Segmented from '../kit/segmented';
 import Sheet from '../kit/sheet';
 import { Row, Section } from '../kit/section';
-import { usePlatform } from '../use-platform';
+import { CARD, MUTED } from '../kit/soft';
 
 type Tab = 'riwayat' | 'teman' | 'undangan';
 type Role = 'peserta' | 'penyelenggara' | 'juri';
 
 const ROLE = {
-    peserta: { label: 'Peserta', icon: CalendarCheck, tint: '#FF2D55' },
-    penyelenggara: { label: 'Penyelenggara', icon: CalendarDays, tint: '#5856D6' },
-    juri: { label: 'Juri', icon: Gavel, tint: '#FF9500' },
+    peserta: { label: 'Peserta', icon: CalendarCheck, tint: '#E11D48' },
+    penyelenggara: { label: 'Penyelenggara', icon: CalendarDays, tint: '#4F46E5' },
+    juri: { label: 'Juri', icon: Gavel, tint: '#D97706' },
 } as const;
 
 const QUICK = [
-    { label: 'Event', sub: 'Jelajahi semua event', href: '/events', icon: CalendarDays, tint: '#007AFF' },
-    { label: 'Event saya', sub: 'Event yang Anda ikuti', href: '/event-saya', icon: CalendarCheck, tint: '#FF2D55' },
-    { label: 'Tiket saya', sub: 'Tiket yang Anda beli', href: '/tiket', icon: Ticket, tint: '#FF9500' },
-    { label: 'Voting', sub: 'Berikan suara favorit', href: '/voting', icon: Vote, tint: '#34C759' },
+    { label: 'Event', sub: 'Jelajahi semua event', href: '/events', icon: CalendarDays, tint: '#4F46E5' },
+    { label: 'Event saya', sub: 'Event yang Anda ikuti', href: '/event-saya', icon: CalendarCheck, tint: '#E11D48' },
+    { label: 'Tiket saya', sub: 'Tiket yang Anda beli', href: '/tiket', icon: Ticket, tint: '#D97706' },
+    { label: 'Voting', sub: 'Berikan suara favorit', href: '/voting', icon: Vote, tint: '#059669' },
 ];
 
-const INFO_TINT: Record<string, string> = { Email: '#007AFF', Telepon: '#34C759', Kota: '#FF3B30', Lahir: '#FF9500' };
+const INFO_TINT: Record<string, string> = { Email: '#4F46E5', Telepon: '#059669', Kota: '#DC2626', Lahir: '#D97706' };
 const KINDS: Record<string, string> = { juri: 'Undangan menjadi juri', event: 'Undangan event', teman: 'Permintaan pertemanan', lembaga: 'Undangan bergabung ke lembaga' };
 const KIND_ICON: Record<string, typeof Bell> = { juri: Gavel, teman: UserPlus, event: CalendarDays, lembaga: CalendarDays };
-const KIND_TINT: Record<string, string> = { juri: '#FF9500', teman: '#34C759', event: '#5856D6', lembaga: '#5856D6' };
+const KIND_TINT: Record<string, string> = { juri: '#D97706', teman: '#059669', event: '#4F46E5', lembaga: '#4F46E5' };
 
 function Avatar({ name, src, size }: { name: string; src?: string | null; size: number }) {
     const ini = name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
@@ -38,7 +38,7 @@ function Avatar({ name, src, size }: { name: string; src?: string | null; size: 
     return src ? (
         <img src={src} alt={name} style={style} className="shrink-0 rounded-full object-cover" />
     ) : (
-        <span style={{ ...style, fontSize: size * 0.38 }} className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-violet-600 font-semibold text-white">
+        <span style={{ ...style, fontSize: size * 0.38 }} className="flex shrink-0 items-center justify-center rounded-full bg-indigo-600 font-semibold text-white">
             {ini}
         </span>
     );
@@ -46,7 +46,6 @@ function Avatar({ name, src, size }: { name: string; src?: string | null; size: 
 
 /** Halaman profil peserta untuk HP: daftar bergrup native, tanpa banner dan kartu ala web. */
 export default function DashboardMobile(p: any) {
-    const ios = usePlatform() === 'ios';
     const [sheet, setSheet] = useState<null | 'qr' | 'scan'>(null);
     const [scanned, setScanned] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
@@ -63,9 +62,9 @@ export default function DashboardMobile(p: any) {
         setTimeout(() => setCopied(false), 1500);
     };
 
-    const surface = ios ? 'rounded-[12px] bg-white dark:bg-[#1c1c1e]' : 'rounded-[20px] border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900';
-    const accent = ios ? 'text-indigo-600 dark:text-indigo-300' : 'text-indigo-700 dark:text-indigo-300';
-    const muted = ios ? 'text-black/50 dark:text-white/50' : 'text-slate-600 dark:text-slate-300';
+    const surface = 'rounded-3xl ' + CARD;
+    const accent = 'text-indigo-700 dark:text-indigo-300';
+    const muted = MUTED;
 
     const stats: { key: Role | 'teman'; label: string; n: number }[] = [
         { key: 'peserta', label: 'Peserta', n: count('peserta') },
@@ -83,10 +82,10 @@ export default function DashboardMobile(p: any) {
         <div className="space-y-6 pb-4">
             <div className="flex flex-col items-center text-center">
                 <Avatar name={name} src={user.avatar} size={88} />
-                <h1 className={`mt-3 text-2xl ${ios ? 'font-bold' : 'font-medium'}`}>{name}</h1>
+                <h1 className="mt-3 text-[22px] leading-tight font-semibold tracking-tight">{name}</h1>
                 {user.username && <p className={`text-sm ${muted}`}>@{user.username}</p>}
                 {user.bio ? (
-                    <p className={`mt-2 max-w-xs text-[15px] leading-snug ${muted}`}>{user.bio}</p>
+                    <p className={`mt-2 max-w-xs text-[13px] leading-relaxed ${muted}`}>{user.bio}</p>
                 ) : (
                     <Link href="/profil/edit" className={`mt-2 text-sm ${accent}`}>
                         Belum ada bio. Ceritakan siapa Anda
@@ -103,7 +102,7 @@ export default function DashboardMobile(p: any) {
                     const on = tab === 'riwayat' && filter === s.key;
                     return (
                         <button key={s.key} type="button" onClick={() => pickStat(s.key)} className="flex flex-col items-center gap-0.5 active:opacity-60">
-                            <span className={`text-xl font-semibold ${on ? accent : ''}`}>{s.n}</span>
+                            <span className={`text-[17px] font-semibold ${on ? accent : ''}`}>{s.n}</span>
                             <span className={`text-[11px] ${on ? accent : muted}`}>{s.label}</span>
                         </button>
                     );
@@ -130,7 +129,7 @@ export default function DashboardMobile(p: any) {
 
             {isJudge && (
                 <Section>
-                    <Row icon={Gavel} tint="#FF9500" label={judgeTasks > 0 ? 'Mulai menilai' : 'Panel juri'} sub={judgeTasks > 0 ? `${judgeTasks} tugas penilaian` : undefined} href="/juri-saya" badge={judgeTasks} />
+                    <Row icon={Gavel} tint="#D97706" label={judgeTasks > 0 ? 'Mulai menilai' : 'Panel juri'} sub={judgeTasks > 0 ? `${judgeTasks} tugas penilaian` : undefined} href="/juri-saya" badge={judgeTasks} />
                 </Section>
             )}
 
@@ -142,7 +141,7 @@ export default function DashboardMobile(p: any) {
 
             <Section title="Data diri" footer={pct < 100 ? `Profil ${pct}% lengkap` : undefined}>
                 {info.map((i: any) => (
-                    <Row key={i.label} icon={i.icon} tint={INFO_TINT[i.label] ?? '#8E8E93'} label={i.label} value={i.value || 'Tambah'} href={i.value ? undefined : '/profil/edit'} />
+                    <Row key={i.label} icon={i.icon} tint={INFO_TINT[i.label] ?? '#64748B'} label={i.label} value={i.value || 'Tambah'} href={i.value ? undefined : '/profil/edit'} />
                 ))}
             </Section>
 
@@ -161,7 +160,7 @@ export default function DashboardMobile(p: any) {
                     <div className="space-y-5">
                         {filter !== 'semua' && (
                             <Section>
-                                <Row icon={History} tint="#8E8E93" label={`Filter: ${ROLE[filter as Role].label}`} value="Hapus" onClick={() => setFilter('semua')} />
+                                <Row icon={History} tint="#64748B" label={`Filter: ${ROLE[filter as Role].label}`} value="Hapus" onClick={() => setFilter('semua')} />
                             </Section>
                         )}
                         {hp.rows.length === 0 ? (
@@ -229,7 +228,7 @@ export default function DashboardMobile(p: any) {
                         ) : (
                             ip.rows.map((i: any) => (
                                 <Section key={i.id} title={KINDS[i.kind]}>
-                                    <Row icon={KIND_ICON[i.kind] ?? CalendarDays} tint={KIND_TINT[i.kind] ?? '#5856D6'} label={i.from} sub={[i.title, i.date ? fmt(i.date) : null].filter(Boolean).join(' · ')} />
+                                    <Row icon={KIND_ICON[i.kind] ?? CalendarDays} tint={KIND_TINT[i.kind] ?? '#4F46E5'} label={i.from} sub={[i.title, i.date ? fmt(i.date) : null].filter(Boolean).join(' · ')} />
                                     <div className="flex gap-2 p-3">
                                         <div className="flex-1">
                                             <Button full variant="tonal" onClick={() => answer(i, false)}>
@@ -251,13 +250,13 @@ export default function DashboardMobile(p: any) {
             </div>
 
             <Section footer="Daftarkan lembaga, ajukan event, tayang setelah diperiksa admin.">
-                <Row icon={Sparkles} tint="#AF52DE" label="Punya acara? Buat event sendiri" value={undefined} href={lembagaReady ? '/panel' : '/lembaga/daftar'} sub={lembagaReady ? 'Buka panel lembaga' : 'Daftar lembaga'} />
+                <Row icon={Sparkles} tint="#7C3AED" label="Punya acara? Buat event sendiri" value={undefined} href={lembagaReady ? '/panel' : '/lembaga/daftar'} sub={lembagaReady ? 'Buka panel lembaga' : 'Daftar lembaga'} />
             </Section>
 
             <Sheet open={sheet === 'qr'} onClose={closeSheet} title="Kartu QR saya">
                 <div className="flex flex-col items-center gap-3 pb-2">
                     <Avatar name={name} src={user.avatar} size={56} />
-                    <p className="text-lg font-semibold">{name}</p>
+                    <p className="text-[17px] font-semibold">{name}</p>
                     <div className="rounded-2xl bg-white p-4 shadow-sm">
                         <QRCodeSVG value={shareUrl} size={200} level="M" />
                     </div>
@@ -273,7 +272,7 @@ export default function DashboardMobile(p: any) {
             <Sheet open={sheet === 'scan'} onClose={closeSheet} title="Pindai QR teman">
                 {scanned ? (
                     <div className="space-y-4 text-center">
-                        <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#34C759]/15 text-[#34C759]">
+                        <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
                             <Check className="size-6" />
                         </span>
                         <p className="font-semibold">Kode terbaca</p>

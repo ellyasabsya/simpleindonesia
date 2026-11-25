@@ -42,9 +42,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 className="flex items-center gap-3 px-6 pt-6 pb-5"
             >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
-                    S
-                </span>
+                <img src="/logo-s-sm.png" alt="SIMPLE" className="h-10 w-10 shrink-0 object-contain" />
                 <span>
                     <span className="block text-lg leading-none font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">
                         SIMPLE

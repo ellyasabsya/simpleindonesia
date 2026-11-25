@@ -1,9 +1,11 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import TicketScanner, { type Result } from '@/components/panel/ticket-scanner';
+import CheckinMobile from '@/components/mobile/pages/checkin-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-type Row = { code: string; reg_id: string | null; name: string; type: string | null; buyer: string | null; at: string | null; sub?: string | null };
+type Row = { code: string; reg_id: string | null; name: string; type: string | null; buyer: string | null; at: string | null; sub?: string | null; kind?: string; also?: boolean };
 type Props = { eventId: number; rows: Row[]; subs?: string[] };
 
 const PER_PAGE = 25;
@@ -15,20 +17,35 @@ function xsrf() {
     return m ? decodeURIComponent(m[1]) : '';
 }
 
+function KindBadge({ r }: { r: Row }) {
+    return (
+        <>
+            <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${r.kind === 'pengunjung' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800'}`}>{r.kind === 'pengunjung' ? 'Pengunjung' : 'Peserta'}</span>
+            {r.also && <span className="whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Juga peserta</span>}
+        </>
+    );
+}
+
 export default function Checkin({ eventId, rows: initial, subs: subList }: Props) {
     const [rows, setRows] = useState<Row[]>(initial);
     const [q, setQ] = useState('');
     const [type, setType] = useState('');
     const [sub, setSub] = useState('');
+    const [kind, setKind] = useState<'' | 'pengunjung' | 'peserta'>('');
     const [tab, setTab] = useState<'semua' | 'hadir' | 'belum'>('semua');
     const [page, setPage] = useState(1);
     const [busy, setBusy] = useState('');
     const [err, setErr] = useState('');
+    const phone = usePhone();
 
     const mark = useCallback((code: string, at: string) => {
         setRows((l) => l.map((r) => (r.code === code ? { ...r, at } : r)));
     }, []);
-    const onIn = useCallback((r: Result) => { if (r.code && r.at) mark(r.code, r.at); }, [mark]);
+    const onIn = useCallback((r: Result) => {
+        const codes = (r as Result & { codes?: string[] }).codes;
+        if (codes && r.at) codes.forEach((c) => mark(c, r.at as string));
+        else if (r.code && r.at) mark(r.code, r.at);
+    }, [mark]);
 
     const rowCheckin = async (r: Row) => {
         setBusy(r.code); setErr('');
@@ -56,7 +73,18 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
     const hasSub = subs.length > 0;
 
     // Statistik mengikuti chip sub-event yang dipilih
-    const scoped = useMemo(() => (sub ? rows.filter((r) => r.sub === sub) : rows), [rows, sub]);
+    const inSub = useMemo(() => (sub ? rows.filter((r) => r.sub === sub) : rows), [rows, sub]);
+    const showKind = useMemo(() => rows.some((r) => r.kind === 'pengunjung') && rows.some((r) => r.kind !== 'pengunjung'), [rows]);
+    const kindStat = useMemo(() => {
+        const m = { pengunjung: { t: 0, h: 0 }, peserta: { t: 0, h: 0 } };
+        for (const r of inSub) {
+            const k = r.kind === 'pengunjung' ? 'pengunjung' : 'peserta';
+            m[k].t += 1;
+            if (r.at) m[k].h += 1;
+        }
+        return m;
+    }, [inSub]);
+    const scoped = useMemo(() => (kind ? inSub.filter((r) => (r.kind ?? 'peserta') === kind) : inSub), [inSub, kind]);
     const total = scoped.length;
     const hadir = useMemo(() => scoped.filter((r) => r.at).length, [scoped]);
     const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
@@ -104,19 +132,33 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
 
     return (
         <PanelLayout title="Check-in">
-            <div className="space-y-5">
+            {phone && (
+                <CheckinMobile
+                    scanner={<TicketScanner eventId={eventId} inline onCheckedIn={onIn} />}
+                    hadir={hadir} total={total} pct={pct}
+                    tab={tab} setTab={(t) => { setTab(t); setPage(1); }}
+                    q={q} setQ={(v) => { setQ(v); setPage(1); }}
+                    type={type} setType={(v) => { setType(v); setPage(1); }} types={types}
+                    sub={sub} setSub={(v) => { setSub(v); setPage(1); }} subs={subs} subStat={subStat}
+                    allHadir={rows.filter((r) => r.at).length} allTotal={rows.length}
+                    showKind={showKind} kind={kind} setKind={(v) => { setKind(v as typeof kind); setPage(1); }} kindStat={kindStat}
+                    view={view} count={list.length} busy={busy} err={err} onCheckin={rowCheckin}
+                    cur={cur} pages={pages} setPage={setPage}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-5'}>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                     {stat('Sudah hadir', hadir, `(${pct}%)`)}
                     {stat('Belum hadir', total - hadir)}
-                    {stat('Total tiket lunas', total)}
+                    {stat('Total terdaftar', total)}
                 </div>
                 <div className="-mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
                     <div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 transition-all" style={{ width: `${pct}%` }} />
                 </div>
 
                 <div className={`${card} p-5`}>
-                    <TicketScanner eventId={eventId} inline onCheckedIn={onIn} />
+                    {!phone && <TicketScanner eventId={eventId} inline onCheckedIn={onIn} />}
                 </div>
 
                 <div className={`${card} overflow-hidden`}>
@@ -137,6 +179,15 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                                 </select>
                             )}
                         </div>
+                                                {showKind && (
+                            <div className="flex flex-wrap gap-2">
+                                {([['', 'Semua', { t: inSub.length, h: inSub.filter((r) => r.at).length }], ['pengunjung', 'Pengunjung', kindStat.pengunjung], ['peserta', 'Peserta', kindStat.peserta]] as const).map(([k, l, st]) => (
+                                    <button key={k} type="button" onClick={() => { setKind(k); setPage(1); }} className={chip(kind === k)}>
+                                        {l} · hadir {st.h} dari {st.t}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {hasSub && (
                             <div className="flex flex-wrap gap-2">
                                 <button type="button" onClick={() => { setSub(''); setPage(1); }} className={chip(sub === '')}>
@@ -153,7 +204,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                     {err && <p className="px-5 pb-3 text-xs font-semibold text-rose-600">{err}</p>}
 
                     {view.length === 0 ? (
-                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{total === 0 ? 'Belum ada tiket lunas.' : 'Tidak ada data yang cocok.'}</p>
+                        <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{total === 0 ? 'Belum ada data check-in.' : 'Tidak ada data yang cocok.'}</p>
                     ) : (
                         <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
                             <table className="w-full min-w-[820px] text-sm">
@@ -163,7 +214,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                                         <th className="px-3 py-3">Peserta</th>
                                         {hasSub && <th className="px-3 py-3">Sub-event</th>}
                                         <th className="px-3 py-3">Jenis</th>
-                                        <th className="px-3 py-3">Pembeli</th>
+                                        <th className="px-3 py-3">Pembeli / sekolah</th>
                                         <th className="w-[170px] px-3 py-3">Kehadiran</th>
                                         <th className="w-[120px] px-5 py-3 text-right">Aksi</th>
                                     </tr>
@@ -174,7 +225,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                                             <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
                                             <td className="px-3 py-3"><div className="font-extrabold">{r.name}</div><div className="font-mono text-[11px] text-slate-500">{r.code}</div></td>
                                             {hasSub && <td className="px-3 py-3 font-semibold">{r.sub}</td>}
-                                            <td className="px-3 py-3">{r.type && <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span>}</td>
+                                            <td className="px-3 py-3"><div className="flex flex-wrap items-center gap-1"><KindBadge r={r} />{r.type && <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span>}</div></td>
                                             <td className="px-3 py-3 font-semibold">{r.buyer}</td>
                                             <td className="px-3 py-3">
                                                 {r.at

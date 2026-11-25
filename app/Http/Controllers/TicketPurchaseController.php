@@ -39,6 +39,14 @@ class TicketPurchaseController extends Controller
         return $m;
     }
 
+    /** Pendaftaran peserta lewat tiket: 1 pesanan = 1 tiket (tidak bisa membelikan orang lain). */
+    private function maxPerOrder(Event $event, $type): int
+    {
+        $peserta = $event->registration_method === 'ticket' && ($type->audience ?? 'peserta') === 'peserta';
+
+        return $peserta ? 1 : (int) $type->max_per_order;
+    }
+
     private function sold(int $typeId): int
     {
         return (int) DB::table('ticket_orders')->where('ticket_type_id', $typeId)
@@ -78,7 +86,8 @@ class TicketPurchaseController extends Controller
                 'require_holder_details' => (bool) $t->require_holder_details,
                 'support_enabled' => (bool) $t->support_enabled,
                 'support_options' => json_decode((string) $t->support_options, true) ?: [],
-                'max_per_order' => (int) $t->max_per_order,
+                'max_per_order' => $this->maxPerOrder($event, $t),
+                'is_peserta' => ($t->audience ?? 'peserta') === 'peserta' || str_starts_with((string) $t->name, 'Pendaftaran'),
             ])->values();
 
         return response()->json([
@@ -98,11 +107,20 @@ class TicketPurchaseController extends Controller
     {
         $this->guard($event);
 
-        $tt = DB::table('ticket_types')->where('event_id', $event->id)->where('id', (int) $request->input('ticket_type_id'))->first(['price', 'require_holder_details', 'support_enabled', 'support_options']);
+        $tt = DB::table('ticket_types')->where('event_id', $event->id)->where('id', (int) $request->input('ticket_type_id'))->first(['price', 'require_holder_details', 'support_enabled', 'support_options', 'audience', 'name']);
         $free = $tt !== null && (int) $tt->price === 0;
         $req = $tt !== null && (bool) $tt->require_holder_details;
         $sup = $tt !== null && (bool) $tt->support_enabled;
         $supOpts = $sup ? (json_decode((string) $tt->support_options, true) ?: []) : [];
+
+        // Tiket pendaftaran peserta: wajib login, email pembeli selalu diambil dari akun (kunci anti-ganda).
+        $isPeserta = $tt !== null && (($tt->audience ?? 'peserta') === 'peserta' || str_starts_with((string) $tt->name, 'Pendaftaran'));
+        if ($isPeserta) {
+            if (! $request->user()) {
+                return redirect('/login');
+            }
+            $request->merge(['buyer_email' => mb_strtolower(trim($request->user()->email))]);
+        }
 
         $data = $request->validate([
             'ticket_type_id' => ['required', 'integer'],
@@ -139,8 +157,9 @@ class TicketPurchaseController extends Controller
             if (! $type || $type->valid_until->copy()->endOfDay()->isPast() || $type->valid_from->copy()->startOfDay()->isFuture()) {
                 $fail('ticket_type_id', 'Jenis tiket tidak tersedia.');
             }
-            if ($data['quantity'] > $type->max_per_order) {
-                $fail('quantity', "Maksimal {$type->max_per_order} tiket per pesanan.");
+            $max = $this->maxPerOrder($event, $type);
+            if ($data['quantity'] > $max) {
+                $fail('quantity', $max === 1 ? 'Pendaftaran peserta hanya untuk satu orang per pesanan.' : "Maksimal {$max} tiket per pesanan.");
             }
             if (count($data['holders']) !== (int) $data['quantity']) {
                 $fail('holders', 'Jumlah pemegang tiket harus sama dengan jumlah tiket.');
@@ -198,6 +217,11 @@ class TicketPurchaseController extends Controller
                 report($e);
             }
         } elseif (($data['payment_method'] ?? '') !== 'midtrans') {
+            \App\Support\TicketMail::send(
+                $data['buyer_email'],
+                'Pesanan tiket '.$code.' diterima',
+                "Halo {$data['buyer_name']},\n\nPesanan tiket {$code} untuk \"{$event->title}\" sudah kami terima. Bukti transfer Anda sedang diverifikasi admin, dan tiket (QR code) akan dikirim ke email ini setelah disetujui.\n\nSimpan kode pesanan: {$code}"
+            );
             \App\Support\AdminNotifier::send(
                 'Pesanan tiket menunggu verifikasi',
                 "Pesanan {$code} atas nama {$data['buyer_name']} menunggu verifikasi pembayaran.",

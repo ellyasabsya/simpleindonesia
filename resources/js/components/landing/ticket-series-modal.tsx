@@ -1,5 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { Check, Loader2, X } from 'lucide-react';
+import { BELI_CSS } from '@/components/mobile/kit/beli-css';
+import { usePhone } from '@/components/mobile/use-phone';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -23,6 +25,7 @@ export default function TicketSeriesModal({ eventId, onClose }: { eventId: numbe
     const [same, setSame] = useState(true);
     // event_id -> ticket_type_id untuk kegiatan yang dicentang
     const [picked, setPicked] = useState<Record<number, number>>({});
+    const phone = usePhone();
 
     const { data, setData, post, processing, errors, transform } = useForm({
         items: [] as { event_id: number; ticket_type_id: number }[],
@@ -108,8 +111,22 @@ export default function TicketSeriesModal({ eventId, onClose }: { eventId: numbe
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-            <div role="dialog" aria-modal="true" className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+        <div
+            data-mobile-beli={phone ? '' : undefined}
+            className={phone ? 'fixed inset-0 z-[9999] flex items-end bg-slate-900/50' : 'fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm'}
+            onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+        >
+            {phone && <style>{BELI_CSS}</style>}
+            <div
+                role="dialog"
+                aria-modal="true"
+                className={phone ? 'flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[32px] bg-[#f4f6fc] text-slate-900 shadow-2xl dark:bg-[#0a0c1a] dark:text-white' : 'flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl dark:bg-neutral-900 dark:text-white'}
+            >
+                {phone && (
+                    <div className="flex justify-center pt-3">
+                        <span className="h-1 w-9 rounded-full bg-slate-300 dark:bg-white/25" />
+                    </div>
+                )}
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/10">
                     <div>
                         <h2 className="text-xl font-extrabold">Beli Tiket</h2>
@@ -177,7 +194,7 @@ export default function TicketSeriesModal({ eventId, onClose }: { eventId: numbe
                             <h3 className="mt-6 mb-3 text-base font-bold">Data Pembeli</h3>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div><label className="mb-1 block text-sm font-bold">Nama *</label><input className={inp} placeholder="Nama pembeli" value={data.buyer_name} onChange={(e) => setData('buyer_name', e.target.value)} />{err('buyer_name') && <p className="mt-1 text-xs text-red-600">{err('buyer_name')}</p>}</div>
-                                <div><label className="mb-1 block text-sm font-bold">Email *</label><input className={inp} placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
+                                <div><label className="mb-1 block text-sm font-bold">Email *</label><input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp} placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
                             </div>
                             <div className="mt-4"><label className="mb-1 block text-sm font-bold">No. Telepon *</label><input className={inp} placeholder="+6281234567890" value={data.buyer_phone} onChange={(e) => setData('buyer_phone', e.target.value)} />{err('buyer_phone') && <p className="mt-1 text-xs text-red-600">{err('buyer_phone')}</p>}</div>
 
@@ -200,7 +217,7 @@ export default function TicketSeriesModal({ eventId, onClose }: { eventId: numbe
                                         {!(i === 0 && same) && <input className={`${inp} mt-2`} placeholder="Nama pemegang tiket" value={h} onChange={(e) => setHolder(i, e.target.value)} />}
                                         {needDetail && !(i === 0 && same) && (
                                             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                                <div><input className={inp} placeholder="Email pemegang" value={hEmails[i]} onChange={(e) => setField('holder_emails', i, e.target.value)} />{err(`holder_emails.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_emails.${i}`)}</p>}</div>
+                                                <div><input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp} placeholder="Email pemegang" value={hEmails[i]} onChange={(e) => setField('holder_emails', i, e.target.value)} />{err(`holder_emails.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_emails.${i}`)}</p>}</div>
                                                 <div><input className={inp} placeholder="Telepon pemegang" value={hPhones[i]} onChange={(e) => setField('holder_phones', i, e.target.value)} />{err(`holder_phones.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_phones.${i}`)}</p>}</div>
                                             </div>
                                         )}

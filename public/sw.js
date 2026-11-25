@@ -10,7 +10,7 @@
  *   tidak disentuh sama sekali. Berkas /storage dan semua halaman (termasuk
  *   admin, panel, pembayaran) hanya lewat jaringan, tidak pernah di-cache.
  */
-const VERSION = 'v1';
+const VERSION = 'v3';
 const STATIC_CACHE = `simple-static-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/icons/icon-512.png'];

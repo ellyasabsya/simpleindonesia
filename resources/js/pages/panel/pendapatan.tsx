@@ -1,4 +1,6 @@
 import UserLayout from '@/components/user/user-layout';
+import PanelPendapatanMobile from '@/components/mobile/pages/panel-pendapatan-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { Link, router, useForm } from '@inertiajs/react';
 import { ChevronLeft, FileText, Inbox, Lock, X } from 'lucide-react';
 import { useState } from 'react';
@@ -36,6 +38,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
     const [target, setTarget] = useState<Bal | null>(null);
     const [pinMode, setPinMode] = useState(false);
     const [zoom, setZoom] = useState<string | null>(null);
+    const phone = usePhone();
 
     const wd = useForm({ event_id: '', amount: '', pin: '' });
     const pinForm = useForm({ password: '', code: '', pin: '' });
@@ -79,7 +82,26 @@ export default function PanelPendapatan({ summary, balances, history, account, h
 
     return (
         <UserLayout title="Pendapatan" hasPanel>
-            <div className="w-full space-y-5">
+            {phone && (
+                <PanelPendapatanMobile
+                    summary={summary}
+                    totals={totals}
+                    balances={balances}
+                    history={history}
+                    hasAccount={hasAccount}
+                    holdUntil={hold_until}
+                    canWithdraw={can_withdraw}
+                    hasPin={has_pin}
+                    pinLockedUntil={pin_locked_until}
+                    min={min}
+                    acc={acc}
+                    onSubmitAcc={submitAcc}
+                    onStart={start}
+                    onPin={() => setPinMode(true)}
+                    onZoom={setZoom}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'w-full space-y-5'}>
                 <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-900 via-blue-600 to-violet-600 px-8 py-7 text-white shadow-lg shadow-indigo-500/20">
                     <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/10" />
                     <div className="relative">

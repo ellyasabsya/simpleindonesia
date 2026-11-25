@@ -15,7 +15,7 @@ const links = [
     { label: 'Berita', id: 'berita' },
 ];
 
-const pageLinks: Record<string, string> = { event: '/events', berita: '/berita' };
+const pageLinks: Record<string, string> = { event: '/events', tiket: '/tickets', voting: '/voting', paket: '/paket', berita: '/berita' };
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
@@ -24,7 +24,7 @@ export default function Navbar() {
     const { user, dashboardUrl } = useAuth();
     const path = usePage().url.split('?')[0].split('#')[0];
     const onHome = path === '/';
-    const pathActive = path.startsWith('/events') ? 'event' : path.startsWith('/berita') ? 'berita' : null;
+    const pathActive = Object.entries(pageLinks).find(([, href]) => path === href || path.startsWith(href + '/'))?.[0] ?? null;
     const hrefFor = (id: string) => (onHome ? `#${id}` : (pageLinks[id] ?? `/#${id}`));
     const go = (e: { preventDefault: () => void }, id: string) => {
         e.preventDefault();
@@ -66,9 +66,7 @@ export default function Navbar() {
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
                 <a href={onHome ? '#hero' : '/'} onClick={(e) => (onHome ? goTo(e, 'hero') : go(e, 'hero'))} className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
-                        S
-                    </span>
+                    <img src="/logo-s-sm.png" alt="SIMPLE" className="h-10 w-10 shrink-0 object-contain" />
                     <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">
                         SIMPLE
                     </span>

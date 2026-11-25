@@ -56,7 +56,7 @@ function show() {
     el.innerHTML = `
         <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
         <div class="card">
-            <div class="logo">S</div>
+            <div class="logo" style="background:none;box-shadow:none"><img src="/logo-s.png" alt="" style="width:100%;height:100%;object-fit:contain"></div>
             <div class="ok"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
             <div class="brand">SIMPLE</div>
             <div class="msg">Pembayaran Aman</div>

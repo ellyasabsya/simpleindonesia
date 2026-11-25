@@ -1,6 +1,8 @@
 import { openPayScreen } from '@/lib/pay-screen';
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { Check, Loader2, X } from 'lucide-react';
+import { BELI_CSS } from '@/components/mobile/kit/beli-css';
+import { usePhone } from '@/components/mobile/use-phone';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -23,6 +25,24 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
     const [paying, setPaying] = useState(false);
     const [pendingCode, setPendingCode] = useState('');
     const [payMsg, setPayMsg] = useState('');
+    const [doneKind, setDoneKind] = useState<'online' | 'pending' | ''>('');
+    const [orderCode, setOrderCode] = useState('');
+    const [copied, setCopied] = useState('');
+    const [proofErr, setProofErr] = useState('');
+    const copyText = (text: string, key: string) => {
+        navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1600); }).catch(() => {});
+    };
+    const pickProof = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0] ?? null;
+        if (f && f.size > 5 * 1024 * 1024) {
+            setProofErr('Ukuran file maksimal 5 MB. Coba tangkapan layar bukti transfer atau foto yang lebih kecil.');
+            setData('payment_proof', null);
+            return;
+        }
+        setProofErr('');
+        setData('payment_proof', f);
+    };
+    const phone = usePhone();
 
     const pay = (code: string) => {
         setPaying(true);
@@ -31,8 +51,8 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
         openPayScreen({
             tokenUrl: `/midtrans/token/${code}`,
             syncUrl: `/midtrans/ticket-sync/${code}`,
-            onSuccess: () => { setPaying(false); setPendingCode(''); setDone(true); },
-            onPending: () => { setPaying(false); setPendingCode(''); setDone(true); },
+            onSuccess: () => { setPaying(false); setPendingCode(''); setDoneKind('online'); setDone(true); },
+            onPending: () => { setPaying(false); setPendingCode(''); setDoneKind('pending'); setDone(true); },
             onClose: () => { setPaying(false); setPayMsg('Pembayaran belum diselesaikan. Pesanan Anda ditahan 60 menit.'); },
         });
     };
@@ -42,7 +62,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
         ticket_type_id: 0,
         quantity: 1,
         buyer_name: '',
-        buyer_email: '',
+        buyer_email: ((usePage().props as any).auth?.user?.email ?? '') as string,
         buyer_phone: '',
         holders: [''],
         holder_emails: [''] as string[],
@@ -106,6 +126,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
             preserveState: true,
             onSuccess: (page) => {
                 const f = ((page.props as any).flash ?? {}) as { pay_online?: boolean; order_code?: string };
+                if (f.order_code) setOrderCode(f.order_code);
                 if (f.pay_online && f.order_code) void pay(f.order_code);
                 else setDone(true);
             },
@@ -113,8 +134,22 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-            <div role="dialog" aria-modal="true" className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+        <div
+            data-mobile-beli={phone ? '' : undefined}
+            className={phone ? 'fixed inset-0 z-[9999] flex items-end bg-slate-900/50' : 'fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm'}
+            onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+        >
+            {phone && <style>{BELI_CSS}</style>}
+            <div
+                role="dialog"
+                aria-modal="true"
+                className={phone ? 'flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[32px] bg-[#f4f6fc] text-slate-900 shadow-2xl dark:bg-[#0a0c1a] dark:text-white' : 'flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl dark:bg-neutral-900 dark:text-white'}
+            >
+                {phone && (
+                    <div className="flex justify-center pt-3">
+                        <span className="h-1 w-9 rounded-full bg-slate-300 dark:bg-white/25" />
+                    </div>
+                )}
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/10">
                     <div>
                         <h2 className="text-xl font-extrabold">Beli Tiket</h2>
@@ -134,7 +169,13 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                     <div className="p-10 text-center">
                         <p className="text-lg font-extrabold">Pesanan berhasil dibuat</p>
                         {subtotal === 0 && <p className="mt-2 text-sm font-bold text-emerald-700">Tiket gratis sudah diterbitkan dan dikirim ke email Anda.</p>}
-                        <p className={`mt-2 text-sm text-slate-500 ${subtotal === 0 ? 'hidden' : ''}`}>Bukti transfer diterima. Setelah admin menyetujui, tiket (QR code) otomatis dikirim ke email Anda dan muncul di menu Tiket Saya di dashboard jika Anda login.</p>
+                        <p className={`mt-2 text-sm text-slate-500 ${subtotal === 0 ? 'hidden' : ''}`}>{doneKind === 'online' ? 'Pembayaran berhasil. Tiket sudah aktif dan dikirim ke email Anda, serta muncul di menu Tiket Saya jika Anda login.' : doneKind === 'pending' ? 'Pesanan tercatat. Tiket aktif otomatis begitu pembayaran Anda terkonfirmasi, tanpa menunggu persetujuan admin.' : 'Bukti transfer diterima. Setelah admin menyetujui, tiket (QR code) otomatis dikirim ke email Anda dan muncul di menu Tiket Saya di dashboard jika Anda login.'}</p>
+                        {orderCode && (
+                            <p className="mt-4 rounded-xl bg-slate-100 px-4 py-3 text-sm dark:bg-white/10">
+                                Kode pesanan <b className="font-mono">{orderCode}</b>
+                                {doneKind === '' && subtotal > 0 ? '. Simpan kode ini untuk menanyakan status verifikasi pembayaran.' : ''}
+                            </p>
+                        )}
                         <button onClick={onClose} className="mt-6 rounded-xl bg-gradient-to-r from-pink-600 to-orange-500 px-6 py-3 font-bold text-white">Tutup</button>
                     </div>
                 ) : (
@@ -176,7 +217,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                             <h3 className="mt-6 mb-3 text-base font-bold">Data Pembeli</h3>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div><label className="mb-1 block text-sm font-bold">Nama *</label><input className={inp} placeholder="Nama pembeli" value={data.buyer_name} onChange={(e) => setData('buyer_name', e.target.value)} />{err('buyer_name') && <p className="mt-1 text-xs text-red-600">{err('buyer_name')}</p>}</div>
-                                <div><label className="mb-1 block text-sm font-bold">Email *</label><input className={inp} placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
+                                <div><label className="mb-1 block text-sm font-bold">Email *</label><input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp + ((type as any)?.is_peserta ? ' bg-slate-100 opacity-70' : '')} placeholder="email@example.com" value={data.buyer_email} readOnly={!!(type as any)?.is_peserta} onChange={(e) => setData('buyer_email', e.target.value)} />{(type as any)?.is_peserta && <p className="mt-1 text-xs text-slate-500">Email otomatis dari akun Anda.</p>}{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
                             </div>
                             <div className="mt-4"><label className="mb-1 block text-sm font-bold">No. Telepon *</label><input className={inp} placeholder="+6281234567890" value={data.buyer_phone} onChange={(e) => setData('buyer_phone', e.target.value)} />{err('buyer_phone') && <p className="mt-1 text-xs text-red-600">{err('buyer_phone')}</p>}</div>
 
@@ -199,7 +240,7 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                                         {!(i === 0 && same) && <input className={`${inp} mt-2`} placeholder="Nama pemegang tiket" value={h} onChange={(e) => setHolder(i, e.target.value)} />}
                                         {needDetail && !(i === 0 && same) && (
                                             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                                <div><input className={inp} placeholder="Email pemegang" value={hEmails[i]} onChange={(e) => setHolderField('holder_emails', i, e.target.value)} />{err(`holder_emails.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_emails.${i}`)}</p>}</div>
+                                                <div><input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp} placeholder="Email pemegang" value={hEmails[i]} onChange={(e) => setHolderField('holder_emails', i, e.target.value)} />{err(`holder_emails.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_emails.${i}`)}</p>}</div>
                                                 <div><input className={inp} placeholder="Telepon pemegang" value={hPhones[i]} onChange={(e) => setHolderField('holder_phones', i, e.target.value)} />{err(`holder_phones.${i}`) && <p className="mt-1 text-xs text-red-600">{err(`holder_phones.${i}`)}</p>}</div>
                                             </div>
                                         )}
@@ -252,10 +293,10 @@ export default function TicketBuyModal({ eventId, onClose }: { eventId: number; 
                                         <div className="space-y-3 rounded-xl border p-4 text-sm">
                                     <p className="font-bold">Transfer manual</p>
                                     <p className="text-slate-600 dark:text-slate-300">
-                                        Transfer <b>{rp(subtotal + fee)}</b> ke {info.payment.bank.bank_name} <b>{info.payment.bank.bank_account_number}</b> a.n. {info.payment.bank.bank_account_holder}, lalu unggah bukti transfer.
+                                        Transfer <b>{rp(subtotal + fee)}</b> <button type="button" onClick={() => copyText(String(subtotal + fee), 'nom')} className="rounded-lg bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{copied === 'nom' ? 'Tersalin' : 'Salin'}</button> ke {info.payment.bank.bank_name} <b>{info.payment.bank.bank_account_number}</b> <button type="button" onClick={() => copyText(info.payment.bank.bank_account_number, 'rek')} className="rounded-lg bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{copied === 'rek' ? 'Tersalin' : 'Salin'}</button> a.n. {info.payment.bank.bank_account_holder}, lalu unggah bukti transfer.
                                     </p>
-                                    <FileDrop compact file={data.payment_proof} accept="image/*,application/pdf" onChange={(e) => setData('payment_proof', e.target.files?.[0] ?? null)} onClear={() => setData('payment_proof', null)} title="Klik untuk unggah bukti transfer" hint="JPG, PNG, WEBP, atau PDF" />
-                                    {err('payment_proof') && <p className="text-xs text-red-600">{err('payment_proof')}</p>}
+                                    <FileDrop compact file={data.payment_proof} accept="image/*,application/pdf" onChange={pickProof} onClear={() => setData('payment_proof', null)} title="Klik untuk unggah bukti transfer" hint="JPG, PNG, WEBP, atau PDF" />
+                                    {(proofErr || err('payment_proof')) && <p className="text-xs text-red-600">{proofErr || err('payment_proof')}</p>}
                                     {err('payment_method') && <p className="text-xs text-red-600">{err('payment_method')}</p>}
                                 </div>
                                     )}

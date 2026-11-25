@@ -2,6 +2,8 @@ import { Link, usePage } from '@inertiajs/react';
 import { ArrowRight, Banknote, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardList, Clock, Layers, MapPin, ScanLine, Ticket, Users } from 'lucide-react';
 import { useId } from 'react';
 import PanelLayout from '@/components/panel/panel-layout';
+import EventDashboardMobile from '@/components/mobile/pages/event-dashboard-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { eventMenuIcons } from '@/data/event-menu-icons';
 
 type Ev = {
@@ -132,6 +134,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
     const overall = pct(sumDone, sumTotal);
     const firstNext = tracked.map((s) => ({ label: s.label, next: progress[s.key].next })).find((x) => x.next);
     const cd = countdown(event.starts_at, event.ends_at);
+    const phone = usePhone();
 
     const s = stats?.sum;
     const hadirPct = s && s.tickets > 0 ? Math.round((s.hadir / s.tickets) * 100) : 0;
@@ -148,6 +151,21 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
 
     return (
         <PanelLayout title="Dashboard Event">
+            {phone && (
+                <EventDashboardMobile
+                    event={event}
+                    cd={cd}
+                    progress={progress}
+                    tracked={tracked}
+                    rich={rich}
+                    overall={overall}
+                    sumDone={sumDone}
+                    sumTotal={sumTotal}
+                    firstNext={firstNext}
+                    stats={stats}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-6'}>
             <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-800 via-blue-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-900/20">
                 <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
                 <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/20 blur-2xl" />
@@ -395,6 +413,7 @@ export default function EventDashboard({ event, progress = {}, parent = null, st
                     </div>
                 </section>
             )}
+            </div>
         </PanelLayout>
     );
 }

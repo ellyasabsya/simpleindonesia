@@ -1,7 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
-import Avatar from '@/components/user/avatar';
 import AppBar from '../app-bar';
 import AppBarButton from '../app-bar-button';
 import Screen from '../screen';
@@ -23,11 +22,10 @@ export default function JuriScreen({ title, judgeName, loggedIn, dark, toggleThe
             <Screen
                 bar={
                     <AppBar
-                        title={title}
+                        title={title.split(' - ')[0]}
                         back={loggedIn ? '/juri-saya' : undefined}
                         actions={
                             <>
-                                <Avatar name={judgeName} src={null} className="h-8 w-8 rounded-full text-sm" />
                                 <AppBarButton onClick={toggleTheme} label="Ganti tema">
                                     {dark ? <Sun /> : <Moon />}
                                 </AppBarButton>

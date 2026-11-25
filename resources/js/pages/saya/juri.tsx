@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { ArrowLeft, Check, Gavel } from 'lucide-react';
 import UserLayout from '@/components/user/user-layout';
+import { JuriMobile } from '@/components/mobile/pages/saya-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Row = {
     id: number;
@@ -16,6 +18,15 @@ type Row = {
 
 export default function Juri({ rows = [], pending = [] }: { rows?: Row[]; pending?: string[] }) {
     const finished = rows.filter((r) => r.status === 'selesai').length;
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <UserLayout title="Panel juri" hasPanel={false}>
+                <JuriMobile rows={rows} pending={pending} />
+            </UserLayout>
+        );
+    }
 
     return (
         <UserLayout title="Panel juri" hasPanel={false}>

@@ -39,10 +39,10 @@ export const adminMenu: AdminMenuGroup[] = [
     {
         title: 'Transaksi',
         items: [
-            { label: 'Verifikasi Tiket', href: '/admin/pesanan-tiket', icon: Ticket },
-            { label: 'Verifikasi Paket', href: '/admin/verifikasi-paket', icon: CreditCard },
             { label: 'Pendapatan', href: '/admin/pendapatan', icon: Wallet },
             { label: 'Transaksi', href: '/admin/transaksi', icon: ArrowLeftRight },
+            { label: 'Verifikasi Tiket', href: '/admin/pesanan-tiket', icon: Ticket },
+            { label: 'Verifikasi Paket', href: '/admin/verifikasi-paket', icon: CreditCard },
         ],
     },
     {

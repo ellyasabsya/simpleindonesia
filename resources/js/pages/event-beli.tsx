@@ -89,7 +89,7 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
                 <h2 className="mb-3 text-lg font-bold">Data Pembeli</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div><label className="mb-1 block text-sm font-bold">Nama *</label><input className={inp} placeholder="Nama pembeli" value={data.buyer_name} onChange={(e) => setData('buyer_name', e.target.value)} />{err('buyer_name') && <p className="mt-1 text-xs text-red-600">{err('buyer_name')}</p>}</div>
-                    <div><label className="mb-1 block text-sm font-bold">Email *</label><input className={inp} placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
+                    <div><label className="mb-1 block text-sm font-bold">Email *</label><input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" className={inp} placeholder="email@example.com" value={data.buyer_email} onChange={(e) => setData('buyer_email', e.target.value)} />{err('buyer_email') && <p className="mt-1 text-xs text-red-600">{err('buyer_email')}</p>}</div>
                 </div>
                 <div className="mt-4"><label className="mb-1 block text-sm font-bold">No. Telepon *</label><input className={inp} placeholder="+6281234567890" value={data.buyer_phone} onChange={(e) => setData('buyer_phone', e.target.value)} />{err('buyer_phone') && <p className="mt-1 text-xs text-red-600">{err('buyer_phone')}</p>}</div>
 
@@ -101,7 +101,7 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
                         <button type="button" onClick={() => setQty(data.quantity + 1)} className="px-2 text-lg">+</button>
                     </div>
                 </div>
-                <p className="mt-1 mb-3 text-xs text-slate-500">Nama ini tercetak di tiket dan dipakai saat check-in. Maksimal {type.max_per_order} tiket per pesanan.</p>
+                <p className="mt-1 mb-3 text-xs text-slate-500">Nama ini tercetak di tiket dan dipakai saat check-in. {type.max_per_order > 1 ? `Maksimal ${type.max_per_order} tiket per pesanan.` : ''}</p>
                 <div className="space-y-3">
                     {holders.map((h, i) => (
                         <div key={i} className="rounded-xl border p-3">
@@ -124,7 +124,7 @@ export default function EventBeli({ event, ticket_types, fee_percent }: Props) {
                     </div>
                     <div className="flex items-center gap-3">
                         <Link href={`/events/${event.slug}`} className="font-bold text-slate-700">Batal</Link>
-                        <button onClick={submit} disabled={processing} className="rounded-xl bg-gradient-to-r from-pink-600 to-orange-500 px-6 py-3 font-bold text-white disabled:opacity-60">Beli Tiket</button>
+                        <button onClick={submit} disabled={processing} className="h-12 rounded-full bg-indigo-600 px-6 text-sm font-medium text-white disabled:opacity-60 md:h-auto md:rounded-xl md:bg-gradient-to-r md:from-pink-600 md:to-orange-500 md:py-3 md:text-base md:font-bold">Beli Tiket</button>
                     </div>
                 </div>
             </div>

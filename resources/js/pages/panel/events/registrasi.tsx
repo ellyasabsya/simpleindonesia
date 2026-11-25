@@ -1,4 +1,6 @@
 import PanelLayout from '@/components/panel/panel-layout';
+import RegistrasiMobile from '@/components/mobile/pages/registrasi-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { Link } from '@inertiajs/react';
 import { Search, Ticket } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -27,6 +29,7 @@ export default function Registrasi({ eventId, summary, types, rows }: Props) {
     const [q, setQ] = useState('');
     const [type, setType] = useState('');
     const [status, setStatus] = useState('');
+    const phone = usePhone();
 
     const list = useMemo(() => {
         const k = q.trim().toLowerCase();
@@ -48,7 +51,13 @@ export default function Registrasi({ eventId, summary, types, rows }: Props) {
 
     return (
         <PanelLayout title="Registrasi">
-            <div className="space-y-5">
+            {phone && (
+                <RegistrasiMobile
+                    eventId={eventId} summary={summary} types={types} statuses={statuses} rows={rows} list={list}
+                    q={q} setQ={setQ} type={type} setType={setType} status={status} setStatus={setStatus}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-5'}>
                 <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
                     <div className="flex items-start gap-4">
                         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white"><Ticket className="h-6 w-6" /></span>

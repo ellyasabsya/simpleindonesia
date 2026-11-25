@@ -1,11 +1,11 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Loader2, Save } from 'lucide-react';
-import { DetailForm, type Det } from '@/pages/admin/edit-event';
+import { DetailForm, type Det } from '@/components/admin/pages/edit-event-form';
 
 type FormShape = Det & { subs: Det[] };
 type Props = { token: string; event: Det; subs: Det[]; series: boolean; categories: Record<string, string>; institution: string | null; expires_at: string };
 
-const box = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900/60';
+const box = 'rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:p-5 dark:border-white/10 dark:bg-slate-900/60';
 
 export default function PanitiaEditEvent({ token, event, subs, series, categories, institution, expires_at }: Props) {
     const form = useForm<FormShape>({
@@ -22,16 +22,16 @@ export default function PanitiaEditEvent({ token, event, subs, series, categorie
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 dark:bg-slate-950">
+        <div className="min-h-screen bg-[#f4f6fc] px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-28 sm:p-6 dark:bg-[#0a0c1a]">
             <Head title="Edit Event">
                 <meta name="robots" content="noindex" />
                 <meta name="referrer" content="no-referrer" />
             </Head>
-            <div className="mx-auto w-full max-w-4xl space-y-5">
-                <div className="rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-violet-600 px-7 py-6 text-white shadow-lg shadow-indigo-500/20">
-                    <h1 className="text-2xl font-extrabold">Edit Event</h1>
-                    <p className="mt-1 text-sm text-white/80">{institution ? `${institution} · ` : ''}Berlaku sampai {expires_at}. Link ini hanya bisa dipakai untuk satu kali simpan.</p>
-                    <p className="mt-1 text-xs text-white/70">Paket, metode pendaftaran, dan jumlah kegiatan tidak bisa diubah.</p>
+            <div className="mx-auto w-full max-w-4xl space-y-3 md:space-y-5">
+                <div className="rounded-2xl bg-gradient-to-br from-indigo-700 to-indigo-500 px-4 py-4 text-white md:rounded-3xl md:via-blue-600 md:to-violet-600 md:px-7 md:py-6 md:shadow-lg md:shadow-indigo-500/20">
+                    <h1 className="text-[22px] leading-tight font-semibold md:text-2xl md:font-extrabold">Edit Event</h1>
+                    <p className="mt-1 text-[13px] text-white/80 md:text-sm">{institution ? `${institution} · ` : ''}Berlaku sampai {expires_at}. Link ini hanya bisa dipakai untuk satu kali simpan.</p>
+                    <p className="mt-1 text-[11px] text-white/70 md:text-xs">Paket, metode pendaftaran, dan jumlah kegiatan tidak bisa diubah.</p>
                 </div>
 
                 {nErr > 0 && (
@@ -41,19 +41,19 @@ export default function PanitiaEditEvent({ token, event, subs, series, categorie
                 )}
 
                 <section className={box}>
-                    <h3 className="text-base font-extrabold">{series ? 'Event utama (rangkaian)' : 'Informasi event'}</h3>
+                    <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">{series ? 'Event utama (rangkaian)' : 'Informasi event'}</h3>
                     <DetailForm d={form.data} set={setMain} pre="" err={err} categories={categories} detail={!series} />
                 </section>
 
                 {form.data.subs.map((s, i) => (
                     <section key={s.id} className={box}>
-                        <h3 className="text-base font-extrabold">Kegiatan {i + 1}: {subs[i]?.title}</h3>
+                        <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Kegiatan {i + 1}: {subs[i]?.title}</h3>
                         <DetailForm d={s} set={(p) => setSub(i, p)} pre={`subs.${i}.`} err={err} categories={categories} detail />
                     </section>
                 ))}
 
-                <div className="sticky bottom-4 z-10 flex justify-end rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/90">
-                    <button type="button" onClick={save} disabled={form.processing} className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
+                <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex justify-end pr-20 md:pr-3 rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-lg md:backdrop-blur dark:border-white/10 dark:bg-slate-900/90">
+                    <button type="button" onClick={save} disabled={form.processing} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 text-sm font-medium text-white disabled:opacity-50 md:h-auto md:w-auto md:rounded-lg md:bg-indigo-700 md:px-5 md:py-2.5 md:font-bold md:hover:bg-indigo-800">
                         {form.processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Simpan perubahan
                     </button>
                 </div>

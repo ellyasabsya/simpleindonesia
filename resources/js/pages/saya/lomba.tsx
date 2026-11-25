@@ -2,8 +2,17 @@ import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, MapPin, Trophy } from 'lucide-react';
 import UserLayout from '@/components/user/user-layout';
+import { LombaMobile } from '@/components/mobile/pages/saya-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
-type Row = { id: number; status: string; title: string | null; category: string | null; location: string | null; starts_at: string | null; poster: string | null; can_results?: boolean };
+const STATUS_TONE: Record<string, string> = {
+    disetujui: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
+    menunggu: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
+    ditolak: 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200',
+    batal: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+};
+
+type Row = { id: number; key?: string; ticket_url?: string | null; status: string; status_code?: string; status_label?: string; title: string | null; category: string | null; location: string | null; starts_at: string | null; poster: string | null; can_results?: boolean; rules_url?: string | null };
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 
@@ -16,6 +25,15 @@ export default function Lomba({ rows = [] }: { rows?: Row[] }) {
     const visible = rows.slice((current - 1) * PER_PAGE, current * PER_PAGE);
     const from = rows.length === 0 ? 0 : (current - 1) * PER_PAGE + 1;
     const to = Math.min(current * PER_PAGE, rows.length);
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <UserLayout title="Event saya" hasPanel={false}>
+                <LombaMobile rows={rows} />
+            </UserLayout>
+        );
+    }
 
     const pages: (number | string)[] = [];
     for (let n = 1; n <= last; n++) {
@@ -48,7 +66,7 @@ export default function Lomba({ rows = [] }: { rows?: Row[] }) {
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2">
                         {visible.map((r) => (
-                            <div key={r.id} className="flex gap-4 rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-white/5">
+                            <div key={r.key ?? r.id} className="flex gap-4 rounded-3xl bg-white/80 p-4 shadow-sm dark:bg-white/5">
                                 {r.poster ? (
                                     <img src={r.poster} alt="" className="h-24 w-24 shrink-0 rounded-2xl object-cover" />
                                 ) : (
@@ -59,11 +77,21 @@ export default function Lomba({ rows = [] }: { rows?: Row[] }) {
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-2">
                                         <h2 className="truncate font-extrabold">{r.title ?? '(event dihapus)'}</h2>
-                                        <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold capitalize text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">{r.status}</span>
+                                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_TONE[r.status_code ?? 'menunggu'] ?? STATUS_TONE.menunggu}`}>{r.status_label ?? r.status}</span>
                                     </div>
                                     {r.category && <p className="text-sm text-slate-500 dark:text-slate-300">{r.category}</p>}
                                     <p className="mt-2 flex items-center gap-1.5 text-sm"><CalendarDays className="h-4 w-4" /> {fmt(r.starts_at)}</p>
                                     {r.location && <p className="flex items-center gap-1.5 text-sm"><MapPin className="h-4 w-4" /> {r.location}</p>}
+                                    {r.rules_url && (
+                                        <Link href={r.rules_url} className="mt-2 mr-2 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-bold text-white">
+                                            Lihat aturan
+                                        </Link>
+                                    )}
+                                    {r.ticket_url && (
+                                        <Link href={r.ticket_url} className="mt-2 mr-2 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-bold text-white dark:bg-white dark:text-slate-900">
+                                            Lihat tiket
+                                        </Link>
+                                    )}
                                     {r.can_results && (
                                         <Link href={`/event-saya/${r.id}/hasil`} className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-bold text-white">
                                             <Trophy className="h-4 w-4" /> Lihat hasil

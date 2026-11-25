@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
+import VotingBar from '@/components/mobile/pages/voting-bar';
 import VotingMobile from '@/components/mobile/pages/voting-mobile';
 import PublicScreen from '@/components/mobile/public/public-screen';
 import { usePhone } from '@/components/mobile/use-phone';
@@ -157,8 +158,8 @@ export default function VotingIndex() {
         return (
             <>
                 <Head title="Semua Voting - SIMPLE" />
-                <PublicScreen title="E-Voting" large>
-                    <VotingMobile items={items} />
+                <PublicScreen title="E-Voting" bar={<VotingBar q={q} setQ={setQ} cat={cat} setCat={setCat} cats={cats} />}>
+                    <VotingMobile items={items} q={q} cat={cat} />
                 </PublicScreen>
             </>
         );

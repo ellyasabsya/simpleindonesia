@@ -14,7 +14,7 @@ type Judge = { id: number; name: string; contact: string | null; active: boolean
 type Rank = { id: number; name: string; judges: number; final: number | null };
 type Sub = { id: number; title: string; categories: number; approved: number; criteria: number; judges: number; participants: number; system?: string | null };
 type Cat = { id: number; name: string; approved: boolean; participants: number };
-type Cfg = { enabled: boolean; scale: number; judge_count: number; avg_decimals: number; rounding: 'nearest' | 'up' | 'down'; deduction_enabled: boolean };
+type Cfg = { judging_open?: boolean; result_locked?: boolean; enabled: boolean; scale: number; judge_count: number; avg_decimals: number; rounding: 'nearest' | 'up' | 'down'; deduction_enabled: boolean };
 type Props = {
     event: { id: number; title: string };
     isParent: boolean;
@@ -37,19 +37,19 @@ type Props = {
     isSub?: boolean;
 };
 
-const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const card = 'rounded-2xl md:rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
 const lbl = 'text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300';
-const inp = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
-const inpSm = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
-const btn = 'rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
+const inp = 'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base outline-none md:px-4 md:py-2.5 md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
+const inpSm = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base outline-none md:py-1.5 md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 dark:border-white/10 dark:bg-white/5';
+const btn = 'rounded-2xl bg-indigo-900 px-4 py-2.5 text-sm font-extrabold md:px-5 md:py-3 text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
 const num = (n: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
 
 function Badge({ n }: { n: number }) {
-    return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-lg font-extrabold text-white shadow-lg shadow-indigo-500/30">{n}</span>;
+    return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-base font-extrabold md:text-lg text-white shadow-lg shadow-indigo-500/30">{n}</span>;
 }
 
 function Option({ on, label, approved, href }: { on: boolean; label: string; approved: boolean; href?: string }) {
-    const cls = `flex items-center gap-2.5 rounded-xl border px-3 py-2 transition ${on ? 'border-indigo-500 bg-white shadow-sm dark:bg-white/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'}`;
+    const cls = `flex items-center gap-2.5 rounded-xl border px-3 py-1.5 transition max-md:min-h-10 md:py-2 ${on ? 'border-indigo-500 bg-white shadow-sm dark:bg-white/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'}`;
     const inner = (
         <>
             <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-indigo-600' : 'border-slate-300'}`}>{on && <span className="h-2 w-2 rounded-full bg-indigo-600" />}</span>
@@ -65,9 +65,9 @@ function Stepper({ steps }: { steps: { label: string; done: boolean }[] }) {
         <ol className="grid grid-cols-4">
             {steps.map((s, i) => (
                 <li key={s.label} className="relative flex flex-col items-center text-center">
-                    {i > 0 && <span className={`absolute right-1/2 top-[18px] h-0.5 w-full ${steps[i - 1].done && s.done ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-white/10'}`} />}
-                    <span className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${s.done ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 bg-white text-slate-400 dark:bg-slate-900'}`}>{s.done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}</span>
-                    <span className="mt-2 text-xs font-bold sm:text-sm">{s.label}</span>
+                    {i > 0 && <span className={`absolute right-1/2 top-[14px] h-0.5 w-full sm:top-[18px] ${steps[i - 1].done && s.done ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-white/10'}`} />}
+                    <span className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-extrabold sm:h-9 sm:w-9 sm:text-sm ${s.done ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 bg-white text-slate-400 dark:bg-slate-900'}`}>{s.done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}</span>
+                    <span className="mt-1 text-[10px] font-bold leading-tight sm:mt-2 sm:text-sm">{s.label}</span>
                 </li>
             ))}
         </ol>
@@ -121,7 +121,7 @@ function SistemPicker(p: SistemPickerProps) {
     const hasChoice = sysActive === null || SYSTEMS.some((s) => !s.soon && sysActive.includes(s.key));
     if (!hasChoice && !p.system) {
         return (
-            <div className={`${card} p-6 text-center`}>
+            <div className={`${card} p-3 md:p-6 text-center`}>
                 <h3 className="text-base font-extrabold">Belum ada sistem penilaian yang tersedia</h3>
                 <p className="mt-1 text-sm text-slate-500">Sistem penilaian sedang dinonaktifkan oleh admin SIMPLE. Hubungi admin untuk mengaktifkannya.</p>
             </div>
@@ -151,11 +151,11 @@ function SistemPickerInner({ base, title, system, lockReason, onChosen }: { base
     };
 
     return (
-        <div className={`${card} space-y-5 p-6`}>
+        <div className={`${card} space-y-5 p-3 md:p-6`}>
             <div>
-                <h2 className="text-xl font-extrabold">Sistem penilaian</h2>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pilih sistem penilaian untuk seluruh event ini. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai muncul setelah sistem dipilih. Pengaturan per kategori dilakukan di dalam sistem.</p>
-                <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-extrabold text-indigo-700"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Event: {title}</span>
+                <h2 className="text-base font-extrabold md:text-xl">Sistem penilaian</h2>
+                <p className="mt-1 text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Pilih sistem penilaian untuk seluruh event ini. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai muncul setelah sistem dipilih. Pengaturan per kategori dilakukan di dalam sistem.</p>
+                <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700 md:px-4 md:py-1.5 md:text-sm"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Event: {title}</span>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -163,13 +163,13 @@ function SistemPickerInner({ base, title, system, lockReason, onChosen }: { base
                     const on = system === s.key;
                     const can = !s.soon && !busy && !on && canChange;
                     return (
-                        <button key={s.key} type="button" disabled={!can} onClick={() => pick(s.key)} className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-default ${on ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'} ${s.soon || (!on && !canChange) ? 'opacity-60' : ''}`}>
+                        <button key={s.key} type="button" disabled={!can} onClick={() => pick(s.key)} className={`rounded-2xl border-2 p-3 text-left transition md:p-4 disabled:cursor-default ${on ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/70 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5'} ${s.soon || (!on && !canChange) ? 'opacity-60' : ''}`}>
                             <div className="flex items-center gap-2.5">
                                 <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-indigo-600' : 'border-slate-300'}`}>{on && <span className="h-2 w-2 rounded-full bg-indigo-600" />}</span>
-                                <span className="flex-1 text-sm font-extrabold">{s.name}</span>
+                                <span className="flex-1 text-sm font-semibold md:font-extrabold">{s.name}</span>
                                 {s.soon && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">Segera hadir</span>}
                             </div>
-                            <p className="mt-1.5 pl-6 text-xs text-slate-600 dark:text-slate-300">{s.desc}</p>
+                            <p className="mt-1 pl-6 text-[11px] leading-snug text-slate-600 md:mt-1.5 md:text-xs dark:text-slate-300">{s.desc}</p>
                             <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{s.tag}</p>
                         </button>
                     );
@@ -183,7 +183,7 @@ function SistemPickerInner({ base, title, system, lockReason, onChosen }: { base
                     <p className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800"><Check className="h-4 w-4" strokeWidth={3} /> Sistem dipilih: {chosen.name}. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai sudah tersedia.</p>
                     {!canChange && <p className="text-xs font-bold text-slate-500">Sistem tidak bisa diganti karena {lockReason}.</p>}
                     <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={onChosen} className={btn}>Lanjut ke Pengaturan penilaian</button>
+                        <button type="button" onClick={onChosen} className={`${btn} max-md:h-10 max-md:py-0`}>Lanjut ke Pengaturan penilaian</button>
                         {canChange && <button type="button" disabled={busy} onClick={cancel} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">Batalkan pilihan</button>}
                     </div>
                 </div>
@@ -200,10 +200,10 @@ function ParentPenilaian({ subs = [] }: Props) {
 
     return (
         <PanelLayout title="Penilaian">
-            <div className="space-y-5">
-                <div className={`${card} space-y-4 p-6`}>
+            <div className="space-y-3 md:space-y-5">
+                <div className={`${card} space-y-4 p-3 md:p-6`}>
                     <div>
-                        <h2 className="text-xl font-extrabold">Sistem penilaian</h2>
+                        <h2 className="text-base font-extrabold md:text-xl">Sistem penilaian</h2>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Sistem dipilih di tiap sub-event. Di sini tampil sistem yang dipakai sub-event.</p>
                     </div>
                     {used.length === 0 ? (
@@ -227,15 +227,15 @@ function ParentPenilaian({ subs = [] }: Props) {
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                     {subs.map((s) => (
-                        <div key={s.id} className={`${card} flex flex-col gap-3 p-6`}>
+                        <div key={s.id} className={`${card} flex flex-col gap-3 p-3 md:p-6`}>
                             <div className="flex items-start justify-between gap-3">
-                                <h3 className="text-lg font-extrabold">{s.title}</h3>
+                                <h3 className="text-base font-extrabold md:text-lg">{s.title}</h3>
                                 <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
                             </div>
                             <p className={`text-sm font-bold ${s.system ? 'text-indigo-700' : 'text-amber-700'}`}>{s.system ? sysName(s.system) : 'Belum memilih sistem penilaian'}</p>
                             <div className="grid grid-cols-3 gap-2 text-center">
                                 {[['Kategori', s.categories], ['Juri', s.judges], ['Peserta', s.participants]].map(([l, v]) => (
-                                    <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-xl font-extrabold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
+                                    <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-base font-extrabold md:text-xl">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
                                 ))}
                             </div>
                             <Link href={`/panel/event/${s.id}/penilaian`} className="mt-auto inline-flex items-center justify-center rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-indigo-800">Kelola</Link>
@@ -316,6 +316,37 @@ function ovNum(v: any): string {
 
 /** Tabel lampiran SK: header nama menyesuaikan perorangan/tim, kolom sekolah tampil hanya bila ada datanya. */
 function SkLampiranTable({ cats, fallback }: { cats: { id: number; name?: string | null; rows: any[] }[]; fallback: string }) {
+    return (
+        <>
+            <div className="mt-1 space-y-2 md:hidden print:hidden">
+                {cats.map((c) => (
+                    <div key={`m${c.id}`} className="overflow-hidden rounded-lg border border-slate-400">
+                        <div className="bg-slate-200 px-2.5 py-1.5 text-[11px] font-bold uppercase">Kategori {c.name || fallback}</div>
+                        {c.rows.length === 0 ? (
+                            <p className="px-2.5 py-2 text-[11px] italic">Belum ada peringkat yang bisa dicantumkan.</p>
+                        ) : (
+                            <ul className="divide-y divide-slate-300">
+                                {c.rows.map((r: any, k: number) => (
+                                    <li key={k} className="flex items-start gap-2 px-2.5 py-1.5">
+                                        <span className="w-7 shrink-0 text-center text-[12px] font-bold">{r.rank}{r.shared ? ' =' : ''}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-[12px] font-semibold leading-snug">{r.name || '-'}</div>
+                                            <div className="font-mono text-[10.5px] leading-snug text-slate-600">{r.code}{String(r.school ?? '').trim() ? ' · ' + String(r.school).trim() : ''}</div>
+                                        </div>
+                                        <span className="shrink-0 text-[12px] font-semibold">{lsNf(r.score)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                ))}
+            </div>
+            <SkLampiranTableDesk cats={cats} fallback={fallback} />
+        </>
+    );
+}
+
+function SkLampiranTableDesk({ cats, fallback }: { cats: { id: number; name?: string | null; rows: any[] }[]; fallback: string }) {
     const all = cats.flatMap((c) => c.rows);
     const hasSchool = all.some((r) => String(r.school ?? '').trim() !== '');
     const teams = all.filter((r) => r.team).length;
@@ -323,7 +354,7 @@ function SkLampiranTable({ cats, fallback }: { cats: { id: number; name?: string
     const th = 'border border-slate-900 px-1.5 py-2';
     const td = 'border border-slate-900 px-1.5 py-1.5';
     return (
-        <table className="mt-1 w-full border-collapse border border-slate-900 text-[12.5px]">
+        <table className="mt-1 hidden w-full border-collapse border border-slate-900 text-[12.5px] md:table print:table">
             <thead>
                 <tr className="bg-slate-200 text-center font-bold uppercase">
                     <th className={`w-9 ${th}`}>No</th>
@@ -347,7 +378,7 @@ function SkLampiranTable({ cats, fallback }: { cats: { id: number; name?: string
                         {k === 0 && <td rowSpan={c.rows.length} className={`${td} text-center align-middle`}>{i + 1}</td>}
                         {k === 0 && <td rowSpan={c.rows.length} className={`${td} text-center align-middle`}>{c.name || fallback}</td>}
                         <td className={`${td} text-center font-bold`}>{r.rank}{r.shared ? ' =' : ''}</td>
-                        <td className={`${td} text-center font-mono text-[11.5px]`}>{r.code}</td>
+                        <td className={`${td} text-center font-mono text-[11.5px] max-md:whitespace-nowrap`}>{r.code}</td>
                         <td className={td}>{r.name || '-'}</td>
                         {hasSchool && <td className={td}>{String(r.school ?? '').trim() || '-'}</td>}
                         <td className={`${td} text-right font-semibold`}>{lsNf(r.score)}</td>
@@ -423,19 +454,19 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
     };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-3 md:space-y-5">
             <style>{`@media print { body * { visibility: hidden !important; } #sk-print, #sk-print * { visibility: visible !important; } #sk-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; } }`}</style>
 
-            <div className={`${card} space-y-4 p-6`}>
+            <div className={`${card} space-y-4 p-3 md:p-6`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-extrabold text-white">SK</span>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-xs font-extrabold text-white md:h-11 md:w-11 md:text-sm">SK</span>
                         <div>
-                            <h2 className="text-xl font-extrabold">Surat keputusan: {title}</h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua lomba dan juara umum.</p>
+                            <h2 className="text-[15px] font-semibold md:text-xl md:font-extrabold">Surat keputusan: {title}</h2>
+                            <p className="text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Satu SK memuat hasil semua lomba dan juara umum.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{progress.done}/{progress.total} kategori disimpan</span>{okBlock ? <Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link> : <span aria-disabled="true" title="Klasemen bisa dibuka setelah semua syarat penetapan terpenuhi" className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm font-extrabold text-slate-400 dark:bg-white/10 dark:text-slate-500"><Trophy className="h-4 w-4" /> Klasemen</span>}</div>
+                    <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-start"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{progress.done}/{progress.total} kategori disimpan</span>{okBlock ? <Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm max-md:h-10 max-md:py-0 font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link> : <span aria-disabled="true" title="Klasemen bisa dibuka setelah semua syarat penetapan terpenuhi" className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm max-md:h-10 max-md:py-0 font-extrabold text-slate-400 dark:bg-white/10 dark:text-slate-500"><Trophy className="h-4 w-4" /> Klasemen</span>}</div>
                 </div>
 
                 {locked ? (
@@ -445,12 +476,12 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                     </div>
                 ) : (
                     <>
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2.5 md:gap-3 xl:grid-cols-4">
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Nomor SK *</span><input className={`${inpSm} mt-1`} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Contoh: 001/SK/2026" /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Tanggal SK *</span><input className={`${inpSm} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
-                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
-                            <div className="md:col-span-2 xl:col-span-4">
+                            <label className="col-span-2 md:col-span-1"><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
+                            <label className="col-span-2 md:col-span-1"><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                            <div className="col-span-2 md:col-span-2 xl:col-span-4">
                                 <span className={`${lbl} !normal-case !tracking-normal`}>Logo kop SK (opsional)</span>
                                 <div className="mt-1 flex flex-wrap items-center gap-3">
                                     {skLogo
@@ -459,7 +490,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                     <input
                                         type="file"
                                         accept="image/png,image/jpeg,image/webp"
-                                        className="block max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-700"
+                                        className="block min-w-0 max-w-xs flex-1 text-xs md:text-sm file:mr-3 file:h-10 file:cursor-pointer file:rounded-full file:border-0 file:bg-indigo-50 file:px-4 file:text-sm file:font-bold file:text-indigo-700 md:file:h-auto md:file:rounded-xl md:file:py-2"
                                         onChange={(e) => {
                                             const f = e.target.files?.[0] ?? null;
                                             setLogoFile(f);
@@ -467,7 +498,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                         }}
                                     />
                                     {logoFile && <button type="button" onClick={() => { setLogoFile(null); setLogoPrev(null); }} className="text-xs font-bold text-rose-600">Batalkan logo baru</button>}
-                                    <span className="text-xs text-slate-500">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
+                                    <span className="w-full text-[11px] leading-snug text-slate-500 md:w-auto md:text-xs">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
                                 </div>
                             </div>
                         </div>
@@ -483,9 +514,9 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
             </div>
 
             {groups.map((g) => (
-                <div key={g.sub_id} className={`${card} space-y-5 p-6`}>
+                <div key={g.sub_id} className={`${card} space-y-5 p-3 md:p-6`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-lg font-extrabold">{g.sub}</h3>
+                        <h3 className="text-base font-extrabold md:text-lg">{g.sub}</h3>
                         <Link href={`/panel/event/${g.sub_id}/penilaian`} className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-slate-200">Buka sub-event</Link>
                     </div>
                     {g.categories.map((x) => (
@@ -496,7 +527,30 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                             </div>
                             <div className="mt-3">
                                 <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {x.table.length} tim</p>
-                                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5">
+                                <div className="space-y-2 md:hidden">{(x.table as any[]).map((t: any, ti: number) => (
+    <div key={`m${t.code}-${ti}`} className="rounded-xl border border-slate-200 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+        <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+                <span className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-extrabold ${t.rank === 1 ? 'bg-amber-400 text-white' : t.rank === 2 ? 'bg-slate-400 text-white' : t.rank === 3 ? 'bg-orange-400 text-white' : 'bg-slate-100 text-slate-600'}`}>{t.rank ?? '–'}{t.shared ? '=' : ''}</span>
+                <div className="min-w-0">
+                    <div className="whitespace-nowrap font-mono text-[12px] font-bold">{t.code}</div>
+                    <div className="truncate text-xs text-slate-500">{[t.name, t.school].filter(Boolean).join(' · ') || '–'}</div>
+                </div>
+            </div>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${(lsStatus as any)[t.status]?.c ?? 'bg-slate-100 text-slate-600'}`}>{(lsStatus as any)[t.status]?.t ?? t.status}</span>
+        </div>
+        <div className="mt-2 grid grid-cols-5 gap-1 text-center">
+            {([['Juri', `${t.judges_done}/${(x as any).need}`], ['Dasar', ovNum(t.base)], ['Kurang', t.deduction ? ovNum(t.deduction) : '–'], ['Penalti', t.penalty ? ovNum(t.penalty) : '–'], ['Akhir', ovNum(t.score)]] as [string, string][]).map(([l, v]) => (
+                <div key={l} className="min-w-0">
+                    <div className={`truncate text-[13px] leading-tight ${l === 'Akhir' ? 'font-black' : 'font-semibold'}`}>{v}</div>
+                    <div className="text-[10px] text-slate-500">{l}</div>
+                </div>
+            ))}
+        </div>
+        {t.provisional ? <div className="mt-1 text-[10px] font-bold uppercase text-amber-700">nilai sementara</div> : null}
+    </div>
+))}</div>
+<div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white/70 md:block dark:border-white/10 dark:bg-white/5">
                                     <table className="w-full min-w-[720px] text-sm">
                                         <thead>
                                             <tr className="bg-slate-50 text-left text-[11px] font-extrabold uppercase tracking-wide text-slate-500 dark:bg-white/5 dark:text-slate-300">
@@ -524,7 +578,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <span className="font-extrabold">{t.code}</span>
+                                                        <span className="whitespace-nowrap font-extrabold">{t.code}</span>
                                                         {t.name ? <span className="block text-xs text-slate-500 dark:text-slate-400">{t.name}</span> : null}
                                                     </td>
                                                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{t.school || '–'}</td>
@@ -552,9 +606,9 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
 
             <OverallSettings points={ov.points} winnerCount={ov.winner_count} tiebreak={(ov as any).tiebreak?.order ?? ['medals']} tieShared={(ov as any).tiebreak?.shared ?? true} locked={ov.locked || saved} note={saved && !ov.locked ? 'Hasil juara umum sudah disimpan. Klik "Buka kembali" di klasemen untuk mengubah pengaturan.' : null} finalizedAt={ov.finalized_at} base={base} onDirty={setDirtySet} />
 
-            <div className={`${card} space-y-4 p-6`}>
+            <div className={`${card} space-y-4 p-3 md:p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-xl font-extrabold">Klasemen juara umum</h2>
+                    <h2 className="text-base font-extrabold md:text-xl">Klasemen juara umum</h2>
                     <div className="flex flex-wrap items-center gap-2">
                         {saved && !locked ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-900">Tersimpan · {(ov as any).saved_at}</span> : ov.provisional ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span> : null}
                         {!locked && !saved && (
@@ -582,7 +636,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-sm font-black text-white shadow">{s.rank}</span>
                                     <div>
                                         <p className="text-[11px] font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Juara umum {s.rank}{s.shared ? ' (bersama)' : ''}</p>
-                                        <p className="text-lg font-extrabold leading-tight">{s.school}</p>
+                                        <p className="text-base font-extrabold md:text-lg leading-tight">{s.school}</p>
                                         <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{num(s.points)} poin</p>
                                     </div>
                                 </div>
@@ -640,15 +694,15 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                 {ov.ties && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">Ada seri yang tidak terpecahkan di posisi juara umum. Sekolah/lembaga yang seri ditetapkan sebagai juara bersama.</p>}
             </div>
 
-            <div className="rounded-3xl bg-slate-100/70 p-4 sm:p-6 dark:bg-white/5">
+            <div className="rounded-2xl md:rounded-3xl bg-slate-100/70 p-1.5 sm:p-6 dark:bg-white/5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-slate-500">Pratinjau surat keputusan</p>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{ranked} peringkat tercantum</span>
                 </div>
 
-                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 print:space-y-0">
+                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 max-md:text-[12.5px] max-md:[&_.text-justify]:!text-left print:space-y-0">
                     {/* ===== Halaman 1: Surat Keputusan ===== */}
-                    <div className="rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                    <div className="rounded-2xl bg-white p-4 shadow-sm max-md:overflow-x-auto sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
                         <div className="pb-1 text-center">
                             {skLogo
                                 ? <img src={skLogo} alt={ov.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
@@ -661,7 +715,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                             <div className="font-bold uppercase">Penetapan juara dan juara umum {title}</div>
                         </div>
 
-                        <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-y-3">
+                        <div className="mt-6 grid grid-cols-[4.75rem_1fr] gap-y-3 md:grid-cols-[6.5rem_1fr]">
                             <div>Menimbang</div>
                             <ol className="list-decimal space-y-1 pl-5 text-justify">
                                 <li>Bahwa seluruh lomba pada {title} telah dilaksanakan melalui sistem SIMPLE dan seluruh penilaian telah diselesaikan oleh juri;</li>
@@ -675,7 +729,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         </div>
 
                         <p className="mt-6 text-center font-bold">MEMUTUSKAN</p>
-                        <div className="mt-2 grid grid-cols-[6.5rem_1.25rem_1fr] gap-y-2">
+                        <div className="mt-2 grid grid-cols-[4.75rem_0.75rem_1fr] gap-y-2 md:grid-cols-[6.5rem_1.25rem_1fr]">
                             <div>Menetapkan</div><div>:</div>
                             <div className="text-justify font-bold uppercase">Keputusan tentang penetapan juara dan juara umum {title};</div>
                             <div>Kesatu</div><div>:</div>
@@ -695,7 +749,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                     </div>
 
                     {/* ===== Halaman 2: Lampiran ===== */}
-                    <div className="break-before-page rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                    <div className="break-before-page rounded-2xl bg-white p-4 shadow-sm max-md:overflow-x-auto sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
                         <div className="pb-1">
                             <p className="font-bold">LAMPIRAN SURAT KEPUTUSAN</p>
                             <p className="font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
@@ -718,7 +772,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                         {winners.length === 0
                             ? <p className="mt-2 rounded bg-amber-100 px-3 py-2 text-center text-[13px] text-amber-900">Belum ada juara umum yang bisa dicantumkan.</p>
                             : (
-                                <table className="mt-2 w-full border-collapse border border-slate-900 text-[12.5px]">
+                                <table className="mt-2 w-full border-collapse border border-slate-900 text-[12.5px] max-md:text-[11px]">
                                     <thead>
                                         <tr className="bg-slate-200 text-center font-bold uppercase">
                                             <th className="w-9 border border-slate-900 px-1.5 py-2">No</th>
@@ -753,8 +807,8 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
             </div>
 
             {!locked && (
-                <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
-                    <label className="flex cursor-pointer items-center gap-3 text-sm font-bold">
+                <div className="max-md:mb-24 md:sticky md:bottom-3 md:z-10 flex flex-wrap items-center justify-between gap-2 max-md:flex-col max-md:items-stretch md:gap-3 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 md:px-5 md:py-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
+                    <label className="flex cursor-pointer items-center gap-2.5 text-[13px] leading-snug font-bold md:gap-3 md:text-sm">
                         <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="h-5 w-5" />
                         Saya sudah memeriksa SK dan hasilnya sudah benar
                     </label>
@@ -766,7 +820,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                                 : !filled
                                     ? <span className="text-xs font-bold text-amber-700">Lengkapi data SK di atas</span>
                                     : null}
-                        <button type="button" disabled={!can} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"><Lock className="h-4 w-4" /> Tetapkan hasil</button>
+                        <button type="button" disabled={!can} onClick={submit} className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold max-md:flex-1 md:h-11 text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"><Lock className="h-4 w-4" /> Tetapkan hasil</button>
                     </div>
                 </div>
             )}
@@ -788,7 +842,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     const [err, setErr] = useState('');
     const [podium, setPodium] = useState<Record<number, boolean>>({});
 
-    if (!sk) return <div className={`${card} p-6 text-sm`}>Data SK belum tersedia.</div>;
+    if (!sk) return <div className={`${card} p-3 md:p-6 text-sm`}>Data SK belum tersedia.</div>;
 
     const locked = sk.finalized;
     const klasemenUrl = base.replace(/\/penilaian\/?$/, '/klasemen');
@@ -810,19 +864,19 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
     };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-3 md:space-y-5">
             <style>{`@media print { body * { visibility: hidden !important; } #sk-print, #sk-print * { visibility: visible !important; } #sk-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: 0 !important; } }`}</style>
 
-            <div className={`${card} space-y-4 p-6`}>
+            <div className={`${card} space-y-4 p-3 md:p-6`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-extrabold text-white">SK</span>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-xs font-extrabold text-white md:h-11 md:w-11 md:text-sm">SK</span>
                         <div>
-                            <h2 className="text-xl font-extrabold">Surat keputusan: {sk.title}</h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">Satu SK memuat hasil semua kategori lomba ini{sk.categories.length > 1 ? ` (${sk.categories.map((c) => c.name).filter(Boolean).join(', ')})` : ''}.</p>
+                            <h2 className="text-[15px] font-semibold md:text-xl md:font-extrabold">Surat keputusan: {sk.title}</h2>
+                            <p className="text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Satu SK memuat hasil semua kategori lomba ini{sk.categories.length > 1 ? ` (${sk.categories.map((c) => c.name).filter(Boolean).join(', ')})` : ''}.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span>{okBlock ? <Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link> : <span aria-disabled="true" title="Klasemen bisa dibuka setelah semua syarat penetapan terpenuhi" className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm font-extrabold text-slate-400 dark:bg-white/10 dark:text-slate-500"><Trophy className="h-4 w-4" /> Klasemen</span>}</div>
+                    <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-start"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-white/10 dark:text-slate-200">{sk.progress.done}/{sk.progress.total} kategori disimpan</span>{okBlock ? <Link href={klasemenUrl} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2 text-sm max-md:h-10 max-md:py-0 font-extrabold text-white shadow-lg shadow-orange-500/40 ring-1 ring-white/30 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/50"><Trophy className="h-4 w-4" /> Klasemen</Link> : <span aria-disabled="true" title="Klasemen bisa dibuka setelah semua syarat penetapan terpenuhi" className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm max-md:h-10 max-md:py-0 font-extrabold text-slate-400 dark:bg-white/10 dark:text-slate-500"><Trophy className="h-4 w-4" /> Klasemen</span>}</div>
                 </div>
 
                 {locked ? (
@@ -832,13 +886,13 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                     </div>
                 ) : (
                     <>
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2.5 md:gap-3 xl:grid-cols-4">
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Nomor SK *</span><input className={`${inpSm} mt-1`} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Contoh: 001/SK/2026" /></label>
                             <label><span className={`${lbl} !normal-case !tracking-normal`}>Tanggal SK *</span><input className={`${inpSm} mt-1`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
-                            <label><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
+                            <label className="col-span-2 md:col-span-1"><span className={`${lbl} !normal-case !tracking-normal`}>Nama penandatangan *</span><input className={`${inpSm} mt-1`} value={signer} onChange={(e) => setSigner(e.target.value)} placeholder="Nama lengkap" /></label>
+                            <label className="col-span-2 md:col-span-1"><span className={`${lbl} !normal-case !tracking-normal`}>Jabatan penandatangan *</span><input className={`${inpSm} mt-1`} value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Contoh: Ketua Panitia" /></label>
                             {!locked && (
-                                <div className="sm:col-span-2 lg:col-span-4">
+                                <div className="col-span-2 sm:col-span-2 lg:col-span-4">
                                     <span className={`${lbl} !normal-case !tracking-normal`}>Logo kop SK (opsional)</span>
                                     <div className="mt-1 flex flex-wrap items-center gap-3">
                                         {skLogo
@@ -847,7 +901,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                                         <input
                                             type="file"
                                             accept="image/png,image/jpeg,image/webp"
-                                            className="block max-w-xs text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-indigo-700"
+                                            className="block min-w-0 max-w-xs flex-1 text-xs md:text-sm file:mr-3 file:h-10 file:cursor-pointer file:rounded-full file:border-0 file:bg-indigo-50 file:px-4 file:text-sm file:font-bold file:text-indigo-700 md:file:h-auto md:file:rounded-xl md:file:py-2"
                                             onChange={(e) => {
                                                 const f = e.target.files?.[0] ?? null;
                                                 setLogoFile(f);
@@ -855,7 +909,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                                             }}
                                         />
                                         {logoFile && <button type="button" onClick={() => { setLogoFile(null); setLogoPrev(null); }} className="text-xs font-bold text-rose-600">Batalkan logo baru</button>}
-                                        <span className="text-xs text-slate-500">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
+                                        <span className="w-full text-[11px] leading-snug text-slate-500 md:w-auto md:text-xs">PNG/JPG/WEBP, maks. 2 MB. Kosongkan untuk memakai logo lembaga.</span>
                                     </div>
                                 </div>
                             )}
@@ -871,9 +925,9 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
             </div>
 
             {sk.categories.map((c) => (
-                <div key={c.id} className={`${card} space-y-3 p-6`}>
+                <div key={c.id} className={`${card} space-y-3 p-3 md:p-6`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="flex items-center gap-2 text-lg font-extrabold"><span className={`h-3 w-3 rounded-full ${c.locked ? 'bg-emerald-500' : c.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {c.name ? `Kategori ${c.name}` : sk.title}</h3>
+                        <h3 className="flex items-center gap-2 text-base font-extrabold md:text-lg"><span className={`h-3 w-3 rounded-full ${c.locked ? 'bg-emerald-500' : c.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {c.name ? `Kategori ${c.name}` : sk.title}</h3>
                         <div className="flex items-center gap-2">
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${c.locked ? 'bg-emerald-100 text-emerald-900' : c.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{c.locked ? 'Ditetapkan' : c.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
                             
@@ -902,7 +956,29 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                     
                     <div className="mt-3">
                         <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tabel lengkap · {c.table.length} tim</p>
-                    <div className="overflow-x-auto">
+                    <div className="space-y-2 md:hidden">
+                        {c.table.map((r, k) => (
+                            <div key={k} className="rounded-xl border border-slate-200 p-3 dark:border-white/10">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold">{r.rank ?? '-'}{r.shared ? ' =' : ''} · {r.name || r.code}{r.order != null ? ' #' + r.order : ''}</div>
+                                        <div className="truncate font-mono text-[11px] text-indigo-700 dark:text-indigo-300">{r.code}{r.school ? ' · ' + r.school : ''}</div>
+                                    </div>
+                                    <span className={'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ' + lsStatus[r.status].c}>{lsStatus[r.status].t}</span>
+                                </div>
+                                <div className="mt-2 grid grid-cols-5 gap-1 text-center">
+                                    {([['Juri', r.judges_done + '/' + c.need], ['Dasar', lsNf(r.base)], ['Kurang', lsNf(r.deduction)], ['Penalti', lsNf(r.penalty)], ['Bersih', lsNf(r.score)]] as [string, string][]).map(([l, v]) => (
+                                        <div key={l} className="min-w-0">
+                                            <div className={'truncate text-sm leading-tight ' + (l === 'Bersih' ? 'font-black' : 'font-semibold')}>{v}</div>
+                                            <div className="text-[10px] text-slate-500">{l}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {r.provisional && <div className="mt-1 text-[10px] font-bold uppercase text-amber-700">nilai bersih sementara</div>}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="hidden overflow-x-auto md:block">
                         <table className="w-full min-w-[760px] text-left text-sm">
                             <thead>
                                 <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10">
@@ -931,15 +1007,15 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                 </div>
             ))}
 
-            <div className="rounded-3xl bg-slate-100/70 p-4 sm:p-6 dark:bg-white/5">
+            <div className="rounded-2xl md:rounded-3xl bg-slate-100/70 p-1.5 sm:p-6 dark:bg-white/5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-slate-500">Pratinjau surat keputusan</p>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">{ranked} peringkat tercantum</span>
                 </div>
 
-                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 print:space-y-0">
+                <div id="sk-print" className="mx-auto max-w-3xl space-y-8 font-serif text-[14px] leading-relaxed text-slate-900 max-md:text-[12.5px] max-md:[&_.text-justify]:!text-left print:space-y-0">
                     {/* ===== Halaman 1: Surat Keputusan ===== */}
-                    <div className="rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                    <div className="rounded-2xl bg-white p-4 shadow-sm max-md:overflow-x-auto sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
                         <div className="pb-1 text-center">
                             {skLogo
                                 ? <img src={skLogo as string} alt={sk.institution || 'Logo lembaga'} className="mx-auto h-24 w-auto max-w-full object-contain" />
@@ -953,7 +1029,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                             {sk.parent_title && <div className="font-bold uppercase">{sk.parent_title}</div>}
                         </div>
 
-                        <div className="mt-6 grid grid-cols-[6.5rem_1fr] gap-y-3">
+                        <div className="mt-6 grid grid-cols-[4.75rem_1fr] gap-y-3 md:grid-cols-[6.5rem_1fr]">
                             <div>Menimbang</div>
                             <ol className="list-decimal space-y-1 pl-5 text-justify">
                                 <li>Bahwa lomba {sk.title}{onParent} telah dilaksanakan melalui sistem SIMPLE dan seluruh penilaian telah diselesaikan oleh juri;</li>
@@ -967,7 +1043,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                         </div>
 
                         <p className="mt-6 text-center font-bold">MEMUTUSKAN</p>
-                        <div className="mt-2 grid grid-cols-[6.5rem_1.25rem_1fr] gap-y-2">
+                        <div className="mt-2 grid grid-cols-[4.75rem_0.75rem_1fr] gap-y-2 md:grid-cols-[6.5rem_1.25rem_1fr]">
                             <div>Menetapkan</div><div>:</div>
                             <div className="text-justify font-bold uppercase">Keputusan tentang penetapan juara {sk.title}{sk.parent_title ? ` ${sk.parent_title}` : ''};</div>
                             <div>Kesatu</div><div>:</div>
@@ -987,7 +1063,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                     </div>
 
                     {/* ===== Halaman 2: Lampiran ===== */}
-                    <div className="break-before-page rounded-2xl bg-white p-8 shadow-sm sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
+                    <div className="break-before-page rounded-2xl bg-white p-4 shadow-sm max-md:overflow-x-auto sm:p-12 sm:min-h-[1086px] print:min-h-0 print:rounded-none print:p-0 print:shadow-none">
                         <div className="pb-1">
                             <p className="font-bold">LAMPIRAN SURAT KEPUTUSAN</p>
                             <p className="font-bold">NOMOR {number.trim() ? number : <LsMark t="Nomor SK belum diisi" />}</p>
@@ -1014,8 +1090,8 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
             </div>
 
             {!locked && (
-                <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
-                    <label className="flex cursor-pointer items-center gap-3 text-sm font-bold">
+                <div className="max-md:mb-24 md:sticky md:bottom-3 md:z-10 flex flex-wrap items-center justify-between gap-2 max-md:flex-col max-md:items-stretch md:gap-3 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 md:px-5 md:py-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
+                    <label className="flex cursor-pointer items-center gap-2.5 text-[13px] leading-snug font-bold md:gap-3 md:text-sm">
                         <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="h-5 w-5" />
                         Saya sudah memeriksa SK dan hasilnya sudah benar
                     </label>
@@ -1027,7 +1103,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                                 : !filled
                                     ? <span className="text-xs font-bold text-amber-700">Lengkapi data SK di atas</span>
                                     : null}
-                        <button type="button" disabled={!can} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"><Lock className="h-4 w-4" /> Tetapkan hasil</button>
+                        <button type="button" disabled={!can} onClick={submit} className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold max-md:flex-1 md:h-11 text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:bg-none disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"><Lock className="h-4 w-4" /> Tetapkan hasil</button>
                     </div>
                 </div>
             )}
@@ -1062,13 +1138,13 @@ function PanelLayout(props: React.ComponentProps<typeof BasePanelLayout>) {
     }, [pbBase]);
 
     const chip = (on: boolean) =>
-        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+        `shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition max-md:inline-flex max-md:h-10 max-md:items-center max-md:py-0 ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
 
     const bar = pb ? (
-        <div className={`${card} flex flex-wrap items-center gap-2 px-4 py-3`} data-subbar>
-            <span className={`${lbl} mr-1`}>Sub-event</span>
+        <div className={`${card} flex items-center gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] md:flex-wrap md:overflow-visible md:px-4 md:py-3`} data-subbar>
+            <span className={`${lbl} mr-1 shrink-0 !normal-case !tracking-normal md:!uppercase md:!tracking-wider`}>Sub-event</span><select aria-label="Pilih sub-event" value={String(pb.current)} onChange={(e) => router.visit(`${pb.base}?sub=${e.target.value}`)} className="h-10 min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-3 text-base font-bold text-slate-700 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-200">{pb.subs.map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}</select>
             {pb.subs.map((s) => (
-                <Link key={s.id} href={`${pb.base}?sub=${s.id}`} className={chip(pb.current === s.id)}>{s.title}</Link>
+                <Link key={s.id} href={`${pb.base}?sub=${s.id}`} className={`${chip(pb.current === s.id)} max-md:!hidden`}>{s.title}</Link>
             ))}
         </div>
     ) : null;
@@ -1082,9 +1158,9 @@ function PanelLayout(props: React.ComponentProps<typeof BasePanelLayout>) {
             const parts = Children.toArray((root as any).props.children);
             body = parts.length > 0
                 ? cloneElement(root as React.ReactElement<any>, undefined, parts[0], bar, ...parts.slice(1))
-                : <div className="space-y-5">{bar}</div>;
+                : <div className="space-y-3 md:space-y-5">{bar}</div>;
         } else {
-            body = <div className="space-y-5">{bar}{props.children}</div>;
+            body = <div className="space-y-3 md:space-y-5">{bar}{props.children}</div>;
         }
     }
 
@@ -1216,6 +1292,12 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
     };
     const copy = (text: string, key: string) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1600); }); };
     const resetLink = (j: Judge) => { if (confirm(`Buat link baru untuk "${j.name}"? Link lama tidak akan berlaku lagi.`)) router.post(`${base}/juri/${j.id}/link`, {}, { preserveScroll: true }); };
+    const judgingOpen = !!cfg.judging_open;
+    const resultLocked = !!cfg.result_locked;
+    const toggleJudging = () => {
+        if (judgingOpen && !confirm('Tutup form penilaian juri? Juri tidak bisa mengisi nilai sampai Anda membukanya lagi.')) return;
+        router.post(`${base}/juri-buka`, { open: !judgingOpen, category_id: cid }, { preserveScroll: true });
+    };
     const toggleJudge = (j: Judge) => router.put(`${base}/juri/${j.id}`, { name: j.name, contact: j.contact ?? '', active: !j.active }, { preserveScroll: true });
     const delJudge = (j: Judge) => { if (confirm(`Hapus juri "${j.name}"? Semua nilainya ikut terhapus.`)) router.delete(`${base}/juri/${j.id}`, { preserveScroll: true }); };
 
@@ -1223,21 +1305,21 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
     if (isParent) {
         return (
             <PanelLayout title="Penilaian">
-                <div className="space-y-5">
-                    <div className={`${card} p-6`}>
-                        <h2 className="text-xl font-extrabold">Penilaian per lomba</h2>
+                <div className="space-y-3 md:space-y-5">
+                    <div className={`${card} p-3 md:p-6`}>
+                        <h2 className="text-base font-extrabold md:text-xl">Penilaian per lomba</h2>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pengaturan nilai dan juri diatur di tiap sub-event, karena peserta ada di sana. Halaman ini hanya ringkasan.</p>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
                         {subs.map((s) => (
-                            <div key={s.id} className={`${card} flex flex-col gap-3 p-6`}>
+                            <div key={s.id} className={`${card} flex flex-col gap-3 p-3 md:p-6`}>
                                 <div className="flex items-start justify-between gap-3">
-                                    <h3 className="text-lg font-extrabold">{s.title}</h3>
+                                    <h3 className="text-base font-extrabold md:text-lg">{s.title}</h3>
                                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center">
                                     {[['Kategori', s.categories], ['Juri', s.judges], ['Peserta', s.participants]].map(([l, v]) => (
-                                        <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-xl font-extrabold">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
+                                        <div key={String(l)} className="rounded-xl bg-slate-50 py-2.5 dark:bg-white/5"><div className="text-base font-extrabold md:text-xl">{v}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div></div>
                                     ))}
                                 </div>
                                 
@@ -1266,42 +1348,53 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 
     return (
         <PanelLayout title="Penilaian">
-            <div className="space-y-5">
+            <div className="space-y-3 pb-24 md:space-y-5 md:pb-0">
 
-                <div className="flex flex-wrap gap-2">
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,#000_90%,transparent)] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
                     {tabs.map(({ k, t, i: Icon }) => (
-                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                        <button key={k} type="button" aria-label={t} onClick={() => setTab(k)} className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap h-10 rounded-full px-3.5 text-xs font-extrabold transition md:h-auto md:gap-2 md:rounded-2xl md:px-4 md:py-2.5 md:text-sm ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /><span className={tab === k ? '' : 'max-md:hidden'}>{t}</span></button>
                     ))}
                 </div>
 
                 {tab === 'sistem' && <SistemPicker base={base} title={event.title} system={system} lockReason={systemLock} onChosen={() => setTab('nilai')} />}
 
-                <div className={`${card} space-y-5 p-6 ${tab === 'nilai' ? '' : 'hidden'}`}>
+                <div className={`${card} space-y-3 p-3 md:space-y-5 md:p-6 ${tab === 'nilai' ? '' : 'hidden'}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h2 className="text-xl font-extrabold">Penilaian</h2>
-                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Atur sistem nilai, kriteria, dan juri untuk lomba ini.</p>
-                            <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-extrabold text-indigo-700"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Mengatur: {event.title}{multiCat && category.name ? ` · ${category.name}` : ''}</span>
+                            <h2 className="text-[17px] font-semibold md:text-xl md:font-extrabold">Penilaian</h2>
+                            <p className="mt-1 text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Atur sistem nilai, kriteria, dan juri untuk lomba ini.</p>
+                            <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700 md:px-4 md:py-1.5 md:text-sm"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Mengatur: {event.title}{multiCat && category.name ? ` · ${category.name}` : ''}</span>
                         </div>
-                        <button type="button" onClick={toggle} disabled={!locked && !steps[1].done} className={locked ? 'inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200' : btn}>
+                        <div className="flex flex-wrap items-stretch gap-3">
+                        <button type="button" onClick={toggle} disabled={!locked && !steps[1].done} className={locked ? 'inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50 md:h-auto md:rounded-2xl md:px-5 md:py-3 dark:border-white/10 dark:bg-white/5 dark:text-slate-200' : `${btn} max-md:h-10 max-md:py-0`}>
                             {locked ? <><Lock className="h-4 w-4" /> Buka kunci kategori ini</> : multiCat ? `Sahkan kategori ${category.name}` : 'Sahkan & buka penilaian'}
                         </button>
+                        <div className={`inline-flex items-center gap-3 rounded-full border border-slate-200 px-4 py-1.5 md:rounded-2xl dark:border-white/10 ${locked ? 'bg-white dark:bg-white/5' : 'bg-slate-50 opacity-60 dark:bg-white/5'}`} title={locked ? undefined : 'Sahkan pengaturan penilaian dulu'}>
+                            <div className="leading-tight">
+                                <div className="text-sm font-extrabold text-slate-700 dark:text-slate-200">Form penilaian juri</div>
+                                <div className="text-xs text-slate-500">{!locked ? 'Sahkan pengaturan dulu' : resultLocked ? 'Terkunci: hasil sudah disimpan' : judgingOpen ? 'Dibuka, juri bisa menilai' : 'Ditutup'}</div>
+                            </div>
+                            <button type="button" role="switch" aria-checked={judgingOpen} aria-label="Form penilaian juri" disabled={!locked || resultLocked} onClick={toggleJudging} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${judgingOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20'} ${locked && !resultLocked ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${judgingOpen ? 'translate-x-5' : ''}`} />
+                            </button>
+                        </div>
+                        </div>
                     </div>
 
                     <div className={`grid gap-3 ${tab === 'nilai' ? 'md:grid-cols-2' : ''}`}>
-                        <div className="rounded-2xl border border-slate-200/80 bg-white/50 p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">1</span><h3 className="text-base font-extrabold">Kategori</h3></div>
+                        <div className="rounded-2xl border border-slate-200/80 bg-white/50 p-3 md:p-4 dark:border-white/10 dark:bg-white/5">
+                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">1</span><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Kategori</h3></div>
                             <div className="mt-3 space-y-2">
                                 {categories.map((c) => <Option key={c.id} on={c.id === cid} label={c.name} approved={c.approved} href={`${base}?kategori=${c.id}`} />)}
                             </div>
                         </div>
-                        <div className={`rounded-2xl border border-slate-200/80 bg-white/50 p-4 dark:border-white/10 dark:bg-white/5 ${tab === 'nilai' ? '' : 'hidden'}`}>
-                            <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">2</span><h3 className="text-base font-extrabold">Sistem perlombaan</h3></div>
+                        <div className={`rounded-2xl border border-slate-200/80 bg-white/50 p-3 md:p-4 dark:border-white/10 dark:bg-white/5 ${tab === 'nilai' ? '' : 'hidden'}`}>
+                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">2</span><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Sistem perlombaan</h3></div>
                             <p className={`mt-3 text-xs font-bold ${locked ? 'text-emerald-700' : 'text-slate-600 dark:text-slate-300'}`}>{locked ? 'Kategori ini sudah disahkan, sistemnya tidak bisa diganti.' : 'Sistem yang dipakai untuk menghitung nilai akhir.'}</p>
                             <div className={`mt-2 rounded-xl border border-indigo-300 bg-white p-3 dark:bg-white/5 ${locked ? 'opacity-60' : ''}`}>
                                 <div className="flex items-center gap-2.5"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /></span><span className="text-sm font-extrabold">Penilaian Berbasis Bobot Nilai</span></div>
                                 <p className="mt-1 pl-6 text-xs text-slate-600 dark:text-slate-300">Nilai akhir dari jumlah (nilai × bobot) tiap kriteria.</p>
-                                <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Weighted · Versi 1</p>
+                                <p className="mt-1 pl-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 max-md:hidden">Weighted · Versi 1</p>
                             </div>
                         </div>
                     </div>
@@ -1332,9 +1425,9 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                 {tab === 'nilai' && (
                     <>
                         {/* 2. Skala, kriteria, bobot */}
-                        <div className={`${card} space-y-4 p-4`}>
+                        <div className={`${card} space-y-4 p-3 md:p-4`}>
                             <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">3</span><div><h3 className="text-base font-extrabold">Skala, kriteria, dan bobot</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pilih skala nilai akhir, lalu susun kriteria dan bobotnya. Total bobot harus 100%.</p></div></div>
+                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">3</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Skala, kriteria, dan bobot</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pilih skala nilai akhir, lalu susun kriteria dan bobotnya. Total bobot harus 100%.</p></div></div>
                                 <div className="w-full sm:w-72">
                                     <div className="flex justify-between text-xs font-extrabold"><span>Total bobot</span><span className={total === 100 ? 'text-emerald-600' : 'text-amber-600'}>{total}% {total === 100 && '✓'}</span></div>
                                     <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className={`h-full rounded-full transition-all ${total === 100 ? 'bg-emerald-500' : total > 100 ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${Math.min(total, 100)}%` }} /></div>
@@ -1343,13 +1436,13 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 
                             <div>
                                 <div className="text-sm font-extrabold">Skala nilai akhir</div>
-                                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                                <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-3">
                                     {[[100, 'Ratusan'], [1000, 'Ribuan']].map(([v, name]) => (
-                                        <button key={v} type="button" disabled={locked} onClick={() => setScale(Number(v))} className={`relative rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed ${scale === v ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/60 hover:border-slate-300 dark:border-white/10'} ${locked && scale !== v ? 'opacity-50' : ''}`}>
-                                            <div className="text-xl font-extrabold">{num(Number(v))}</div>
+                                        <button key={v} type="button" disabled={locked} onClick={() => setScale(Number(v))} className={`relative rounded-xl border-2 p-3 text-left transition disabled:cursor-not-allowed md:p-4 ${scale === v ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-500/10' : 'border-slate-200 bg-white/60 hover:border-slate-300 dark:border-white/10'} ${locked && scale !== v ? 'opacity-50' : ''}`}>
+                                            <div className="text-base font-extrabold md:text-xl">{num(Number(v))}</div>
                                             <div className="text-sm font-extrabold">{name}</div>
-                                            <div className="text-sm text-slate-500">Nilai akhir maksimal {num(Number(v))}</div>
-                                            {scale === v && <span className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white"><Check className="h-4 w-4" strokeWidth={3} /></span>}
+                                            <div className="text-[11px] text-slate-500 md:text-sm">Nilai akhir maksimal {num(Number(v))}</div>
+                                            {scale === v && <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white md:right-4 md:top-4 md:h-7 md:w-7"><Check className="h-4 w-4" strokeWidth={3} /></span>}
                                         </button>
                                     ))}
                                 </div>
@@ -1359,12 +1452,12 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                                 <div className="text-sm font-extrabold">Kriteria dan bobot</div>
                                 <div className="mt-2 space-y-2">
                                     {rows.map((r, i) => (
-                                        <div key={i} className="rounded-xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                                        <div key={i} className="rounded-xl border border-slate-200 bg-white/60 p-3 md:p-4 dark:border-white/10 dark:bg-white/5">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="flex h-9 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 font-extrabold text-white">{i + 1}</span>
                                                 <input className={`${inp} min-w-[160px] flex-1`} placeholder="Nama kriteria, contoh: Suara" maxLength={60} disabled={locked} value={r.name} onChange={(e) => setRow(i, { name: e.target.value })} />
                                                 <div className="flex w-28 items-center gap-1.5"><input className={`${inp} text-right`} type="number" min={1} max={100} disabled={locked} value={r.weight} onChange={(e) => setRow(i, { weight: e.target.value })} /><span className="font-bold text-slate-500">%</span></div>
-                                                <span className="w-28 text-sm font-bold text-slate-500">maks {num((Number(r.weight) || 0) / 100 * scale)} poin</span>
+                                                <span className="text-xs font-bold text-slate-500 md:w-28 md:text-sm">maks {num((Number(r.weight) || 0) / 100 * scale)} poin</span>
                                                 <button type="button" disabled={locked || rows.length === 1} onClick={() => setRows(rows.filter((_, k) => k !== i))} className="flex h-10 w-10 items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50 disabled:opacity-30" aria-label="Hapus kriteria"><Trash2 className="h-4 w-4" /></button>
                                             </div>
                                             <input className={`${inp} mt-2`} placeholder="Indikator atau penjelasan untuk juri (opsional)" maxLength={200} disabled={locked} value={r.description} onChange={(e) => setRow(i, { description: e.target.value })} />
@@ -1384,11 +1477,11 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                                                     <div className={`text-xs font-extrabold ${subSum(r) === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>Bobot sub kriteria dibagi rata otomatis, total {subSum(r)}% {subSum(r) === 100 ? '✓' : '(harus 100%)'}</div>
                                                 </div>
                                             )}
-                                            <button type="button" disabled={locked || (r.subs ?? []).length >= 15} onClick={() => addSub(i)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 px-2.5 py-1.5 text-xs font-extrabold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> Sub kriteria</button>
+                                            <button type="button" disabled={locked || (r.subs ?? []).length >= 15} onClick={() => addSub(i)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 px-2.5 py-1.5 text-xs max-md:h-10 font-extrabold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> Sub kriteria</button>
                                         </div>
                                     ))}
                                 </div>
-                                <button type="button" disabled={locked || rows.length >= 15} onClick={() => setRows([...rows, { id: null, name: '', description: '', weight: 0 }])} className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah kriteria</button>
+                                <button type="button" disabled={locked || rows.length >= 15} onClick={() => setRows([...rows, { id: null, name: '', description: '', weight: 0 }])} className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2.5 text-sm max-md:h-10 max-md:py-0 font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah kriteria</button>
                                 {err && <p className="mt-3 text-sm font-semibold text-rose-700">{err}</p>}
                             </div>
 
@@ -1417,7 +1510,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 
                             <div className="rounded-xl border border-slate-200 p-3 dark:border-white/10">
                                 <h4 className="font-extrabold">Juri dan pembulatan</h4>
-                                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                                     <label><span className={lbl}>Jumlah juri</span><input className={`${inp} mt-1.5`} type="number" min={1} max={15} disabled={locked} value={judgeCount} onChange={(e) => setJudgeCount(e.target.value)} /></label>
                                     <label><span className={lbl}>Desimal rata-rata</span><input className={`${inp} mt-1.5`} type="number" min={0} max={4} disabled={locked} value={decimals} onChange={(e) => setDecimals(e.target.value)} /></label>
                                     <label><span className={lbl}>Pembulatan</span>
@@ -1431,9 +1524,9 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                         </div>
 
                         {/* 3. Pengurangan nilai */}
-                        <div className={`${card} p-4`}>
+                        <div className={`${card} p-3 md:p-4`}>
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-sm font-extrabold text-white">4</span><div><h3 className="text-base font-extrabold">Pengurangan nilai</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pelanggaran ringan yang mengurangi nilai. Terpisah dari penalti.</p></div></div>
+                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">4</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Pengurangan nilai</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pelanggaran ringan yang mengurangi nilai. Terpisah dari penalti.</p></div></div>
                                 <label className="flex items-center gap-3 text-sm font-extrabold">Aktifkan untuk lomba ini <Toggle on={dedOn} onChange={setDedOn} disabled={locked} /></label>
                             </div>
                             {!dedOn ? (
@@ -1447,13 +1540,13 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                                             <button type="button" disabled={locked} onClick={() => setDeds(deds.filter((_, k) => k !== i))} className="flex h-10 w-10 items-center justify-center rounded-xl text-rose-600 hover:bg-rose-50 disabled:opacity-30" aria-label="Hapus"><Trash2 className="h-4 w-4" /></button>
                                         </div>
                                     ))}
-                                    <button type="button" disabled={locked || deds.length >= 20} onClick={() => setDeds([...deds, { name: '', points: 0 }])} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah jenis pengurangan</button>
+                                    <button type="button" disabled={locked || deds.length >= 20} onClick={() => setDeds([...deds, { name: '', points: 0 }])} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm max-md:h-10 max-md:py-0 font-extrabold text-slate-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Plus className="h-4 w-4" /> Tambah jenis pengurangan</button>
                                 </div>
                             )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
-                            <button type="button" disabled={locked || !valid} onClick={save} className={btn}>Simpan pengaturan</button>
+                            <button type="button" disabled={locked || !valid} onClick={save} className={`${btn} max-md:h-10 max-md:w-full max-md:py-0`}>Simpan pengaturan</button>
                             {locked && <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500"><Lock className="h-4 w-4" /> Terkunci. Tutup penilaian untuk mengubah.</span>}
                             {!locked && !valid && (() => {
                                 const msgs: string[] = [];
@@ -1482,7 +1575,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 
                 {tab === 'juri' && (
                     <>
-<div className={`${card} p-4`}>
+<div className={`${card} p-3 md:p-4`}>
     {categories.length > 1 && (
         <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
@@ -1490,7 +1583,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                     key={c.id}
                     type="button"
                     onClick={() => { if (c.id !== cid) router.get(base, { kategori: c.id }, { preserveState: true, preserveScroll: true, onSuccess: () => setTab('juri') }); }}
-                    className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
+                    className={`rounded-full border px-3 text-xs font-extrabold transition max-md:h-10 md:px-4 md:py-2 md:text-sm ${c.id === cid ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}
                 >
                     {c.name}
                     <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.id === cid ? 'bg-white/20 text-white' : ((c as any).judges >= (c as any).need ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}`}>{(c as any).judges ?? 0}/{(c as any).need ?? 0}</span>
@@ -1513,29 +1606,29 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 </JuriTambah>
 <JuriBelumTugas btn={btn} />
 
-                        <div className={`${card} p-4`}>
-                            <h3 className="text-base font-extrabold">Juri terdaftar <span className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">{judges.length}</span></h3>
+                        <div className={`${card} p-3 md:p-4`}>
+                            <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Juri terdaftar <span className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">{judges.length}</span></h3>
                             {judges.length === 0 ? (
                                 <JuriKosong />
                             ) : (
-                                <ul className="mt-4 space-y-3">
+                                <ul className="mt-3 space-y-2 md:mt-4 md:space-y-3">
                                     {judges.map((j) => {
                                         const pct = participants ? Math.round((j.done / participants) * 100) : 0;
                                         return (
-                                            <li key={j.id} className={`rounded-2xl border border-slate-100 p-4 dark:border-white/10 ${j.active ? '' : 'opacity-60'}`}>
+                                            <li key={j.id} className={`rounded-2xl border border-slate-100 p-3 md:p-4 dark:border-white/10 ${j.active ? '' : 'opacity-60'}`}>
                                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                                     <div className="min-w-0">
-                                                        <div className="font-extrabold">{j.name} {!j.active && <span className="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">Nonaktif</span>}</div>
+                                                        <div className="font-semibold md:font-extrabold">{j.name} {!j.active && <span className="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">Nonaktif</span>}</div>
                                                         {j.contact && <div className="text-xs text-slate-500">{j.contact}</div>}
                                                     </div>
                                                     <div className="flex flex-wrap gap-2">
-                                                        <button type="button" onClick={() => copy(j.url, `j${j.id}`)} className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-extrabold text-indigo-800 hover:bg-indigo-100">{copied === `j${j.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === `j${j.id}` ? 'Tersalin' : 'Salin link'}</button>
-                                                        <button type="button" onClick={() => resetLink(j)} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200"><RefreshCw className="h-3.5 w-3.5" /> Reset link</button>
-                                                        <button type="button" onClick={() => toggleJudge(j)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200">{j.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
-                                                        <button type="button" onClick={() => delJudge(j)} className="rounded-xl p-2 text-rose-600 hover:bg-rose-50" aria-label="Hapus juri"><Trash2 className="h-4 w-4" /></button>
+                                                        <button type="button" onClick={() => copy(j.url, `j${j.id}`)} className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-extrabold text-indigo-800 hover:bg-indigo-100 max-md:h-10 max-md:py-0">{copied === `j${j.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === `j${j.id}` ? 'Tersalin' : 'Salin link'}</button>
+                                                        <button type="button" onClick={() => resetLink(j)} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200 max-md:h-10 max-md:py-0"><RefreshCw className="h-3.5 w-3.5" /> Reset link</button>
+                                                        <button type="button" onClick={() => toggleJudge(j)} className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200 max-md:h-10 max-md:py-0">{j.active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                                                        <button type="button" onClick={() => delJudge(j)} className="flex items-center justify-center rounded-xl p-2 text-rose-600 hover:bg-rose-50 max-md:size-10 max-md:p-0" aria-label="Hapus juri"><Trash2 className="h-4 w-4" /></button>
                                                     </div>
                                                 </div>
-                                                <div className="mt-3 flex items-center gap-3">
+                                                <div className="mt-2 flex items-center gap-3 md:mt-3">
                                                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-violet-600'}`} style={{ width: `${pct}%` }} /></div>
                                                     <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{j.done} dari {participants} peserta dinilai</span>
                                                 </div>

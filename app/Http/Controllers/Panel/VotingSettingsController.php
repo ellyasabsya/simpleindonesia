@@ -182,7 +182,7 @@ class VotingSettingsController extends Controller
             return back()->with('error', 'Maksimal 200 peserta.');
         }
         $sort = (int) DB::table('voting_participants')->where('event_id', $event->id)->max('sort') + 1;
-        $photo = $request->file('photo') ? $request->file('photo')->store("voting/{$event->id}", 'public') : null;
+        $photo = $request->file('photo') ? \App\Support\ImageUploader::store($request->file('photo'), "voting/{$event->id}", 'photo', 600) : null;
         DB::table('voting_participants')->insert($data + ['event_id' => $event->id, 'sort' => $sort, 'photo' => $photo, 'upload_token' => \Illuminate\Support\Str::random(32), 'created_at' => now(), 'updated_at' => now()]);
 
         return back()->with('success', 'Peserta ditambahkan.');
@@ -195,7 +195,7 @@ class VotingSettingsController extends Controller
         $data = $this->participantData($request, $event);
         $old = DB::table('voting_participants')->where('id', $item)->value('photo');
         if ($request->file('photo')) {
-            $data['photo'] = $request->file('photo')->store("voting/{$event->id}", 'public');
+            $data['photo'] = \App\Support\ImageUploader::store($request->file('photo'), "voting/{$event->id}", 'photo', 600);
             if ($old) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
             }

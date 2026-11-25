@@ -1,18 +1,17 @@
-import AndroidBottomNav from './android/bottom-nav';
+import { useEffect } from 'react';
 import IosBottomNav from './ios/bottom-nav';
+import { setMenuHandler } from './menu-bus';
 import type { NavProps } from './nav-types';
 import { useNavConfig } from './use-nav-config';
-import { usePlatform } from './use-platform';
 
-// Pintu masuk bottom nav. Dipakai oleh layout (user, panel, landing) dan
-// memilih tampilan iOS atau Android secara otomatis.
+// Pintu masuk bottom nav. Tombol Menu tidak lagi di bar bawah: pembuka menu dititipkan ke bar atas.
 export default function MobileBottomNav({ variant, hasPanel, onMenu }: NavProps) {
-    const platform = usePlatform();
     const config = useNavConfig(variant, hasPanel);
 
-    return platform === 'ios' ? (
-        <IosBottomNav {...config} onMenu={onMenu} />
-    ) : (
-        <AndroidBottomNav {...config} onMenu={onMenu} />
-    );
+    useEffect(() => {
+        setMenuHandler(onMenu ?? null);
+        return () => setMenuHandler(null);
+    }, [onMenu]);
+
+    return <IosBottomNav {...config} />;
 }

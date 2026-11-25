@@ -1,9 +1,7 @@
-import { usePlatform } from '../use-platform';
-import AndroidDrawer from './android-drawer';
-import IosMenuSheet from './ios-menu-sheet';
+import MenuSheet from './ios-menu-sheet';
 import type { MenuPanelProps } from './menu-types';
 
-/** Menu samping: lembar dari bawah di iOS, drawer dari kiri di Android. */
+/** Menu samping: satu sheet bawah untuk iOS dan Android. */
 export default function MenuPanel(props: MenuPanelProps) {
-    return usePlatform() === 'ios' ? <IosMenuSheet {...props} /> : <AndroidDrawer {...props} />;
+    return <MenuSheet {...props} />;
 }

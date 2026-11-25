@@ -2,6 +2,8 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, AtSign, Cake, Camera, CalendarDays, Loader2, MapPin, Phone, User } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import UserLayout from '@/components/user/user-layout';
+import ProfilEditMobile from '@/components/mobile/pages/profil-edit-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { SocialChips, socialList } from '@/lib/socials';
 
 const card = 'rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
@@ -29,6 +31,27 @@ export default function EditProfil() {
         phone: u.phone ?? '', birth_date: (u.birth_date ?? '').slice(0, 10), socials: { ...Object.fromEntries(socialList.map((p) => [p.key, ''])), ...(u.socials ?? {}) }, avatar: null,
     });
     const err = (k: string) => (errors as Record<string, string>)[k];
+    const phone = usePhone();
+
+    if (phone) {
+        const initials = (data.name || '?').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+        return (
+            <UserLayout title="Edit profil" hasPanel>
+                <ProfilEditMobile
+                    data={data}
+                    setData={(k, v) => setData(k, v)}
+                    err={err}
+                    preview={preview}
+                    onPick={(f) => { setData('avatar', f); if (f) setPreview(URL.createObjectURL(f)); }}
+                    fileRef={fileRef}
+                    initials={initials}
+                    processing={processing}
+                    isDirty={isDirty}
+                    onSave={() => post('/profil', { forceFormData: true })}
+                />
+            </UserLayout>
+        );
+    }
 
     const field = (k: string, text: string, Icon: any, type = 'text', ph = '') => (
         <div>

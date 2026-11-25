@@ -367,22 +367,26 @@ class EventDashboardController extends EventScopedController
         $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
         $tz = config('app.agenda_timezone', 'Asia/Jakarta');
 
+        [$audience, $regUsers] = $this->checkinKinds([$event->id]);
+
         $rows = $db::table('ticket_holders as h')
             ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
             ->where('h.event_id', $event->id)
             ->where('o.status', 'lunas')
             ->orderBy('h.reg_code')->orderBy('h.id')
-            ->get(['h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name'])
+            ->get(['h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
             ->map(fn ($r) => [
                 'code' => $r->code,
                 'reg_id' => ($r->participant_code ?? $r->reg_code),
                 'name' => $r->holder_name,
                 'type' => $typeName[$r->ticket_type_id] ?? null,
+                'kind' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') ? 'pengunjung' : 'peserta',
+                'also' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') && in_array(mb_strtolower(trim((string) $r->holder_name)), $regUsers, true),
                 'buyer' => $r->buyer_name,
                 'at' => $r->checked_in_at
                     ? \Illuminate\Support\Carbon::parse($r->checked_in_at)->setTimezone($tz)->format('d M Y H:i')
                     : null,
-            ])->values();
+            ])->concat($this->checkinRegistrants([$event->id]))->values();
 
         return $this->render('panel/events/checkin', $event, [
             'eventId' => $event->id,
@@ -703,29 +707,110 @@ class EventDashboardController extends EventScopedController
         $typeName = $db::table('ticket_types')->whereIn('event_id', $ids)->pluck('name', 'id');
         $tz = config('app.agenda_timezone', 'Asia/Jakarta');
 
+        [$audience, $regUsers] = $this->checkinKinds($ids);
+
         $rows = $db::table('ticket_holders as h')
             ->join('ticket_orders as o', 'o.id', '=', 'h.ticket_order_id')
             ->whereIn('h.event_id', $ids)
             ->where('o.status', 'lunas')
             ->orderBy('h.reg_code')->orderBy('h.id')
-            ->get(['h.event_id', 'h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name'])
+            ->get(['h.event_id', 'h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
             ->map(fn ($r) => [
                 'code' => $r->code,
                 'reg_id' => ($r->participant_code ?? $r->reg_code),
                 'name' => $r->holder_name,
                 'type' => $typeName[$r->ticket_type_id] ?? null,
+                'kind' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') ? 'pengunjung' : 'peserta',
+                'also' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') && in_array(mb_strtolower(trim((string) $r->holder_name)), $regUsers, true),
                 'buyer' => $r->buyer_name,
                 'sub' => $titles[$r->event_id] ?? null,
                 'at' => $r->checked_in_at
                     ? \Illuminate\Support\Carbon::parse($r->checked_in_at)->setTimezone($tz)->format('d M Y H:i')
                     : null,
-            ])->values();
+            ])->concat($this->checkinRegistrants($ids, $titles))->values();
 
         return $this->render('panel/events/checkin', $event, [
             'eventId' => $event->id,
             'rows' => $rows,
             'subs' => $children->pluck('title')->values(),
         ]);
+    }
+
+    /** Jenis tiket (umum = pengunjung) dan id akun yang juga terdaftar sebagai peserta transfer. */
+    private function checkinKinds(array $ids): array
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $audience = $db::table('ticket_types')->whereIn('event_id', $ids)->pluck('audience', 'id')->all();
+        $regUsers = $db::table('event_registrations as r')->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->whereIn('r.event_id', $ids)->whereIn('r.status', ['terdaftar', 'disetujui', 'lunas'])
+            ->get(['r.contact_name', 'u.name as user_name'])
+            ->flatMap(fn ($x) => [mb_strtolower(trim((string) $x->contact_name)), mb_strtolower(trim((string) $x->user_name))])
+            ->filter()->unique()->values()->all();
+
+        return [$audience, $regUsers];
+    }
+
+    /** Kolom id akun pemesan, hanya kalau kolomnya ada. */
+    private function checkinOrderUser(): array
+    {
+        return \Illuminate\Support\Facades\Schema::hasColumn('ticket_orders', 'user_id') ? ['o.user_id'] : [];
+    }
+
+    /** Peserta lewat pendaftaran transfer (event_registrations) untuk daftar Check-in. Pendaftar tim tampil satu baris per tim. */
+    private function checkinRegistrants(array $ids, $titles = null): \Illuminate\Support\Collection
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        $cats = $db::table('event_participant_categories')->whereIn('event_id', $ids)->pluck('name', 'id');
+        $fmt = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->setTimezone($tz)->format('d M Y H:i') : null;
+
+        $regs = $db::table('event_registrations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->whereIn('r.event_id', $ids)
+            ->whereIn('r.status', ['terdaftar', 'disetujui', 'lunas'])
+            ->orderBy('r.participant_code')->orderBy('r.id')
+            ->get(['r.id', 'r.event_id', 'r.reg_code', 'r.participant_code', 'r.contact_name', 'r.checked_in_at', 'r.participant_category_id', 'r.school', 'u.name as user_name']);
+
+        $teamMap = collect();
+        if ($regs->isNotEmpty() && \App\Support\TeamCodes::ready()) {
+            \App\Support\TeamCodes::ensure($regs->pluck('id')->all());
+            $teamMap = $db::table('registration_teams')->whereIn('event_registration_id', $regs->pluck('id')->all())->orderBy('id')->get()->groupBy('event_registration_id');
+        }
+
+        $out = collect();
+        foreach ($regs as $r) {
+            $sub = $titles ? ($titles[$r->event_id] ?? null) : null;
+            $teams = $teamMap->get($r->id);
+            if ($teams && $teams->isNotEmpty() && $teams->every(fn ($t) => $t->team_code)) {
+                foreach ($teams as $t) {
+                    $out->push([
+                        'code' => $t->team_code,
+                        'reg_id' => $t->team_code,
+                        'name' => $t->name,
+                        'type' => $cats[$t->participant_category_id] ?? ($cats[$r->participant_category_id] ?? null),
+                        'kind' => 'peserta',
+                        'also' => false,
+                        'buyer' => $r->school ?: ($r->contact_name ?: ($r->user_name ?? null)),
+                        'sub' => $sub,
+                        'at' => $fmt($t->checked_in_at),
+                    ]);
+                }
+                continue;
+            }
+            $out->push([
+                'code' => $r->reg_code ?: (string) $r->participant_code,
+                'reg_id' => $r->participant_code ?: $r->reg_code,
+                'name' => $r->contact_name ?: ($r->user_name ?? '-'),
+                'type' => $cats[$r->participant_category_id] ?? null,
+                'kind' => 'peserta',
+                'also' => false,
+                'buyer' => $r->school,
+                'sub' => $sub,
+                'at' => $fmt($r->checked_in_at),
+            ]);
+        }
+
+        return $out->values();
     }
 
     private function registrasiForm(Event $event): Response

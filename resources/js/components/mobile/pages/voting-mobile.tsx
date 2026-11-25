@@ -1,10 +1,10 @@
-import { BookOpen, Search, Vote } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import type { EventCard } from '@/components/landing/event-section';
+import { BookOpen, CalendarDays, MapPin, Vote } from 'lucide-react';
+import { useState } from 'react';
 import EmptyState from '../kit/empty-state';
-import PosterCard from '../kit/poster-card';
-import { Row, Section } from '../kit/section';
+import FeaturedSlot from './featured-slot';
+import { eventRange } from '../kit/poster-card';
 import Sheet from '../kit/sheet';
+import { MUTED, PRESS } from '../kit/soft';
 
 export type VotingItem = {
     id: number;
@@ -22,8 +22,7 @@ export type VotingItem = {
 };
 
 const rp = (n: number) => 'Rp' + new Intl.NumberFormat('id-ID').format(n);
-const nf = (n: number) => new Intl.NumberFormat('id-ID').format(n);
-const KEY = { buka: 'berlangsung', segera: 'segera', tutup: 'selesai' } as const;
+const DOT = { buka: 'bg-emerald-400', segera: 'bg-sky-400', tutup: 'bg-neutral-400' } as const;
 
 const STEPS: [string, string][] = [
     ['Pilih event', 'Buka daftar E-Voting, lalu pilih event yang voting-nya sedang dibuka.'],
@@ -32,73 +31,76 @@ const STEPS: [string, string][] = [
     ['Bayar dan pantau', 'Selesaikan pembayaran. Setelah berhasil diverifikasi, vote masuk ke peringkat dan tampil di daftar dukungan langsung.'],
 ];
 
-const chip = (active: boolean) =>
-    'inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition active:scale-95 ' +
-    (active
-        ? 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-900/25'
-        : 'bg-white text-slate-700 shadow-sm dark:bg-white/10 dark:text-slate-200');
-
-/** Daftar E-Voting HP: panduan, cari, chip kategori, grid poster. Dibungkus PublicScreen oleh halamannya. */
-export default function VotingMobile({ items }: { items: VotingItem[] }) {
-    const [q, setQ] = useState('');
-    const [cat, setCat] = useState('');
-    const [guide, setGuide] = useState(false);
-
-    const cats = useMemo(() => {
-        const m = new Map<string, { label: string; n: number }>();
-        items.forEach((i) => {
-            if (i.category_key) m.set(i.category_key, { label: i.category ?? i.category_key, n: (m.get(i.category_key)?.n ?? 0) + 1 });
-        });
-        return [...m.entries()];
-    }, [items]);
-
-    const list = items.filter((i) => (!cat || i.category_key === cat) && (i.title + ' ' + (i.location ?? '')).toLowerCase().includes(q.toLowerCase()));
-    const totalParticipants = items.reduce((a, i) => a + i.participants, 0);
-
-    const asCard = (v: VotingItem): EventCard => ({
-        id: v.id,
-        slug: null,
-        title: v.title,
-        poster: v.poster,
-        category: v.category,
-        category_key: v.category_key,
-        location: v.location,
-        organizer: v.organizer,
-        starts_at: null,
-        ends_at: v.ends,
-        status: { key: KEY[v.status.key], label: v.status.label },
-    });
+function VoteCard({ v }: { v: VotingItem }) {
+    const range = eventRange(null, v.ends);
 
     return (
-        <div className="space-y-5">
-            <p className="px-1 text-sm text-slate-500 dark:text-slate-400">
-                {items.length} event · {nf(totalParticipants)} peserta voting
-            </p>
-
-            <Section>
-                <Row icon={BookOpen} label="Cara vote favoritmu" sub="Lihat panduan 4 langkah" onClick={() => setGuide(true)} />
-            </Section>
-
-            <label className="flex h-12 items-center gap-3 rounded-2xl bg-white px-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.3)] dark:bg-white/10">
-                <Search className="size-5 shrink-0 text-slate-400" />
-                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari event atau lokasi" className="w-full bg-transparent text-base outline-none placeholder:text-slate-400" />
-            </label>
-
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-                <button type="button" onClick={() => setCat('')} className={chip(!cat)}>Semua ({items.length})</button>
-                {cats.map(([k, c]) => (
-                    <button key={k} type="button" onClick={() => setCat(k)} className={chip(cat === k)}>{c.label} ({c.n})</button>
-                ))}
+        <a href={'/voting/' + v.id} className={'block ' + PRESS}>
+            <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-slate-200 dark:bg-neutral-800">
+                {v.poster ? (
+                    <>
+                        
+                        <img src={v.poster} alt={v.title} loading="lazy" className="absolute inset-0 size-full object-cover" />
+                    </>
+                ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+                        <Vote className="size-8" strokeWidth={1.5} />
+                    </div>
+                )}
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-[11px] font-medium text-white ring-1 ring-white/20">
+                    <span className={'size-1.5 rounded-full ' + DOT[v.status.key]} />
+                    {v.status.label}
+                </span>
             </div>
+            <div className="px-1 pt-2.5">
+                <h3 className="line-clamp-2 text-[15px] leading-snug font-semibold text-slate-900 dark:text-white">{v.title}</h3>
+                {range && (
+                    <p className={'mt-1 flex items-center gap-1.5 text-xs ' + MUTED}>
+                        <CalendarDays className="size-3.5 shrink-0" />
+                        {range}
+                    </p>
+                )}
+                {v.location && (
+                    <p className={'mt-0.5 flex min-w-0 items-center gap-1.5 text-xs ' + MUTED}>
+                        <MapPin className="size-3.5 shrink-0" />
+                        <span className="truncate">{v.location}</span>
+                    </p>
+                )}
+                <p className="mt-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{rp(v.price)}/vote</p>
+            </div>
+        </a>
+    );
+}
 
+/** Daftar E-Voting HP. Cari dan kategori ada di VotingBar (bar atas), disaring di sini. */
+export default function VotingMobile({ items, q, cat }: { items: VotingItem[]; q: string; cat: string }) {
+    const [guide, setGuide] = useState(false);
+
+    const list = items.filter((i) => (!cat || i.category_key === cat) && (i.title + ' ' + (i.location ?? '')).toLowerCase().includes(q.toLowerCase()));
+    const left = list.filter((_, i) => i % 2 === 0);
+    const right = list.filter((_, i) => i % 2 === 1);
+
+    return (
+        <div className="space-y-4">
             {list.length === 0 ? (
                 <EmptyState icon={Vote} title={items.length === 0 ? 'Belum ada voting' : 'Tidak ada yang cocok'} text={items.length === 0 ? 'Voting yang dibuka akan tampil di sini.' : 'Coba kata kunci atau kategori lain.'} />
             ) : (
-                <div className="grid grid-cols-2 gap-3">
-                    {list.map((v) => (
-                        <PosterCard key={v.id} compact event={asCard(v)} href={'/voting/' + v.id} note={rp(v.price) + '/vote'} className="w-full" />
-                    ))}
-                </div>
+                <>
+                    <div className="flex items-center justify-between gap-3 px-1">
+                        <p className={'text-xs ' + MUTED}>Menampilkan {list.length} dari {items.length} event</p>
+                        <button type="button" onClick={() => setGuide(true)} className={'inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 ' + PRESS}>
+                            <BookOpen className="size-3.5" />
+                            Cara vote
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 items-start gap-3">
+                        <div className="space-y-4">{left.map((v) => <VoteCard key={v.id} v={v} />)}</div>
+                        <div className="space-y-4">
+                            <FeaturedSlot />
+                            {right.map((v) => <VoteCard key={v.id} v={v} />)}
+                        </div>
+                    </div>
+                </>
             )}
 
             <Sheet open={guide} onClose={() => setGuide(false)} title="Cara Vote Favoritmu">

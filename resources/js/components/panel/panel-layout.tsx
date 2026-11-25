@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import PageBackground from '@/components/page-background';
 import MobileBottomNav from '@/components/mobile/bottom-nav';
 import { eventMenuIcons } from '@/data/event-menu-icons';
+import { groupEventItems } from '@/data/event-menu-groups';
 import { panelMenu, type PanelMenuGroup } from '@/data/panel-menu';
 import { useTheme } from '@/hooks/use-theme';
 import PanelScreen from '@/components/mobile/panel/panel-screen';
@@ -39,10 +40,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     };
     const groups: PanelMenuGroup[] = eventNav
         ? [
-              {
-                  title: eventNav.title,
-                  items: eventNav.items.filter((i) => !(eventNav.parent && (i.href.endsWith('/kalender') || i.href.endsWith('/registrasi')))).map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard })),
-              },
+              ...groupEventItems(eventNav.title, eventNav.items.filter((i) => !(eventNav.parent && (i.href.endsWith('/kalender') || i.href.endsWith('/registrasi')))).map((i) => ({ label: i.label, href: i.href, icon: eventMenuIcons[i.key] ?? eventMenuIcons.dashboard }))),
               ...(eventNav.subs?.length
                   ? [{ title: 'Sub-event', items: eventNav.subs.map((s) => ({ label: s.label, href: s.href, icon: Layers })) }]
                   : []),
@@ -53,9 +51,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     return (
         <div className="flex h-full flex-col">
             <Link href="/" onClick={onNavigate} className="flex items-center gap-3 px-6 pb-5 pt-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
-                    S
-                </span>
+                <img src="/logo-s-sm.png" alt="SIMPLE" className="h-10 w-10 shrink-0 object-contain" />
                 <span>
                     <span className="block text-lg font-extrabold leading-none tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
                     <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-500 dark:text-indigo-300">Panel Lembaga</span>

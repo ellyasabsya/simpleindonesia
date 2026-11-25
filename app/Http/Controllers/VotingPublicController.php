@@ -33,7 +33,7 @@ class VotingPublicController extends Controller
 
     private function poster(Event $event): ?string
     {
-        $cols = Schema::getColumnListing('events');
+        $cols = \Illuminate\Support\Facades\Cache::remember('events_columns', 3600, fn () => Schema::getColumnListing('events'));
         foreach (['poster', 'poster_path', 'image', 'banner', 'cover', 'thumbnail', 'flyer'] as $c) {
             if (in_array($c, $cols, true) && $event->{$c}) {
                 $v = (string) $event->{$c};
@@ -167,7 +167,10 @@ class VotingPublicController extends Controller
 
     public function data(Event $event)
     {
-        return response()->json($this->state($event, $this->open($event)))->header('Cache-Control', 'no-store');
+        $s = $this->open($event);
+        $state = \Illuminate\Support\Facades\Cache::remember('voting_state:'.$event->id, 5, fn () => $this->state($event, $s));
+
+        return response()->json($state)->header('Cache-Control', 'no-store');
     }
 
     public function buy(Request $request, Event $event): RedirectResponse

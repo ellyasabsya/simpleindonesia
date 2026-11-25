@@ -1,6 +1,9 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import JuriLayout from '@/components/juri/juri-layout';
+import { JURI_CSS, JURI_FORM_CSS } from '@/components/mobile/kit/juri-css';
+import { usePhone } from '@/components/mobile/use-phone';
+import JuriPesertaMobile from '@/components/mobile/juri/juri-peserta-mobile';
 
 type Crit = { id: number; name: string; description: string | null; weight: number; max_score: number; group?: string | null };
 type Part = { id: number; name: string; school: string | null; code?: string; code_tail?: string };
@@ -38,6 +41,7 @@ const LV: Record<number, { chip: string; on: string; off: string }> = {
 
 export default function JuriPeserta({ token, judge, event, enabled, scale, criteria, participant: p, position, prev, next, scores }: Props) {
     const page = usePage().props as any;
+    const phone = usePhone();
     const errors = (page.errors ?? {}) as Record<string, string>;
     const key = 'juri-draft-' + token;
     const alreadyDone = criteria.length > 0 && Object.keys(scores ?? {}).length >= criteria.length;
@@ -76,11 +80,56 @@ export default function JuriPeserta({ token, judge, event, enabled, scale, crite
     };
     const open = () => { setCodeIn(''); setConfirmOpen(true); };
 
+    if (phone) {
+        return (
+            <JuriLayout title={`${codeOf(p)} - ${event.title}`} judgeName={judge.name}>
+                <JuriPesertaMobile
+                    token={token}
+                    event={event.title}
+                    code={codeOf(p)}
+                    tail={tailOf(p)}
+                    name={p.name}
+                    school={p.school}
+                    position={position}
+                    prev={prev}
+                    next={next}
+                    criteria={criteria}
+                    vals={vals}
+                    setVal={(id, v) => setVals({ ...vals, [id]: v })}
+                    levels={byLevel}
+                    tone={LV}
+                    num={num}
+                    filled={filled}
+                    complete={complete}
+                    total={total}
+                    scale={scale}
+                    alreadyDone={alreadyDone}
+                    blocked={blocked}
+                    error={errors.scores}
+                    confirmOpen={confirmOpen}
+                    codeIn={codeIn}
+                    setCodeIn={setCodeIn}
+                    saving={saving}
+                    onOpen={open}
+                    onClose={() => { setConfirmOpen(false); setCodeIn(''); }}
+                    onSend={send}
+                />
+            </JuriLayout>
+        );
+    }
+
     const navBtn = 'rounded-xl bg-white/80 px-3.5 py-2 text-xs font-bold text-indigo-900 shadow-sm transition hover:bg-white dark:bg-white/10 dark:text-white dark:hover:bg-white/20';
     const card = 'rounded-3xl bg-white/85 shadow-md ring-1 ring-white/70 backdrop-blur dark:bg-white/10 dark:ring-white/10';
 
     return (
         <JuriLayout title={`${codeOf(p)} - ${event.title}`} judgeName={judge.name}>
+            {phone && (
+                <>
+                    <span data-mobile-juri hidden />
+                    <span data-juri-form hidden />
+                    <style>{JURI_CSS + JURI_FORM_CSS}</style>
+                </>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link href={`/juri/${token}`} className={navBtn}>← Daftar peserta</Link>
                 <div className="flex flex-wrap items-center gap-2">
@@ -90,7 +139,7 @@ export default function JuriPeserta({ token, judge, event, enabled, scale, crite
                 </div>
             </div>
 
-            <section className="rounded-3xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-5 text-white shadow-xl sm:p-6">
+            <section className="rounded-3xl bg-gradient-to-br from-indigo-700 to-indigo-500 p-5 text-white shadow-xl sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-sky-100">Anda sedang menilai</div>
                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${alreadyDone ? 'bg-emerald-400 text-emerald-950' : 'bg-amber-300 text-amber-950'}`}>{alreadyDone ? 'Sudah dinilai' : 'Belum dinilai'}</span>
@@ -175,7 +224,7 @@ export default function JuriPeserta({ token, judge, event, enabled, scale, crite
             {confirmOpen && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center">
                     <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl dark:bg-slate-900 dark:text-white">
-                        <div className="bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-4 text-center text-white">
+                        <div className="bg-gradient-to-br from-indigo-700 to-indigo-500 p-4 text-center text-white">
                             <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-100">Konfirmasi pengiriman nilai</div>
                             <div className="mt-1 break-words text-2xl font-extrabold tracking-wider">{codeOf(p)}</div>
                             <div className="text-sm font-bold">{p.name}</div>

@@ -17,9 +17,9 @@ type Props = {
     history: Hist[];
 };
 
-const card = 'rounded-3xl border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const card = 'rounded-2xl border border-white/70 bg-white/85 p-3 shadow-sm md:rounded-3xl md:p-6 md:backdrop-blur dark:border-white/10 dark:bg-white/5';
 const input =
-    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pl-9 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pl-9 text-base outline-none md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
 
 const STATUS: Record<string, { text: string; cls: string }> = {
     belum: { text: 'Belum terbit', cls: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300' },
@@ -54,25 +54,25 @@ export default function Certificates({ stats, categories, active, search, recipi
 
     return (
         <PanelLayout title="Sertifikat Digital">
-            <div className="space-y-6">
+            <div className="space-y-3 pb-24 md:space-y-6 md:pb-0">
                 {/* sertifikat-tahap5-tombol */}
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end">
                     {[['desain', 'Desainer'], ['terbitkan', 'Terbitkan sertifikat']].map(([path, label]) => (
                         <a
                             key={path}
                             href={`${window.location.pathname}/${path}`}
                             onClick={(e) => { e.preventDefault(); router.visit(`${window.location.pathname}/${path}`); }}
-                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-white/10 dark:bg-white/5"
+                            className="flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium hover:bg-slate-50 md:h-auto md:rounded-xl md:py-2 dark:border-white/10 dark:bg-white/5"
                         >
                             {label}
                         </a>
                     ))}
                 </div>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-4">
                     {cards.map((c) => (
                         <div key={c.label} className={card}>
                             <c.icon size={20} className={c.cls} />
-                            <p className="mt-3 text-3xl font-extrabold tabular-nums">{c.value}</p>
+                            <p className="mt-2 text-xl font-semibold tabular-nums md:mt-3 md:text-3xl md:font-extrabold">{c.value}</p>
                             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{c.label}</p>
                         </div>
                     ))}
@@ -81,18 +81,18 @@ export default function Certificates({ stats, categories, active, search, recipi
                 <section className={card}>
                     <div className="flex items-center gap-2">
                         <Award size={18} className="text-violet-600" />
-                        <h2 className="text-lg font-extrabold">Penerima</h2>
+                        <h2 className="text-[17px] font-semibold md:text-lg md:font-extrabold">Penerima</h2>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="-mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:mx-0 md:mt-4 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
                         {categories.map((c) => (
                             <button
                                 key={c.key}
                                 type="button"
                                 onClick={() => go({ kategori: c.key })}
-                                className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                                className={`h-10 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition md:h-auto md:py-1.5 ${
                                     active === c.key
-                                        ? 'border-transparent bg-gradient-to-r from-blue-600 to-violet-600 text-white'
+                                        ? 'border-transparent bg-indigo-600 text-white md:bg-gradient-to-r md:from-blue-600 md:to-violet-600'
                                         : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-white/10 dark:bg-white/5'
                                 }`}
                             >
@@ -119,7 +119,26 @@ export default function Certificates({ stats, categories, active, search, recipi
                                 : 'Belum ada penerima di kategori ini.'}
                         </p>
                     ) : (
-                        <div className="mt-4 overflow-x-auto">
+                        <>
+                        <>
+                        <div className="mt-3 space-y-2 md:hidden">
+                            {recipients.map((r) => {
+                                const st = STATUS[r.status] ?? STATUS.belum;
+                                return (
+                                    <div key={'m-' + r.key} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="truncate text-sm font-semibold">{r.name}</div>
+                                                <div className="truncate text-[11px] text-slate-600 dark:text-slate-300">{r.code} · {r.source}</div>
+                                            </div>
+                                            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${st.cls}`}>{st.text}</span>
+                                        </div>
+                                        <p className="mt-1.5 truncate text-[11px] text-slate-600 dark:text-slate-300">Nomor sertifikat: {r.number ?? '-'}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-4 hidden overflow-x-auto md:block">
                             <table className="w-full text-left text-sm">
                                 <thead className="text-xs uppercase tracking-widest text-slate-500">
                                     <tr>
@@ -148,10 +167,12 @@ export default function Certificates({ stats, categories, active, search, recipi
                                 </tbody>
                             </table>
                         </div>
+                        </>
+                        </>
                     )}
 
                     {paging.pages > 1 && (
-                        <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+                        <div className="mt-4 flex flex-col gap-2 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
                             <span>
                                 Halaman {paging.page} dari {paging.pages} · {paging.total} penerima
                             </span>
@@ -160,7 +181,7 @@ export default function Certificates({ stats, categories, active, search, recipi
                                     type="button"
                                     disabled={paging.page <= 1}
                                     onClick={() => go({ kategori: active, cari: search, halaman: paging.page - 1 })}
-                                    className="rounded-full border border-slate-200 px-4 py-1.5 font-semibold disabled:opacity-40 dark:border-white/10"
+                                    className="h-10 flex-1 rounded-full border border-slate-200 px-4 font-semibold disabled:opacity-40 md:h-auto md:flex-none md:py-1.5 dark:border-white/10"
                                 >
                                     Sebelumnya
                                 </button>
@@ -168,7 +189,7 @@ export default function Certificates({ stats, categories, active, search, recipi
                                     type="button"
                                     disabled={paging.page >= paging.pages}
                                     onClick={() => go({ kategori: active, cari: search, halaman: paging.page + 1 })}
-                                    className="rounded-full border border-slate-200 px-4 py-1.5 font-semibold disabled:opacity-40 dark:border-white/10"
+                                    className="h-10 flex-1 rounded-full border border-slate-200 px-4 font-semibold disabled:opacity-40 md:h-auto md:flex-none md:py-1.5 dark:border-white/10"
                                 >
                                     Berikutnya
                                 </button>
@@ -178,7 +199,7 @@ export default function Certificates({ stats, categories, active, search, recipi
                 </section>
 
                 <section className={card}>
-                    <h2 className="text-lg font-extrabold">Riwayat</h2>
+                    <h2 className="text-[17px] font-semibold md:text-lg md:font-extrabold">Riwayat</h2>
                     {history.length === 0 ? (
                         <p className="mt-3 text-sm text-slate-500">Belum ada aktivitas penerbitan.</p>
                     ) : (

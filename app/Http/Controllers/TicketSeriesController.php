@@ -42,6 +42,12 @@ class TicketSeriesController extends Controller
         return $children;
     }
 
+    /** Kegiatan rangkaian selalu bermetode tiket: tiket peserta dikunci 1 per pesanan. */
+    private function maxPerOrder($type): int
+    {
+        return ($type->audience ?? 'peserta') === 'peserta' ? 1 : (int) $type->max_per_order;
+    }
+
     private function methods(): array
     {
         $m = [];
@@ -139,7 +145,7 @@ class TicketSeriesController extends Controller
                     'valid_until' => $this->id($c->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
                     'require_holder_details' => (bool) $t->require_holder_details,
                     'support_enabled' => (bool) $t->support_enabled,
-                    'max_per_order' => (int) $t->max_per_order,
+                    'max_per_order' => $this->maxPerOrder($t),
                 ])->values();
 
             return [
@@ -198,6 +204,14 @@ class TicketSeriesController extends Controller
         $free = $types->every(fn ($t) => (int) $t->price === 0);
         $req = $types->contains(fn ($t) => (bool) $t->require_holder_details);
 
+        // Tiket pendaftaran peserta: wajib login, email pembeli diambil dari akun.
+        if ($types->contains(fn ($t) => ($t->audience ?? 'peserta') === 'peserta' || str_starts_with((string) $t->name, 'Pendaftaran'))) {
+            if (! $request->user()) {
+                return redirect('/login');
+            }
+            $request->merge(['buyer_email' => mb_strtolower(trim($request->user()->email))]);
+        }
+
         $data = $request->validate([
             'holder_emails' => [$req ? 'required' : 'nullable', 'array', 'max:10'],
             'holder_emails.*' => [$req ? 'required' : 'nullable', 'email', 'max:120'],
@@ -240,8 +254,8 @@ class TicketSeriesController extends Controller
                 if (! $type || $type->valid_until->copy()->endOfDay()->isPast() || $type->valid_from->copy()->startOfDay()->isFuture()) {
                     $fail('items', 'Ada jenis tiket yang tidak tersedia.');
                 }
-                if ($qty > $type->max_per_order) {
-                    $fail('quantity', "Maksimal {$type->max_per_order} tiket per pesanan untuk salah satu kegiatan.");
+                if ($qty > $this->maxPerOrder($type)) {
+                    $fail('quantity', $this->maxPerOrder($type) === 1 ? 'Pendaftaran peserta hanya untuk satu orang per pesanan.' : "Maksimal {$type->max_per_order} tiket per pesanan untuk salah satu kegiatan.");
                 }
                 if ($qty > $type->quota - TicketSettingsController::sold($type->id)) {
                     $fail('quantity', 'Sisa tiket salah satu kegiatan tidak cukup.');

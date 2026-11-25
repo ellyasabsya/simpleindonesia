@@ -143,7 +143,7 @@ class EventController extends Controller
             'participant_categories' => 'Kategori peserta',
             'participant_categories.*.name' => 'Nama kategori peserta',
             'participant_categories.*.quota' => 'Kuota kategori',
-            'participant_categories.*.competition_name' => 'Nama perlombaan/pertandingan',
+            'participant_categories.*.competition_name' => 'Nama kategori',
             'participant_categories.*.min_age' => 'Usia minimal',
             'participant_categories.*.max_age' => 'Usia maksimal',
             'participant_categories.*.requirements' => 'Syarat tambahan',
@@ -315,12 +315,12 @@ class EventController extends Controller
             ]);
             $payProof = \App\Support\ImageUploader::store($request->file('payment_proof'), 'payment-proofs', 'payment_proof', 1600, 'local');
         }
-        $posterPath = $request->hasFile('poster') ? \App\Support\ImageUploader::store($request->file('poster'), 'posters', 'poster') : null;
+        $posterPath = $request->hasFile('poster') ? \App\Support\ImageUploader::store($request->file('poster'), 'posters', 'poster', 1000) : null;
         $juknisPath = $request->hasFile('juknis') ? $request->file('juknis')->store('juknis', 'public') : null;
         $subJuknis = [];
         $subPosters = [];
         foreach ($subs as $i => $sub) {
-            $subPosters[$i] = $request->hasFile("subs.$i.poster") ? \App\Support\ImageUploader::store($request->file("subs.$i.poster"), 'posters', "subs.$i.poster") : null;
+            $subPosters[$i] = $request->hasFile("subs.$i.poster") ? \App\Support\ImageUploader::store($request->file("subs.$i.poster"), 'posters', "subs.$i.poster", 1000) : null;
             $subJuknis[$i] = $request->hasFile("subs.$i.juknis") ? $request->file("subs.$i.juknis")->store('juknis', 'public') : null;
         }
 
@@ -382,7 +382,7 @@ class EventController extends Controller
                     'quota' => (int) $t['quota'],
                     'valid_from' => $t['valid_from'],
                     'valid_until' => $t['valid_until'],
-                    'max_per_order' => (int) ($t['max_per_order'] ?? 10),
+                    'max_per_order' => 1, // tiket pendaftaran peserta: 1 per pesanan
                     'participant_category_id' => ! empty($t['category'])
                         ? (\Illuminate\Support\Facades\DB::table('event_participant_categories')->where('event_id', $eventId)->where('name', trim((string) $t['category']))->value('id') ?: null)
                         : null,

@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Search, Ticket } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
@@ -7,6 +7,10 @@ import TicketSeriesModal from '@/components/landing/ticket-series-modal';
 import TicketCardVertical, { type TicketCardProps } from '@/components/landing/ticket-card-vertical';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
+import TiketBar from '@/components/mobile/pages/tiket-bar';
+import TiketMobile from '@/components/mobile/pages/tiket-mobile';
+import PublicScreen from '@/components/mobile/public/public-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Row = Omit<TicketCardProps, 'startsAt' | 'endsAt' | 'ticketName' | 'validUntil'> & {
     id: number; series?: boolean; starts_at: string; ends_at: string; ticket_name: string; valid_until: string; poster: string | null;
@@ -23,7 +27,16 @@ export default function Tickets() {
         const v = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('beli') : null;
         return v && /^\d+$/.test(v) ? Number(v) : null;
     });
-    const openBuy = (id: number) => { setBuying(id); window.history.replaceState(null, '', `/tickets?beli=${id}`); };
+    const loggedIn = Boolean((usePage().props as { auth?: { user?: unknown } }).auth?.user);
+    const openBuy = (id: number) => {
+        if (!loggedIn) {
+            // Belum masuk: muat halaman beli lewat server, yang mengarahkan ke login lalu kembali ke sini.
+            router.visit(`/tickets?beli=${id}`);
+            return;
+        }
+        setBuying(id);
+        window.history.replaceState(null, '', `/tickets?beli=${id}`);
+    };
     const closeBuy = () => { setBuying(null); window.history.replaceState(null, '', '/tickets'); };
 
     useEffect(() => {
@@ -44,6 +57,24 @@ export default function Tickets() {
     const list = (rows ?? []).filter(
         (r) => (!cat || r.category === cat) && `${r.title} ${r.location}`.toLowerCase().includes(q.trim().toLowerCase()),
     );
+
+    const phone = usePhone();
+    const modal =
+        buying !== null && rows !== null && (rows.find((r) => r.id === buying)?.series
+            ? <TicketSeriesModal eventId={buying} onClose={closeBuy} />
+            : <TicketBuyModal eventId={buying} onClose={closeBuy} />);
+
+    if (phone) {
+        return (
+            <>
+                <Head title="Semua Tiket - SIMPLE" />
+                <PublicScreen title="Semua Tiket" bar={<TiketBar q={q} setQ={setQ} cats={cats} cat={cat} setCat={setCat} />}>
+                    <TiketMobile rows={rows} list={list} total={total} onBuy={openBuy} />
+                </PublicScreen>
+                {modal}
+            </>
+        );
+    }
 
     const pill = (active: boolean) =>
         `inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-sm font-bold transition ${

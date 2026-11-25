@@ -26,7 +26,7 @@ class EventController extends Controller
             ->when($type === 'rangkaian', fn ($q) => $q->has('children'))
             ->when(isset($cats[$type]), fn ($q) => $q->where(fn ($w) => $w->where('category', $type)
                 ->orWhereHas('children', fn ($c) => $c->where('category', $type))))
-            ->orderBy('starts_at')->orderBy('id')
+            ->orderByDesc('id')
             ->paginate(10)->withQueryString()
             ->through(fn (Event $e) => [
                 'id' => $e->id,
@@ -38,6 +38,8 @@ class EventController extends Controller
                 'ends_at' => $e->ends_at->toDateString(),
                 'sub_count' => $e->children_count,
                 'institution' => $e->institution?->name,
+                'package' => $e->package_snapshot['name'] ?? '-',
+                'price_label' => self::priceLabel((array) ($e->package_snapshot ?? [])),
             ]);
 
         return Inertia::render('admin/manajemen-event', [
@@ -145,7 +147,7 @@ class EventController extends Controller
             'starts_at' => 'Tanggal mulai', 'ends_at' => 'Tanggal selesai', 'description' => 'Deskripsi',
             'poster' => 'Poster', 'juknis' => 'Juknis', 'participant_categories' => 'Kategori peserta',
             'participant_categories.*.name' => 'Nama kategori peserta', 'participant_categories.*.quota' => 'Kuota kategori',
-            'participant_categories.*.competition_name' => 'Nama perlombaan/pertandingan',
+            'participant_categories.*.competition_name' => 'Nama kategori',
             'participant_categories.*.min_age' => 'Usia minimal', 'participant_categories.*.max_age' => 'Usia maksimal',
             'participant_categories.*.requirements' => 'Syarat tambahan',
             'participant_categories.*.prizes.*.rank' => 'Juara', 'participant_categories.*.prizes.*.prize' => 'Hadiah',
@@ -330,7 +332,7 @@ class EventController extends Controller
             'ends_at' => $d['ends_at'],
         ];
         if ($request->hasFile($pre.'poster')) {
-            $attrs['poster_path'] = \App\Support\ImageUploader::store($request->file($pre.'poster'), 'posters', $pre.'poster');
+            $attrs['poster_path'] = \App\Support\ImageUploader::store($request->file($pre.'poster'), 'posters', $pre.'poster', 1000);
             if ($e->poster_path) {
                 $trash[] = $e->poster_path;
             }
@@ -439,7 +441,7 @@ class EventController extends Controller
                 'quota' => (int) $t['quota'],
                 'valid_from' => $t['valid_from'],
                 'valid_until' => $t['valid_until'],
-                'max_per_order' => (int) ($t['max_per_order'] ?? 10),
+                'max_per_order' => 1, // tiket pendaftaran peserta: 1 per pesanan
                 'updated_at' => $now,
             ];
 
@@ -514,6 +516,8 @@ class EventController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        \App\Support\UserNotifier::send(\App\Models\Institution::find($event->institution_id)?->user, 'Event ditayangkan', "Event {$event->title} sudah disetujui dan tayang.", '/panel');
+
         return back()->with('success', 'Event disetujui dan sudah tayang.');
     }
 
@@ -540,6 +544,34 @@ class EventController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    /** Metode pembayaran event: transfer manual, Midtrans, atau tanpa pembayaran. */
+    private static function paymentLabel(Event $e): string
+    {
+        $snap = (array) ($e->package_snapshot ?? []);
+        if (($snap['payment_type'] ?? null) !== 'upfront') {
+            return 'Tanpa pembayaran';
+        }
+        $m = strtolower((string) ($snap['payment_method'] ?? ''));
+        if (str_contains($m, 'midtrans') || ! empty($e->midtrans_order_id)) {
+            return 'Midtrans';
+        }
+        if ($e->payment_status === 'menunggu_verifikasi' || str_contains($m, 'transfer') || str_contains($m, 'manual')) {
+            return 'Transfer manual';
+        }
+
+        return $m !== '' ? ucfirst($m) : '-';
+    }
+
+    /** Label harga dari snapshot paket event. */
+    private static function priceLabel(array $snap): string
+    {
+        return match ($snap['payment_type'] ?? null) {
+            'revenue_share' => 'Bagi hasil '.rtrim(rtrim(number_format((float) ($snap['share_percent'] ?? 0), 1), '0'), '.').'%',
+            'upfront' => 'Rp'.number_format((int) ($snap['price'] ?? $snap['estimated_upfront'] ?? 0), 0, ',', '.'),
+            default => 'Gratis',
+        };
     }
 
     private function list(Request $request, string $default, string $base, string $title, bool $reviewOnly = false): Response
@@ -572,6 +604,8 @@ class EventController extends Controller
                 'poster_url' => $e->posterUrl(),
                 'institution' => $e->institution?->name,
                 'package' => $e->package_snapshot['name'] ?? '-',
+                'price_label' => self::priceLabel((array) ($e->package_snapshot ?? [])),
+                'payment_label' => self::paymentLabel($e),
                 'share_percent' => $e->package_snapshot['share_percent'] ?? null,
                 'sub_count' => $e->children->count(),
                 'children' => $e->children->sortBy('sub_order')->map(fn (Event $c) => [

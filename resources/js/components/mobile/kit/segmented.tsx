@@ -3,7 +3,7 @@ import { usePlatform } from '../use-platform';
 type Option<T extends string> = { value: T; label: string; badge?: number };
 type Props<T extends string> = { options: Option<T>[]; value: T; onChange: (v: T) => void };
 
-const ACTIVE = 'bg-gradient-to-r from-indigo-700 via-blue-600 to-violet-600 text-white shadow-md shadow-indigo-600/25';
+const ACTIVE = 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 dark:bg-indigo-500';
 
 /** Pemilih tab: segmented control iOS, atau segmented button Material; tab aktif memakai warna merek. */
 export default function Segmented<T extends string>({ options, value, onChange }: Props<T>) {
@@ -19,7 +19,7 @@ export default function Segmented<T extends string>({ options, value, onChange }
                 return (
                     <button key={o.value} type="button" onClick={() => onChange(o.value)} className={cls}>
                         {o.label}
-                        {o.badge !== undefined && o.badge > 0 && <span className={`rounded-full px-1.5 text-[11px] font-bold text-white ${on ? 'bg-white/30' : ios ? 'bg-[#FF3B30]' : 'bg-[#dc2626]'}`}>{o.badge}</span>}
+                        {o.badge !== undefined && o.badge > 0 && <span className={`rounded-full px-1.5 text-[11px] font-bold text-white ${on ? 'bg-white/30' : 'bg-rose-600'}`}>{o.badge}</span>}
                     </button>
                 );
             })}

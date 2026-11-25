@@ -1,7 +1,7 @@
 import { snapPay } from '@/lib/snap-backdrop';
 import { Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CornerDownRight, Loader2, MapPin, Pencil, Phone, Tag, Ticket, Users, type LucideIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import UserLayout from '@/components/user/user-layout';
 
 type Pkg = {
@@ -35,16 +35,16 @@ type Errs = Record<string, string>;
 type Bounds = { min: string; max: string };
 
 const input =
-    'h-12 w-full rounded-xl border border-slate-200 bg-white/90 px-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-indigo-500/20';
-const label = 'mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200';
-const card = 'rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60';
+    'h-10 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-base outline-none md:h-12 md:px-4 md:text-[15px] focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-indigo-500/20';
+const label = 'mb-1 block text-[13px] font-semibold text-slate-700 md:mb-1.5 md:text-sm dark:text-slate-200';
+const card = 'rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:rounded-3xl md:border-white/70 md:bg-white/80 md:backdrop-blur md:p-6 dark:border-white/10 dark:bg-slate-900/60';
 const box = 'rounded-2xl border border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5';
-const help = 'mt-1.5 text-xs text-slate-500 dark:text-slate-400';
+const help = 'mt-1 text-[11px] leading-snug text-slate-500 md:mt-1.5 md:text-xs dark:text-slate-400';
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
 type TicketType = { name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string };
-const newTicket = (): TicketType => ({ name: 'Reguler', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '10' });
+const newTicket = (): TicketType => ({ name: 'Reguler', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '1' });
 
 const todayStr = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; };
 const saleStart = (end: string) => (end && todayStr() > end ? end : todayStr());
@@ -105,7 +105,7 @@ const vPeserta = (d: Detail, pre: string): Errs => {
     d.participant_categories.forEach((c, i) => {
         if (!/^\d+$/.test(c.quota) || Number(c.quota) < 1) e[`${pre}participant_categories.${i}.quota`] = 'Isi kuota (minimal 1).';
         if (isComp(d.category)) {
-            if (!(c.competition_name ?? '').trim()) e[`${pre}participant_categories.${i}.competition_name`] = 'Isi nama perlombaan/pertandingan.';
+            if (!(c.competition_name ?? '').trim()) e[`${pre}participant_categories.${i}.competition_name`] = 'Isi nama kategori.';
             if (c.min_age && c.max_age && Number(c.max_age) < Number(c.min_age)) e[`${pre}participant_categories.${i}.max_age`] = 'Usia maksimal tidak boleh lebih kecil dari usia minimal.';
         }
     });
@@ -178,12 +178,12 @@ type Sec = { d: Detail; set: (p: Partial<Detail>) => void; pre: string; err: (k:
 
 function FormSect({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
     return (
-        <section className="rounded-2xl border border-slate-200/80 bg-white/60 p-5 dark:border-white/10 dark:bg-white/5">
-            <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-xs font-extrabold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{n}</span>
+        <section className="max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:[&:not(:first-child)]:border-t max-md:[&:not(:first-child)]:border-slate-200 max-md:[&:not(:first-child)]:pt-4 rounded-2xl border border-slate-200/80 bg-white/60 p-3 dark:border-white/10 dark:bg-white/5 md:p-5">
+            <div className="mb-2.5 flex items-center gap-2.5 md:mb-4 md:gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-xs font-extrabold text-indigo-700 md:h-7 md:w-7 dark:bg-indigo-500/20 dark:text-indigo-200">{n}</span>
                 <div>
-                    <h3 className="text-sm font-bold">{title}</h3>
-                    {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+                    <h3 className="text-sm font-semibold md:font-bold">{title}</h3>
+                    {hint && <p className="text-[11px] leading-snug text-slate-500 md:text-xs dark:text-slate-400">{hint}</p>}
                 </div>
             </div>
             {children}
@@ -212,11 +212,11 @@ function PosterInput({ file, onChange, error }: { file: File | null; onChange: (
     return (
         <div>
             <label className={label}>Poster (4:5, maks. 4 MB)</label>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                <div className="flex aspect-[4/5] w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
+            <div className="flex gap-3 sm:gap-4 sm:items-start">
+                <div className="flex aspect-[4/5] w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl md:w-40 bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 text-xs text-white/70">
                     {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : '4:5'}
                 </div>
-                <label className="flex min-h-[8rem] flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-4 text-center transition hover:border-indigo-400 hover:bg-indigo-50/60 sm:h-[200px] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+                <label className="flex min-h-[7.5rem] flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-3 text-center md:gap-2 md:p-4 transition hover:border-indigo-400 hover:bg-indigo-50/60 sm:h-[200px] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                         onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ''; }} />
                     <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-white">
@@ -256,7 +256,7 @@ function JuknisInput({ file, onChange, error }: { file: File | null; onChange: (
     return (
         <div>
             <label className={label}>Juknis (opsional)</label>
-            <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-4 transition hover:border-indigo-400 hover:bg-indigo-50/60 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white/70 p-3 md:gap-4 md:p-4 transition hover:border-indigo-400 hover:bg-indigo-50/60 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
                 <input type="file" accept="application/pdf" className="hidden"
                     onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ''; }} />
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-white">
@@ -289,7 +289,7 @@ function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bou
         <>
             <FormSect n={2} title="Waktu & deskripsi" hint="Kapan event berlangsung dan apa yang akan dilakukan.">
                 <div className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                         <div>
                             <label className={label}>Tanggal mulai *</label>
                             <input type="date" className={input} min={bounds?.min} max={bounds?.max} value={d.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
@@ -303,16 +303,16 @@ function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bou
                     </div>
                     <div>
                         <label className={label}>Deskripsi</label>
-                        <textarea rows={6} maxLength={2000} value={d.description} onChange={(e) => capInput(e, (v) => set({ description: v }), true)}
+                        <textarea rows={4} maxLength={2000} value={d.description} onChange={(e) => capInput(e, (v) => set({ description: v }), true)}
                             placeholder="Ceritakan tentang event ini: tujuan, susunan acara, dan siapa yang cocok ikut."
-                            className="w-full rounded-xl border border-slate-200 bg-white/90 p-4 text-[15px] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
+                            className="w-full rounded-xl border border-slate-200 bg-white/90 p-3 text-base outline-none md:p-4 md:text-[15px] focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-white/10 dark:bg-slate-800" />
                         <p className={help}>{d.description.length}/2000 karakter</p>
                         <Err m={err(pre + 'description')} />
                     </div>
                 </div>
             </FormSect>
             <FormSect n={3} title="Media & dokumen" hint="Poster tampil di halaman event. Juknis bersifat opsional.">
-                <div className="space-y-5">
+                <div className="space-y-4 md:space-y-5">
                     <PosterInput file={d.poster} onChange={(f) => set({ poster: f })} error={err(pre + 'poster')} />
                     {withJuknis && <JuknisInput file={d.juknis} onChange={(f) => set({ juknis: f })} error={err(pre + 'juknis')} />}
                 </div>
@@ -324,7 +324,7 @@ function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bou
 function UtamaSection(props: Sec) {
     const { d, set, pre, err } = props;
     return (
-        <div className="space-y-5">
+        <div className="space-y-4 md:space-y-5">
             <div>
                 <label className={label}>Nama event utama *</label>
                 <input className={input} value={d.title} onChange={(e) => capInput(e, (v) => set({ title: v }))} placeholder="Contoh: Festival Batam Bernyanyi 2026" />
@@ -338,7 +338,7 @@ function UtamaSection(props: Sec) {
 function InfoSection(props: Sec & { categories: Record<string, string>; bounds?: Bounds }) {
     const { d, set, pre, err, categories } = props;
     return (
-        <div className="space-y-5">
+        <div className="space-y-3 md:space-y-5">
             <FormSect n={1} title="Detail event" hint="Nama, kategori, dan tempat pelaksanaan.">
                 <div className="space-y-4">
                     <div>
@@ -361,7 +361,7 @@ function InfoSection(props: Sec & { categories: Record<string, string>; bounds?:
                             <Err m={err(pre + 'location')} />
                         </div>
                     </div>
-                    <p className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />Tulis nama tempat, alamat, dan kota agar peserta mudah menemukan lokasi lewat Google Maps.</p>
+                    <p className="flex items-start gap-1.5 text-[11px] leading-snug text-slate-500 md:text-xs dark:text-slate-400"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />Tulis nama tempat, alamat, dan kota agar peserta mudah menemukan lokasi lewat Google Maps.</p>
                 </div>
             </FormSect>
             <Schedule {...props} withJuknis />
@@ -375,16 +375,17 @@ const totalQuota = (d: Detail) => d.participant_categories.reduce((a, c) => a + 
 type CatRow = Detail['participant_categories'][number];
 
 function CompFields({ c, i, patch, err, pre, kind }: { c: CatRow; i: number; patch: (i: number, p: Partial<CatRow>) => void; err: (k: string) => any; pre: string; kind: string }) {
-    const inp = 'h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800';
+    const inp = 'h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 text-base outline-none md:text-sm focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800';
     const prizes = c.prizes ?? [];
     const setPrize = (j: number, p: Partial<{ rank: string; prize: string }>) => patch(i, { prizes: prizes.map((x, k) => (k === j ? { ...x, ...p } : x)) });
     const base = `${pre}participant_categories.${i}.`;
     return (
         <div className="w-full basis-full space-y-4 border-t border-slate-200/70 pt-4 dark:border-white/10">
             <div>
-                <label className={label}>Nama {kind} *</label>
+                <label className={label}>Nama kategori *</label>
                 <input className={inp} maxLength={120} value={c.competition_name ?? ''} onChange={(e) => patch(i, { competition_name: e.target.value })}
-                    placeholder={kind === 'pertandingan' ? 'Contoh: Futsal Putra' : 'Contoh: Lomba Menyanyi Solo'} />
+                    placeholder="Terisi otomatis dari nama event + kategori" />
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Terisi otomatis dari nama event dan kategori peserta. Ubah kalau {kind} ini punya nama khusus.</p>
                 <Err m={err(base + 'competition_name')} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -401,7 +402,7 @@ function CompFields({ c, i, patch, err, pre, kind }: { c: CatRow; i: number; pat
             </div>
             <div>
                 <label className={label}>Syarat tambahan (opsional)</label>
-                <textarea rows={3} maxLength={1000} className="w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 py-3 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                <textarea rows={3} maxLength={1000} className="w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 py-3 text-base outline-none md:text-sm focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                     value={c.requirements ?? ''} onChange={(e) => patch(i, { requirements: e.target.value })}
                     placeholder="Contoh: Peserta membawa kartu pelajar, karya orisinal, dan belum pernah dipublikasikan." />
                 <Err m={err(base + 'requirements')} />
@@ -459,12 +460,27 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
     const remove = (i: number) => set({ participant_categories: list.filter((_, j) => j !== i) });
     const setQuota = (i: number, v: string) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, quota: v.replace(/\D/g, '') } : c)) });
     const patch = (i: number, p: Partial<(typeof list)[number]>) => set({ participant_categories: list.map((c, j) => (j === i ? { ...c, ...p } : c)) });
+    const autoRef = useRef<Record<string, string>>({});
+    useEffect(() => {
+        if (!comp) return;
+        const title = (d.title ?? '').trim();
+        let changed = false;
+        const next = list.map((c) => {
+            const auto = [title, c.name.trim()].filter(Boolean).join(' - ').slice(0, 120);
+            const cur = c.competition_name ?? '';
+            const last = autoRef.current[c.name];
+            autoRef.current[c.name] = auto;
+            if ((cur === '' || cur === last) && cur !== auto) { changed = true; return { ...c, competition_name: auto }; }
+            return c;
+        });
+        if (changed) set({ participant_categories: next });
+    }, [comp, d.title, JSON.stringify(list.map((c) => c.name))]);
     const toggle = (v: string) => { const i = idx(v); if (i >= 0) remove(i); else add(v); };
     const options = [...PRESET_CATEGORIES, ...list.map((x) => x.name).filter((n) => !PRESET_CATEGORIES.some((p) => p.toLowerCase() === n.toLowerCase()))];
     return (
-        <div className="space-y-5">
+        <div className="space-y-4 md:space-y-5">
             {comp && (
-                <div className={`${box} space-y-5 p-5`}>
+                <div className={`${box} space-y-5 p-3 md:p-5`}>
                     <div>
                         <b className="block text-[15px]">Jenis perlombaan *</b>
                         <p className={help}>Pilih apakah peserta mendaftar sendiri atau sebagai tim.</p>
@@ -486,7 +502,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                 {([['team_size', 'Jumlah peserta per tim', 'Contoh: 6'], ['team_per_row', 'Peserta per baris', 'Contoh: 3'], ['team_leaders', 'Kotak ketua', 'Contoh: 1']] as const).map(([k, t, ph]) => (
                                     <div key={k}>
                                         <label className={label}>{t} *</label>
-                                        <input inputMode="numeric" className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                        <input inputMode="numeric" className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-base outline-none md:text-[15px] focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                                             value={d[k]} placeholder={ph}
                                             onChange={(ev) => { const v = ev.target.value.replace(/\D/g, ''); updateTeam(k === 'team_size' ? { size: v } : k === 'team_per_row' ? { row: v } : { lead: v }); }} />
                                         <Err m={err(pre + k)} />
@@ -498,8 +514,8 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                 <b className="block text-sm">Preview Barisan</b>
                                 {teamN > 0 ? (
                                     <>
-                                        <div className="my-4 flex items-start justify-center gap-6">
-                                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${perRow}, 2.75rem)` }}>
+                                        <div className="my-4 flex items-start justify-start gap-4 overflow-x-auto pb-1 md:justify-center md:gap-6">
+                                            <div className="grid shrink-0 gap-2" style={{ gridTemplateColumns: `repeat(${perRow}, 2.75rem)` }}>
                                                 {Array.from({ length: memberN }, (_, n) => (
                                                     <div key={n} title={`Peserta ${n + 1}`} className="h-11 w-11 rounded-xl bg-sky-400" />
                                                 ))}
@@ -523,7 +539,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 </div>
             )}
 
-            <div className={`${box} space-y-4 p-5`}>
+            <div className={`${box} space-y-4 p-3 md:p-5`}>
                 <div>
                     <b className="block text-[15px]">Kategori peserta *</b>
                     <p className={help}>
@@ -531,12 +547,12 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-3 gap-2 md:gap-2.5 lg:grid-cols-6">
                     {options.map((o) => {
                         const on = idx(o) >= 0;
                         return (
                             <button key={o} type="button" onClick={() => toggle(o)} disabled={!on && full}
-                                className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>
+                                className={`flex h-10 items-center justify-center gap-1.5 rounded-xl border px-2 text-sm font-semibold transition md:h-11 md:px-3 disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white/80 text-slate-700 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>
                                 {on && <Check className="h-4 w-4 shrink-0" />}
                                 <span className="truncate">{o}</span>
                             </button>
@@ -545,12 +561,12 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                 </div>
 
                 <div className="flex gap-2 border-t border-slate-200/70 pt-4 dark:border-white/10">
-                    <input className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/90 px-3.5 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                    <input className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/90 px-3 text-base md:h-11 md:px-3.5 outline-none md:text-sm focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                         value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={60} disabled={full}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); setDraft(''); } }}
-                        placeholder="Tidak ada di daftar? Ketik nama kategori lalu tekan Tambah" />
+                        placeholder="Kategori lain? Ketik lalu Tambah" />
                     <button type="button" onClick={() => { add(draft); setDraft(''); }} disabled={full}
-                        className="h-11 shrink-0 rounded-xl bg-slate-800 px-6 text-sm font-bold text-white transition hover:bg-slate-700 disabled:opacity-40 dark:bg-white/20">Tambah</button>
+                        className="h-10 shrink-0 rounded-xl bg-slate-800 px-4 text-sm font-bold md:h-11 md:px-6 text-white transition hover:bg-slate-700 disabled:opacity-40 dark:bg-white/20">Tambah</button>
                 </div>
                 {list.length === 0 && <Err m={err(pre + 'participant_categories')} />}
             </div>
@@ -558,11 +574,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             {list.length > 0 && (
                 <div className={`${box} divide-y divide-slate-200/70 dark:divide-white/10`}>
                     {list.map((c, i) => (
-                        <div key={c.name} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                        <div key={c.name} className="flex flex-wrap items-center gap-2 px-3 py-2.5 md:gap-3 md:px-4 md:py-3">
                             <span className="min-w-[6rem] flex-1 font-bold">{c.name}</span>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <input inputMode="numeric" className="h-11 w-32 rounded-xl border border-slate-200 bg-white/90 px-3 text-right text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                    <input inputMode="numeric" className="h-10 w-28 rounded-xl border border-slate-200 bg-white/90 px-3 text-right md:h-11 md:w-32 text-base outline-none md:text-[15px] focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                                         value={c.quota} onChange={(e) => setQuota(i, e.target.value)} placeholder="Kuota" />
                                     <span className="text-sm text-slate-500 dark:text-slate-400">{unit}</span>
                                 </div>
@@ -580,17 +596,17 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             )}
 
             {!ticketOnly && (
-                <div className={`${box} mb-6 p-5`}>
+                <div className={`${box} mb-2 p-3 md:mb-6 md:p-5`}>
                     <b className="block text-[15px]">Biaya pendaftaran</b>
                     <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Biaya per peserta. Kosongkan atau isi 0 kalau pendaftaran gratis.</span>
                     <div className="mt-3 flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-950/60">
-                        <span className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:text-slate-400">Rp</span>
+                        <span className="border-r border-slate-200 px-3 py-2 text-sm font-bold text-slate-500 md:px-4 md:py-3 dark:border-white/10 dark:text-slate-400">Rp</span>
                         <input
                             inputMode="numeric"
                             value={d.registration_fee ? new Intl.NumberFormat('id-ID').format(Number(d.registration_fee)) : ''}
                             onChange={(e) => set({ registration_fee: e.target.value.replace(/\D/g, '').slice(0, 9) })}
                             placeholder="0"
-                            className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white"
+                            className="w-full bg-transparent px-3 py-2 text-base outline-none md:px-4 md:py-3 md:text-sm dark:text-white"
                         />
                     </div>
                     <Err m={err(pre + 'registration_fee')} />
@@ -612,7 +628,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                             registration_method: v,
                             ticket_types: v === 'ticket'
                                 ? [
-                                    { ...(d.ticket_types[0] ?? newTicket()), name: 'Pendaftaran Peserta Lomba', price: d.registration_fee || '0', quota: String(totalQuota(d) || ''), max_per_order: '1' },
+                                    { ...(d.ticket_types[0] ?? newTicket()), name: 'Pendaftaran Peserta', price: d.registration_fee || '0', quota: String(totalQuota(d) || ''), max_per_order: '1' },
                                     ...d.ticket_types.slice(1),
                                 ]
                                 : d.ticket_types,
@@ -627,7 +643,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             )}
 
             {d.registration_method === 'ticket' && (
-                <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 dark:border-white/10 dark:bg-indigo-500/10">
+                <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3 md:p-5 dark:border-white/10 dark:bg-indigo-500/10">
                     <div>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
                         <p className="text-xs text-slate-600 dark:text-slate-300">Wajib diisi. Tanpa jenis tiket, pembeli tidak bisa mendaftar.</p>
@@ -635,11 +651,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     {d.ticket_types.map((t, i) => {
                         const up = (patch: Partial<TicketType>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
                         const k = pre + `ticket_types.${i}.`;
-                        const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5';
+                        const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base md:text-sm dark:border-white/10 dark:bg-white/5';
                         return (
                             <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}{(t as any).category && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">Kategori: {(t as any).category}</span>}</span>
+                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}{(t as any).category && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800">Kategori: {(t as any).category}</span>}</span>
                                     {d.ticket_types.length > 1 && (
                                         <button type="button" onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })} className="text-xs font-bold text-red-600">Hapus</button>
                                     )}
@@ -661,11 +677,6 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                         <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
                                         <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
                                         <Err m={err(k + 'quota')} />
-                                    </div>
-                                    <div>
-                                        <label className="mb-1 block text-xs font-bold">Maksimal per pesanan (1-10) *</label>
-                                        <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
-                                        <Err m={err(k + 'max_per_order')} />
                                     </div>
                                     <div>
                                         <label className="mb-1 block text-xs font-bold">Berlaku mulai *</label>
@@ -698,7 +709,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                         {([['bank_name', 'Nama bank', 'Contoh: BCA, Mandiri, BRI'], ['bank_account_number', 'Nomor rekening', 'Hanya angka'], ['bank_account_name', 'Atas nama', 'Nama pemilik rekening']] as const).map(([k, t, ph]) => (
                             <div key={k}>
                                 <label className={label}>{t} *</label>
-                                <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                                <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-base outline-none md:text-[15px] focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                                     inputMode={k === 'bank_account_number' ? 'numeric' : 'text'} maxLength={k === 'bank_account_number' ? 40 : 100}
                                     value={d[k]} placeholder={ph}
                                     onChange={(ev) => set({ [k]: k === 'bank_account_number' ? ev.target.value.replace(/[^0-9 -]/g, '') : ev.target.value })} />
@@ -715,7 +726,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
 }
 
 function RegistrasiBlocks({ d, set, pre, err }: Sec) {
-    const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/5';
+    const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base md:text-sm dark:border-white/10 dark:bg-white/5';
     if (d.registration_method === 'ticket') {
         return (
             <div className="space-y-4">
@@ -741,11 +752,6 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                                 <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
                                 <Err m={err(k + 'quota')} />
                             </div>
-                            <div>
-                                <label className="mb-1 block text-xs font-bold">Maksimal per pesanan (1-10) *</label>
-                                <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
-                                <Err m={err(k + 'max_per_order')} />
-                            </div>
                             <p className="text-xs text-slate-500 sm:col-span-2 dark:text-slate-400">Penjualan dibuka setelah event disetujui admin dan ditutup saat event selesai{d.ends_at ? ` (${endOf(d).split('-').reverse().join('/')})` : ''}.</p>
                         </div>
                     );
@@ -761,7 +767,7 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                     {([['bank_name', 'Nama bank', 'Contoh: BCA, Mandiri, BRI'], ['bank_account_number', 'Nomor rekening', 'Hanya angka'], ['bank_account_name', 'Atas nama', 'Nama pemilik rekening']] as const).map(([k, t, ph]) => (
                         <div key={k}>
                             <label className={label}>{t} *</label>
-                            <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-[15px] outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
+                            <input className="h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-base outline-none md:text-[15px] focus:border-indigo-400 dark:border-white/10 dark:bg-slate-800"
                                 inputMode={k === 'bank_account_number' ? 'numeric' : 'text'} maxLength={k === 'bank_account_number' ? 40 : 100}
                                 value={d[k]} placeholder={ph}
                                 onChange={(ev) => set({ [k]: k === 'bank_account_number' ? ev.target.value.replace(/[^0-9 -]/g, '') : ev.target.value })} />
@@ -790,7 +796,7 @@ function PjSection({ d, set, pre, err }: Sec) {
             </div>
             <div>
                 <label className={label}>Email (opsional)</label>
-                <input type="email" className={input} value={d.contact_email} onChange={(e) => set({ contact_email: e.target.value })} />
+                <input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" type="email" className={input} value={d.contact_email} onChange={(e) => set({ contact_email: e.target.value })} />
                 <Err m={err(pre + 'contact_email')} />
             </div>
             <div>
@@ -811,7 +817,7 @@ function PosterThumb({ file }: { file: File | null }) {
         return () => URL.revokeObjectURL(u);
     }, [file]);
     return (
-        <div className="w-full shrink-0 self-start overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 shadow-md sm:w-44">
+        <div className="w-32 shrink-0 self-start overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-900 via-blue-700 to-purple-600 shadow-md sm:w-44">
             {url ? <img src={url} alt="Poster" className="block h-auto w-full" /> : <div className="flex aspect-[4/5] items-center justify-center text-xs font-semibold text-white/70">Tanpa poster</div>}
         </div>
     );
@@ -831,14 +837,14 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
     const contact = [d.contact_name, d.contact_phone].filter(Boolean).join(' · ');
     const extra = [d.contact_position, d.contact_email].filter(Boolean).join(' · ');
     return (
-        <div className={`${box} p-5`}>
+        <div className={`${box} p-3 md:p-5`}>
             <div className="flex flex-col gap-5 sm:flex-row">
                 <PosterThumb file={d.poster} />
                 <div className="min-w-0 flex-1 space-y-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-extrabold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{badge}</span>
-                            <h3 className="mt-2 break-words text-2xl font-extrabold">{d.title || '-'}</h3>
+                            <h3 className="mt-2 break-words text-xl font-extrabold md:text-2xl">{d.title || '-'}</h3>
                         </div>
                         <button type="button" onClick={onEdit} className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/10">
                             <Pencil className="h-3.5 w-3.5" /> Ubah
@@ -955,18 +961,51 @@ export default function CreateEvent({ packages, categories, selected_package_id,
             const base: any = { ...newTicket(), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
             if (cats.length < 2) {
                 if (old.length > 0 && !old.some((t) => t.category)) return old;
-                return [{ ...base, name: 'Pendaftaran Peserta Lomba', price: old[0]?.price_manual ? old[0].price : (fee || old[0]?.price || ''), quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
+                return [{ ...base, name: 'Pendaftaran Peserta', price: old[0]?.price_manual ? old[0].price : (fee || old[0]?.price || ''), quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
             }
             return cats.map((c: any) => {
                 const nm = String(c.name).trim();
                 const prev = old.find((t) => t.category === nm);
-                return { ...base, ...(prev ?? {}), price: prev?.price_manual ? prev.price : (fee || prev?.price || ''), name: `Pendaftaran Peserta Lomba - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
+                return { ...base, ...(prev ?? {}), price: prev?.price_manual ? prev.price : (fee || prev?.price || ''), name: `Pendaftaran Peserta - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
             });
         };
         const next = data.subs.map((x: any) => ({ ...x, registration_method: m, ticket_types: build(x) }));
         if (JSON.stringify(next) === JSON.stringify(data.subs)) return;
         setData((d) => ({ ...d, subs: next as any }));
     }, [series, data.registration_method, data.subs.length, JSON.stringify(data.subs.map((x: any) => [x.participant_categories, x.ends_at, x.registration_fee]))]);
+    // AUTO-TIKET-TUNGGAL: event tunggal ikut pola rangkaian (tiket per kategori, tanggal jual otomatis)
+    useEffect(() => {
+        if (series || data.registration_method !== 'ticket') return;
+        const x: any = data;
+        const cats = (x.participant_categories ?? []).filter((c: any) => String(c.name ?? '').trim() !== '');
+        const old: any[] = x.ticket_types ?? [];
+        const fee = String(x.registration_fee ?? '').replace(/\D/g, '').replace(/^0+$/, '');
+        const from = saleStart(x.ends_at);
+        const until = x.ends_at ?? '';
+        const priceOf = (t?: any) => {
+            const userSet = !!t && (t.price_manual || (t.price !== '' && t.price !== '0' && t.price !== t.price_auto));
+            return userSet ? { price: t.price, price_auto: t.price_auto ?? '' } : { price: fee || t?.price || '', price_auto: fee };
+        };
+        let next: any[];
+        if (cats.length < 2) {
+            if (old.length > 0 && !old.some((t) => t.category)) {
+                next = old.map((t, i) => {
+                    const auto = i === 0 && t.name === 'Pendaftaran Peserta';
+                    return { ...t, ...(auto ? { ...priceOf(t), quota: totalQuota(x) > 0 ? String(totalQuota(x)) : t.quota } : {}), valid_from: t.valid_from || from, valid_until: t.valid_until || until };
+                });
+            } else {
+                next = [{ ...newTicket(), max_per_order: '1', valid_from: from, valid_until: until, name: 'Pendaftaran Peserta', ...priceOf(undefined), quota: totalQuota(x) > 0 ? String(totalQuota(x)) : '' }];
+            }
+        } else {
+            next = cats.map((c: any) => {
+                const nm = String(c.name).trim();
+                const prev = old.find((t) => t.category === nm);
+                return { ...newTicket(), ...(prev ?? {}), ...priceOf(prev), name: `Pendaftaran Peserta - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: prev?.valid_from || from, valid_until: prev?.valid_until || until };
+            });
+        }
+        if (JSON.stringify(next) === JSON.stringify(old)) return;
+        setData((d) => ({ ...d, ticket_types: next as any }));
+    }, [series, data.registration_method, data.ends_at, data.registration_fee, JSON.stringify(data.participant_categories)]);
     const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
@@ -1073,44 +1112,46 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         });
     };
 
-    const h2 = 'text-2xl font-extrabold';
-    const h3 = 'mb-4 text-lg font-extrabold';
+    const h2 = 'text-[17px] font-semibold md:text-2xl md:font-extrabold';
+    const h3 = 'mb-3 text-[15px] font-semibold md:mb-4 md:text-lg md:font-extrabold';
 
     return (
         <UserLayout title="Ajukan Event" hasPanel>
             <section className="flex items-center justify-between gap-4">
-                <h1 className="text-3xl font-extrabold">
-                    Ajukan <span className="title-gradient">{series ? 'Rangkaian Event' : 'Event Baru'}</span>
+                <h1 className="text-lg font-semibold leading-tight md:text-3xl md:font-extrabold">
+                    Ajukan <span className="title-gradient max-md:!bg-none max-md:!text-indigo-600 max-md:![-webkit-text-fill-color:currentColor]">{series ? 'Rangkaian Event' : 'Event Baru'}</span>
                 </h1>
-                <Link href="/panel" className="flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-2.5 text-sm font-bold shadow-sm hover:bg-white dark:bg-white/10">
+                <Link href="/panel" className="flex items-center gap-2 shrink-0 whitespace-nowrap rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold shadow-sm max-md:h-10 max-md:rounded-full max-md:py-0 md:px-4 md:py-2.5 md:text-sm hover:bg-white dark:bg-white/10">
                     <ArrowLeft className="h-4 w-4" /> Panel Lembaga
                 </Link>
             </section>
 
-            <ol className="flex items-center py-1">
+            <ol className="flex items-center overflow-x-auto py-1 md:overflow-visible">
                 {keys.map((k, i) => (
                     <li key={k} className="flex flex-1 items-center last:flex-none">
                         <span className="flex items-center gap-3">
-                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold transition ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-white/80 text-slate-400 dark:bg-white/10'}`}>
+                            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold transition md:h-10 md:w-10 md:text-sm ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-indigo-600 text-white shadow-sm md:bg-gradient-to-br md:from-blue-600 md:to-violet-600 md:shadow-lg md:shadow-indigo-600/30' : 'bg-white/80 text-slate-400 dark:bg-white/10'}`}>
                                 {i < step ? <Check className="h-5 w-5" /> : i + 1}
                             </span>
                             <span className={`hidden text-sm font-bold lg:block ${i === step ? '' : 'text-slate-400'}`}>{titleOf(k)}</span>
                         </span>
-                        {i < keys.length - 1 && <span className={`mx-3 h-1 flex-1 rounded-full ${i < step ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-white/10'}`} />}
+                        {i < keys.length - 1 && <span className={`mx-1 h-0.5 min-w-[0.5rem] flex-1 rounded-full md:mx-3 md:h-1 ${i < step ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-white/10'}`} />}
                     </li>
                 ))}
             </ol>
 
-            <div className={`${card} w-full`} key={cur}>
+            <p className="text-xs font-bold text-slate-500 md:hidden dark:text-slate-400">Langkah {Math.min(step, keys.length - 1) + 1} dari {keys.length} · {titleOf(cur)}</p>
+
+            <div className={`${card} mb-28 w-full md:mb-0`} key={cur}>
                 {cur === 'paket' && (
-                    <div className="space-y-5">
+                    <div className="space-y-4 md:space-y-5">
                         <div>
                             <h2 className={h2}>Pilih paket</h2>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Paket menentukan fitur dan biaya event Anda. Fitur dan bagi hasil dikunci saat event diajukan.</p>
+                            <p className="mt-1 text-[13px] leading-snug text-slate-500 md:text-sm dark:text-slate-400">Paket menentukan fitur dan biaya event Anda. Fitur dan bagi hasil dikunci saat event diajukan.</p>
                         </div>
                         {packages.length === 0 && <p className="text-sm text-slate-500">Belum ada paket tersedia. Hubungi admin.</p>}
                         {/* pkg-card-v2 */}
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-2.5 md:gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {packages.map((p, pi) => {
                                 const on = data.package_id === p.id;
                                 const th = PKG_THEMES[pi % PKG_THEMES.length];
@@ -1119,20 +1160,20 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 const small = m ? m[1] : '';
                                 const kind = isSeriesPkg(p) ? 'Rangkaian event' : p.extra_sub_event_price !== null ? 'Tunggal / rangkaian' : 'Event tunggal';
                                 return (
-                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 p-4 transition ${on ? th.on : th.off}`}>
+                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 p-3 transition md:p-4 ${on ? th.on + ' max-md:!border-indigo-600 max-md:!bg-indigo-50' : th.off + ' max-md:!border-slate-200 max-md:!bg-white'} max-md:!bg-none max-md:!shadow-none`}>
                                         <input type="radio" name="package" checked={on} onChange={() => choosePackage(p)} className="sr-only" />
-                                        <span className={`absolute inset-x-0 top-0 h-1.5 ${th.bar}`} />
+                                        <span className={`absolute inset-x-0 top-0 h-1.5 max-md:hidden ${th.bar}`} />
                                         <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
                                             <Check className="h-4 w-4" />
                                         </span>
-                                        <span className={`mt-1 w-fit rounded-full px-3 py-1 text-[11px] font-bold ${th.chip}`}>{kind}</span>
-                                        <span className="mt-2 text-base font-bold">{p.name}</span>
-                                        <span className="mt-2 block min-h-[3rem]">
+                                        <span className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[11px] font-bold md:px-3 md:py-1 max-md:!bg-slate-100 max-md:!text-slate-600 ${th.chip}`}>{kind}</span>
+                                        <span className="mt-1.5 text-[15px] font-semibold md:mt-2 md:text-base md:font-bold">{p.name}</span>
+                                        <span className="mt-1 block md:mt-2 md:min-h-[3rem]">
                                             {small && <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{small}</span>}
-                                            <span className={`block text-2xl font-extrabold leading-tight ${th.price}`}>{big}</span>
+                                            <span className={`block text-xl font-extrabold leading-tight md:text-2xl max-md:!text-indigo-700 ${th.price}`}>{big}</span>
                                         </span>
-                                        {p.description && <span className="mt-1 line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{p.description}</span>}
-                                        <span className="mt-auto pt-3 text-xs font-semibold text-indigo-600 dark:text-indigo-300">{p.features.length} fitur</span>
+                                        {p.description && <span className="mt-1 line-clamp-1 block text-xs text-slate-500 md:line-clamp-2 dark:text-slate-400">{p.description}</span>}
+                                        <span className="mt-auto pt-1.5 text-xs font-semibold text-indigo-600 md:pt-3 dark:text-indigo-300">{p.features.length} fitur</span>
                                     </label>
                                 );
                             })}
@@ -1141,18 +1182,18 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                         <Err m={err('package_id')} />
 
                         {pkg && c && (
-                            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 dark:border-indigo-400/30 dark:bg-indigo-500/10">
+                            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3 md:p-5 dark:border-indigo-400/30 dark:bg-indigo-500/10">
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Paket dipilih</p>
-                                        <p className="text-2xl font-extrabold">{pkg.name}</p>
+                                        <p className="text-lg font-semibold md:text-2xl md:font-extrabold">{pkg.name}</p>
                                         <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
                                             {data.subs.length === 0 ? 'Event tunggal' : `Rangkaian ${data.subs.length} event`}
                                         </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Biaya di muka</p>
-                                        <p className="text-3xl font-extrabold text-indigo-700 dark:text-indigo-300">
+                                        <p className="text-xl font-semibold text-indigo-700 md:text-3xl md:font-extrabold dark:text-indigo-300">
                                             {pkg.payment_type === 'revenue_share' ? 'Rp0' : c.total === 0 ? 'Gratis' : rp(c.total)}
                                         </p>
                                         {pkg.payment_type === 'revenue_share' && <p className="text-xs text-slate-500">{pkg.price_label}</p>}
@@ -1186,7 +1227,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                     <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-indigo-200 pt-4 text-sm dark:border-white/10">
                                         <input type="checkbox" checked={data.assessment_addon} onChange={(e) => setData('assessment_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
                                         <span>
-                                            <b>Tambah penilaian juri</b> (+{rp(pkg.assessment_addon_price ?? 0)})
+                                            <b>Tambah sistem penilaian</b> (+{rp(pkg.assessment_addon_price ?? 0)})
                                             <span className="block text-xs text-slate-500 dark:text-slate-400">Sistem penilaian dan akun juri untuk memberi nilai pada peserta.</span>
                                         </span>
                                     </label>
@@ -1244,7 +1285,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                     const pre = `subs.${i}.`;
                     const set = (p: Partial<Detail>) => setSub(i, p);
                     return (
-                        <div className="space-y-7">
+                        <div className="space-y-5 md:space-y-7">
                             <div>
                                 <h2 className={h2}>Event {i + 1} dari {data.subs.length}</h2>
                                 <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
@@ -1269,7 +1310,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                         ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.'] as [string, string, string]] : []),
                     ];
                     return (
-                        <div className="space-y-6">
+                        <div className="space-y-4 md:space-y-6">
                             <div>
                                 <h2 className={h2}>Pendaftaran peserta</h2>
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Semua event sudah terisi. Pilih cara peserta mendaftar. Pilihan ini berlaku untuk seluruh rangkaian dan tidak bisa dicampur.</p>
@@ -1292,7 +1333,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 <p className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 text-sm dark:border-white/10 dark:bg-indigo-500/10">Form tiket sudah dibuatkan otomatis untuk tiap event di bawah. Tinggal isi harga dan kuotanya.</p>
                             )}
                             {data.registration_method && data.subs.map((s, i) => (
-                                <div key={i} className={`${box} space-y-4 p-5`}>
+                                <div key={i} className={`${box} space-y-4 p-3 md:p-5`}>
                                     <h3 className="text-lg font-extrabold">Event {i + 1}: {s.title || '-'}</h3>
                                     <RegistrasiBlocks d={s} set={(p) => setSub(i, p)} pre={`subs.${i}.`} err={err} />
                                 </div>
@@ -1302,10 +1343,10 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                 })()}
 
                 {cur === 'tinjau' && pkg && c && (
-                    <div className="space-y-6">
+                    <div className="space-y-4 md:space-y-6">
                         <h2 className={h2}>Tinjau pengajuan</h2>
 
-                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-indigo-800 via-blue-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-600/20">
+                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-indigo-800 via-blue-600 to-violet-600 p-4 text-white md:p-5 shadow-lg shadow-indigo-600/20">
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Paket</p>
                                 <p className="text-xl font-extrabold">{pkg.name}</p>
@@ -1337,7 +1378,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                             <ReviewCard d={data} categories={categories} badge="Event" onEdit={() => setStep(keys.indexOf('info'))} />
                         )}
 
-                        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 text-[15px] dark:border-indigo-400/30 dark:bg-indigo-500/10">
+                        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3 md:p-5 text-[15px] dark:border-indigo-400/30 dark:bg-indigo-500/10">
                             <p className="mb-2 font-extrabold">Rincian biaya</p>
                             {pkg.payment_type === 'revenue_share' ? (
                                 <p>Tanpa biaya di muka. {pkg.price_label} dari penjualan.</p>
@@ -1345,14 +1386,14 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 <div className="space-y-1">
                                     <div className="flex justify-between"><span>Paket {pkg.name}{pkg.included_sub_events > 0 ? ` (termasuk ${pkg.included_sub_events} event)` : ''}</span><span>{c.base === 0 ? 'Gratis' : rp(c.base)}</span></div>
                                     {c.extra > 0 && <div className="flex justify-between"><span>Event tambahan ({c.extra} × {rp(pkg.extra_sub_event_price ?? 0)})</span><span>{rp(c.sub)}</span></div>}
-                                    {c.ad > 0 && <div className="flex justify-between"><span>Add-on penilaian juri</span><span>{rp(c.ad)}</span></div>}
+                                    {c.ad > 0 && <div className="flex justify-between"><span>Add-on sistem penilaian</span><span>{rp(c.ad)}</span></div>}
                                     {c.aj > 0 && <div className="flex justify-between"><span>Add-on juri</span><span>{rp(c.aj)}</span></div>}
                                     <div className="mt-2 flex justify-between border-t border-indigo-200 pt-2 font-extrabold dark:border-white/10"><span>Total di muka</span><span>{c.total === 0 ? 'Gratis' : rp(c.total)}</span></div>
                                 </div>
                             )}
                         </div>
                         {pkg.payment_type !== 'revenue_share' && c.total > 0 && (
-                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-5 text-[15px] dark:border-white/10 dark:bg-white/5">
+                            <div className="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm md:p-5 md:text-[15px] dark:border-white/10 dark:bg-white/5">
                                 <p className="mb-3 font-extrabold">Metode pembayaran</p>
                                 <div className={`grid gap-3 ${payment_methods.length > 1 ? 'md:grid-cols-2' : ''}`}>
                                     {payment_methods.map((m) => {
@@ -1396,7 +1437,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 {errors.payment_method && <p className="mt-3 text-sm text-rose-500">{errors.payment_method}</p>}
                             </div>
                         )}
-                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-5 text-[15px] dark:border-white/10 dark:bg-white/5">
+                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm md:p-5 md:text-[15px] dark:border-white/10 dark:bg-white/5">
                             <label className="flex cursor-pointer items-start gap-3">
                                 <input type="checkbox" className="mt-1 h-4 w-4 accent-indigo-700" checked={data.agree_terms} onChange={(e) => setData('agree_terms', e.target.checked)} />
                                 <span>Saya menyatakan data yang saya isi sudah benar dan menyetujui syarat & ketentuan penyelenggaraan event di SIMPLE. <span className="text-rose-500">*</span></span>
@@ -1418,16 +1459,16 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                     </div>
                 )}
 
-                <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5 dark:border-white/10">
+                <div className="mt-5 flex items-center justify-between border-t md:mt-8 border-slate-200 pt-5 dark:border-white/10">
                     <button onClick={back} disabled={step === 0} className="flex items-center gap-2 rounded-xl px-1 py-3 text-sm font-bold text-slate-600 hover:text-indigo-700 disabled:invisible dark:text-slate-300 dark:hover:text-white">
                         <ArrowLeft className="h-4 w-4" /> Kembali
                     </button>
                     {!last ? (
-                        <button onClick={next} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-800 via-blue-600 to-violet-600 px-7 py-3 text-sm font-bold text-white shadow-md shadow-indigo-600/25">
+                        <button onClick={next} className="flex h-10 items-center gap-2 rounded-full bg-indigo-600 px-6 text-sm font-semibold text-white md:h-auto md:rounded-xl md:bg-gradient-to-r md:from-indigo-800 md:via-blue-600 md:to-violet-600 md:px-7 md:py-3 md:font-bold md:shadow-md md:shadow-indigo-600/25">
                             Lanjut <ArrowRight className="h-4 w-4" />
                         </button>
                     ) : (
-                        <button onClick={submit} disabled={processing || !(data.agree_terms && (pkg?.payment_type !== 'revenue_share' || data.agree_revenue))} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-7 py-3 text-sm font-bold text-white shadow-md disabled:opacity-60">
+                        <button onClick={submit} disabled={processing || !(data.agree_terms && (pkg?.payment_type !== 'revenue_share' || data.agree_revenue))} className="flex h-10 items-center gap-2 rounded-full bg-indigo-600 px-6 text-sm font-semibold text-white disabled:opacity-60 md:h-auto md:rounded-xl md:bg-gradient-to-r md:from-emerald-500 md:to-green-600 md:px-7 md:py-3 md:font-bold md:shadow-md">
                             {processing && <Loader2 className="h-4 w-4 animate-spin" />} {series ? 'Ajukan Rangkaian' : 'Ajukan Event'}
                         </button>
                     )}
@@ -1445,7 +1486,7 @@ function PackageCompare({ packages, selectedId }: { packages: { id: number | str
     const rows = Array.from(new Map(packages.flatMap((p) => p.features).map((f) => [norm(f), f.trim()] as const)).values());
     return (
         <div>
-            <button type="button" onClick={() => setOpen((v) => !v)} className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300 dark:hover:bg-white/10">
+            <button type="button" onClick={() => setOpen((v) => !v)} className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold max-md:h-10 max-md:w-full max-md:rounded-full max-md:py-0 text-indigo-700 transition hover:bg-indigo-50 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300 dark:hover:bg-white/10">
                 {open ? 'Sembunyikan perbandingan' : 'Bandingkan semua fitur'}
             </button>
             {open && (

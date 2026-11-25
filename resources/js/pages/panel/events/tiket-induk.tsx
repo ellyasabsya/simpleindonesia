@@ -43,42 +43,42 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
         { label: 'Pendapatan', value: rp(list.reduce((a, r) => a + r.revenue, 0)), Icon: Banknote, tone: 'bg-amber-100 text-amber-600' },
     ];
     const chip = (on: boolean) =>
-        `whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
+        `shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-bold transition md:py-1.5 ${on ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`;
 
     return (
         <PanelLayout title="Tiket">
-            <div className="space-y-5">
-                <div className={`${box} flex items-start gap-5 p-6`}>
+            <div className="space-y-3 pb-24 md:space-y-5 md:pb-0">
+                <div className={`${box} flex items-start gap-3 p-3 md:gap-5 md:p-6`}>
                     <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30">
                         <Layers className="size-6" strokeWidth={2} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-extrabold">Tiket gabungan</h2>
-                        <p className="mt-1 text-sm text-slate-500">Ringkasan tiket dari semua sub-event. Halaman ini hanya untuk melihat; harga, kuota, dan masa jual diatur lewat tombol Kelola di tiap sub-event.</p>
+                        <h2 className="text-[17px] font-semibold md:text-xl md:font-extrabold">Tiket gabungan</h2>
+                        <p className="mt-1 text-[13px] text-slate-600 md:text-sm md:text-slate-500">Ringkasan tiket dari semua sub-event. Halaman ini hanya untuk melihat; harga, kuota, dan masa jual diatur lewat tombol Kelola di tiap sub-event.</p>
                     </div>
                 </div>
 
                 {sale && sale.count > 0 && (
-                    <div className={`${box} flex flex-wrap items-center justify-between gap-4 p-5`}>
+                    <div className={`${box} flex flex-wrap items-center justify-between gap-3 p-3 md:gap-4 md:p-5`}>
                         <div>
-                            <h3 className="text-base font-extrabold">Penjualan seluruh rangkaian</h3>
+                            <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Penjualan seluruh rangkaian</h3>
                             <p className="mt-0.5 text-sm text-slate-500">
                                 {sale.open ? 'Semua kegiatan sedang dijual.' : sale.some_open ? 'Sebagian kegiatan sedang dijual.' : 'Penjualan ditutup.'} Berlaku untuk {sale.count} kegiatan yang memakai tiket.
                             </p>
                         </div>
-                        <div className="flex gap-2">
-                            <button type="button" disabled={busy || sale.open} onClick={() => flip(true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Buka semua</button>
-                            <button type="button" disabled={busy || (!sale.open && !sale.some_open)} onClick={() => flip(false)} className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Tutup semua</button>
+                        <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto">
+                            <button type="button" disabled={busy || sale.open} onClick={() => flip(true)} className="h-10 rounded-full bg-emerald-600 px-4 text-sm font-medium text-white disabled:opacity-40 md:h-auto md:rounded-xl md:py-2 md:font-bold">Buka semua</button>
+                            <button type="button" disabled={busy || (!sale.open && !sale.some_open)} onClick={() => flip(false)} className="h-10 rounded-full bg-slate-700 px-4 text-sm font-medium text-white disabled:opacity-40 md:h-auto md:rounded-xl md:py-2 md:font-bold">Tutup semua</button>
                         </div>
                     </div>
                 )}
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
                     {stats.map(({ label, value, Icon, tone }) => (
-                        <div key={label} className={`${box} flex items-center gap-4 p-4`}>
+                        <div key={label} className={`${box} flex items-center gap-2.5 p-3 md:gap-4 md:p-4`}>
                             <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="size-5" /></div>
                             <div className="min-w-0">
-                                <div className="truncate text-2xl font-extrabold leading-none">{value}</div>
+                                <div className="truncate text-[17px] font-semibold leading-none md:text-2xl md:font-extrabold">{value}</div>
                                 <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
                             </div>
                         </div>
@@ -86,9 +86,9 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
                 </div>
 
                 <div className={`${box} overflow-hidden`}>
-                    <div className="space-y-4 p-5">
-                        <h3 className="text-lg font-extrabold">Daftar tiket <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
-                        <div className="flex flex-wrap gap-2">
+                    <div className="space-y-3 p-3 md:space-y-4 md:p-5">
+                        <h3 className="text-[15px] font-semibold md:text-lg md:font-extrabold">Daftar tiket <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
                             <button type="button" onClick={() => setSub('')} className={chip(sub === '')}>Semua sub-event · {rows.length}</button>
                             {subs.map((c) => (
                                 <button key={c.id} type="button" onClick={() => setSub(String(c.id))} className={chip(sub === String(c.id))}>
@@ -103,7 +103,38 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
                             {sub && subs.find((c) => String(c.id) === sub)?.method !== 'ticket' ? 'Sub-event ini memakai formulir, bukan tiket.' : 'Belum ada tiket.'}
                         </p>
                     ) : (
-                        <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
+                        <>
+<div className="space-y-2 border-t border-slate-200 p-3 md:hidden dark:border-white/10">
+                            {list.map((r, i) => {
+                                const st = STATUS[r.status] ?? STATUS.dibuka;
+                                const pct = r.quota > 0 ? Math.min(100, Math.round((r.sold / r.quota) * 100)) : 0;
+                                return (
+                                    <div key={`m-${r.sub_id}-${r.name}-${i}`} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="truncate text-sm font-semibold">{r.sub}</div>
+                                                <span className="mt-1 inline-block max-w-full truncate rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.name}</span>
+                                            </div>
+                                            <span className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${st.style}`}>{st.label}</span>
+                                        </div>
+                                        <div className="mt-2 flex items-center justify-between gap-2 text-[13px]">
+                                            <span className="font-semibold">{r.price > 0 ? rp(r.price) : 'Gratis'}</span>
+                                            <span className="text-slate-600 dark:text-slate-300">Pendapatan {rp(r.revenue)}</span>
+                                        </div>
+                                        <div className="mt-2">
+                                            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                                                <span>Terjual {r.sold} / {r.quota}</span>
+                                                <span>{pct}%</span>
+                                            </div>
+                                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className="h-full rounded-full bg-indigo-600" style={{ width: `${pct}%` }} /></div>
+                                        </div>
+                                        <p className="mt-2 text-[11px] text-slate-600 dark:text-slate-300">Masa jual {r.from ?? '-'} s/d {r.until ?? '-'}</p>
+                                        <Link href={`/panel/event/${r.sub_id}/tiket`} className="mt-2 flex h-10 items-center justify-center gap-1 rounded-full bg-indigo-600 text-sm font-medium text-white">Kelola<ChevronRight className="size-4" /></Link>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="hidden overflow-x-auto border-t border-slate-200 md:block dark:border-white/10">
                             <table className="w-full min-w-[900px] text-sm">
                                 <thead className="bg-slate-50 dark:bg-white/5">
                                     <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
@@ -142,6 +173,7 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
             </div>

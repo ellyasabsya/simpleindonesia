@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 
-export type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
+export type NavIcon = ComponentType<{ className?: string; strokeWidth?: number; active?: boolean }>;
 
 export type NavItem = {
     label: string;

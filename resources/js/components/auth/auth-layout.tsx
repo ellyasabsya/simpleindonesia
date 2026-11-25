@@ -69,9 +69,7 @@ export default function AuthLayout({ pageTitle, badge, title, subtitle, panelHea
 
                         <div className="relative">
                             <Link href="/" className="flex items-center gap-2.5">
-                                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-xl font-black ring-1 ring-white/30">
-                                    S
-                                </span>
+                                <img src="/logo-s-sm.png" alt="SIMPLE" className="h-11 w-11 shrink-0 object-contain" />
                                 <span className="text-xl font-extrabold tracking-[0.25em]">SIMPLE</span>
                             </Link>
 

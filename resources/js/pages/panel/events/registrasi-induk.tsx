@@ -1,6 +1,8 @@
 import PanelLayout from '@/components/panel/panel-layout';
-import { Link, router } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Download, Layers, Paperclip, Plus, Search, Ticket, Trash2, X } from 'lucide-react';
+import RegistrasiIndukMobile from '@/components/mobile/pages/registrasi-induk-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
+import { Link, router, usePage } from '@inertiajs/react';
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Download, Layers, Paperclip, ScanLine, Plus, Search, Ticket, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
@@ -57,9 +59,12 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
     const [errors, setErrors] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const phone = usePhone();
 
     const cur = subs.find((s) => String(s.id) === sub) ?? null;
     const mode: 'all' | 'ticket' | 'form' = !cur ? 'all' : cur.ticket ? 'ticket' : 'form';
+    const parentId = usePage().url.match(/\/panel\/event\/(\d+)/)?.[1] ?? '';
+    const scanId = cur ? String(cur.id) : parentId;
 
     const scoped = useMemo(() => rows.filter((r) => !sub || String(r.sub_id) === sub), [rows, sub]);
     const count = (s: string) => scoped.filter((r) => r.status === s).length;
@@ -181,6 +186,23 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
     return (
         <PanelLayout title="Registrasi">
             <div className="space-y-5">
+                {phone && (
+                    <RegistrasiIndukMobile
+                        mode={mode} cur={cur} subs={subs} rows={rows} scoped={scoped} list={list} view={view} scanId={scanId}
+                        sub={sub} pickSub={pickSub} tab={tab} setTab={setTab}
+                        q={q} setQ={(v) => { setQ(v); setPage(1); }}
+                        st={st} setSt={(v) => { setSt(v); setPage(1); }}
+                        tp={tp} setTp={(v) => { setTp(v); setPage(1); }}
+                        catSel={catSel} setCat={(v) => { setCat(v); setPage(1); }} cats={cats}
+                        statuses={statuses} ticketTypes={ticketTypes}
+                        pg={pg} pages={pages} setPage={setPage}
+                        openAll={open(rows)} openScoped={open(scoped)} menunggu={count('menunggu')} terdaftar={count('terdaftar')}
+                        unpublished={unpublished} shown={shown} hasAfter={hasAfter} catLabel={catLabel}
+                        answer={showAnswer} review={review}
+                        onDelete={(r) => { if (confirm(`Hapus pendaftar ${r.name}? Data dan berkasnya ikut terhapus.`)) router.delete(`/panel/event/${r.sub_id}/registrasi/pendaftar/${r.id}`, { preserveScroll: true }); }}
+                    />
+                )}
+                <div className={phone ? 'hidden' : 'space-y-5'}>
                 <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
                     <div className="flex items-start gap-4">
                         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white">
@@ -241,6 +263,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                                 {mode === 'form' && cur && (
                                     <a href={`/panel/event/${cur.id}/registrasi/export`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800"><Download className="h-4 w-4" /> Ekspor CSV</a>
                                 )}
+                                <a href={`/panel/event/${scanId}/checkin`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"><ScanLine className="h-4 w-4" /> Buka scanner</a>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <button type="button" onClick={() => pickSub('')} className={chip(sub === '')}>Semua sub-event · {open(rows)}</button>
@@ -371,6 +394,8 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                         )}
                     </div>
                 )}
+
+                </div>
 
                 {mode === 'form' && tab === 'form' && cur && (
                     <div className="space-y-4">

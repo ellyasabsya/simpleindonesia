@@ -163,15 +163,15 @@ export default function Dashboard({ history = [], friends = [], invitations = []
             </div>
             <div className="hidden md:contents">
             <section className={`${card} overflow-hidden`}>
-                <div className="relative h-24 overflow-hidden bg-gradient-to-r from-indigo-900 via-blue-600 to-fuchsia-500 sm:h-28">
+                <div className="relative h-16 overflow-hidden bg-gradient-to-r from-indigo-900 via-blue-600 to-fuchsia-500 sm:h-20">
                     {user.avatar && <img src={user.avatar} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-2xl" />}
                     <span className="absolute -right-10 -top-16 h-64 w-64 rounded-full bg-white/20 blur-2xl" />
                     <span className="absolute inset-0 opacity-20 [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:18px_18px]" />
                     <span className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                 </div>
                 <div className="px-6 pb-6 sm:px-8">
-                    <div className="relative z-10 -mt-14 flex flex-wrap items-end justify-between gap-4">
-                        <Avatar name={name} src={user.avatar} className="h-28 w-28 rounded-[1.8rem] text-4xl shadow-2xl ring-4 ring-white dark:ring-slate-900" />
+                    <div className="relative z-10 -mt-12 flex flex-wrap items-end justify-between gap-4">
+                        <Avatar name={name} src={user.avatar} className="h-24 w-24 rounded-[1.6rem] text-3xl shadow-2xl ring-4 ring-white dark:ring-slate-900" />
                         <div className="flex flex-wrap gap-2">
                             {isJudge && <Link
                                 href="/juri-saya"
@@ -207,35 +207,38 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                         {joined && <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 font-semibold dark:bg-white/10"><CalendarDays className="h-3.5 w-3.5 text-indigo-500" /> Bergabung {joined}</span>}
                     </div>
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200/70 pt-6 sm:grid-cols-4 dark:border-white/10">
                         {(Object.keys(roles) as Role[]).map((r) => {
                             const c = roles[r]; const Icon = c.icon; const on = tab === 'riwayat' && filter === r;
                             return (
-                                <button key={r} onClick={() => openRole(r)} className={`flex items-center gap-3 rounded-2xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-md ${on ? 'border-indigo-300 bg-white ring-4 ring-indigo-100 dark:border-indigo-400/40 dark:bg-white/10 dark:ring-indigo-500/10' : 'border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/5'}`}>
-                                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${c.grad} text-white shadow-md`}><Icon className="h-5 w-5" /></span>
-                                    <span><span className="block text-2xl font-extrabold leading-none">{count(r)}</span><span className="mt-1 block text-xs font-bold">{c.label}</span></span>
+                                <button key={r} onClick={() => openRole(r)} className={`group relative flex items-center gap-4 overflow-hidden rounded-2xl px-5 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${c.soft} ${on ? 'ring-2 ring-indigo-300 dark:ring-indigo-400/50' : ''}`}>
+                                    <Icon className={`absolute -bottom-4 -right-3 h-24 w-24 opacity-10 transition group-hover:scale-110 ${c.text}`} />
+                                    <span className="relative">
+                                        <span className={`block bg-gradient-to-br ${c.grad} bg-clip-text text-4xl font-extrabold leading-none text-transparent`}>{count(r)}</span>
+                                        <span className={`mt-1.5 block text-sm font-bold ${c.text}`}>{c.label}</span>
+                                    </span>
                                 </button>
                             );
                         })}
-                        <button onClick={() => setTab('teman')} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/60 p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-md"><Users className="h-5 w-5" /></span>
-                            <span><span className="block text-2xl font-extrabold leading-none">{friendList.length}</span><span className="mt-1 block text-xs font-bold">Teman</span></span>
+                        <button onClick={() => setTab('teman')} className="group relative flex items-center gap-4 overflow-hidden rounded-2xl bg-emerald-50 px-5 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-md dark:bg-emerald-500/15">
+                            <Users className="absolute -bottom-4 -right-3 h-24 w-24 text-emerald-600 opacity-10 transition group-hover:scale-110 dark:text-emerald-300" />
+                            <span className="relative">
+                                <span className="block bg-gradient-to-br from-emerald-400 to-teal-600 bg-clip-text text-4xl font-extrabold leading-none text-transparent">{friendList.length}</span>
+                                <span className="mt-1.5 block text-sm font-bold text-emerald-700 dark:text-emerald-300">Teman</span>
+                            </span>
                         </button>
                     </div>
                 </div>
             </section>
 
-            <section className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="mt-5 mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {quick.map((q) => {
                     const Icon = q.icon;
                     return (
-                        <Link key={q.label} href={q.href} className="group flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg dark:border-white/10 dark:bg-white/5 dark:hover:border-indigo-400/50">
-                            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${q.grad} text-white shadow-md`}><Icon className="h-6 w-6" /></span>
-                            <span className="min-w-0 flex-1">
-                                <span className="block text-lg font-extrabold leading-tight">{q.label}</span>
-                                <span className="block truncate text-sm text-slate-600 dark:text-slate-300">{q.desc}</span>
-                            </span>
-                            <ArrowRight className="h-5 w-5 text-slate-500 transition group-hover:translate-x-1 group-hover:text-indigo-600" />
+                        <Link key={q.label} href={q.href} title={q.desc} className="group flex items-center justify-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:hover:border-indigo-400/50">
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${q.grad} text-white shadow`}><Icon className="h-4 w-4" /></span>
+                            <span className="text-[15px] font-extrabold">{q.label}</span>
+                            <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-indigo-600" />
                         </Link>
                     );
                 })}
@@ -298,28 +301,28 @@ export default function Dashboard({ history = [], friends = [], invitations = []
                                 </div>
                             ) : (
                                 years.map((y) => (
-                                    <div key={y} className="mb-6 last:mb-0">
+                                    <div key={y} className="mb-5 last:mb-0">
                                         <p className="mb-3 text-sm font-extrabold tracking-widest text-slate-400">{y}</p>
-                                        <ol className="relative ml-5 space-y-4 border-l-2 border-slate-200 pl-8 dark:border-white/10">
+                                        <ol className="relative ml-4 space-y-2.5 border-l-2 border-slate-200 pl-7 dark:border-white/10">
                                             {hp.rows.filter((i) => i.date.startsWith(y)).map((i) => {
                                                 const c = roles[i.role]; const Icon = c.icon;
                                                 const body = (
                                                     <>
-                                                        <span className={`absolute -left-[3.2rem] flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${c.grad} text-white shadow-md ring-4 ring-white dark:ring-slate-900`}><Icon className="h-5 w-5" /></span>
+                                                        <span className={`absolute -left-[2.8rem] top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${c.grad} text-white shadow ring-4 ring-white dark:ring-slate-900`}><Icon className="h-4 w-4" /></span>
                                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                                             <div className="min-w-0">
-                                                                <span className={`inline-block rounded-lg px-2.5 py-0.5 text-xs font-extrabold ${c.soft} ${c.text}`}>{c.label}</span>
-                                                                <p className="mt-1.5 truncate text-lg font-extrabold">{i.title}</p>
-                                                                {i.subtitle && <p className="text-sm text-slate-500 dark:text-slate-400">{i.subtitle}</p>}
+                                                                <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-extrabold ${c.soft} ${c.text}`}>{c.label}</span>
+                                                                <p className="mt-1 truncate text-base font-extrabold">{i.title}</p>
+                                                                {i.subtitle && <p className="text-xs text-slate-500 dark:text-slate-400">{i.subtitle}</p>}
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{fmt(i.date)}</p>
+                                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{fmt(i.date)}</p>
                                                                 {i.status && <span className={`mt-1 inline-block rounded-full px-3 py-1 text-xs font-bold ${i.tone === 'bad' ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300' : i.tone === 'wait' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'}`}>{i.status}</span>}
                                                             </div>
                                                         </div>
                                                     </>
                                                 );
-                                                const cls = 'relative block rounded-2xl border border-slate-200 bg-white/70 p-4 transition hover:border-indigo-200 hover:shadow-sm dark:border-white/10 dark:bg-white/5';
+                                                const cls = 'relative block rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 transition hover:border-indigo-200 hover:shadow-sm dark:border-white/10 dark:bg-white/5';
                                                 return <li key={`${i.role}-${i.id}`}>{i.href ? <Link href={i.href} className={cls}>{body}</Link> : <div className={cls}>{body}</div>}</li>;
                                             })}
                                         </ol>

@@ -21,7 +21,11 @@ class PackagePaymentController extends Controller
         $status = in_array($status, [...self::STATUSES, 'all'], true) ? $status : 'menunggu_verifikasi';
         $q = trim((string) $request->query('q', ''));
 
-        $base = fn () => Event::whereNull('parent_id')->whereNotNull('payment_status');
+        // Hanya transfer manual yang perlu diverifikasi; Midtrans, bagi hasil, dan gratis tidak ditampilkan.
+        $base = fn () => Event::whereNull('parent_id')
+            ->whereNotNull('payment_status')
+            ->where('package_snapshot->payment_method', 'transfer_manual')
+            ->whereNull('midtrans_order_id');
 
         $page = $base()->with('institution:id,name,email')
             ->when($status !== 'all', fn ($w) => $w->where('payment_status', $status))
@@ -89,7 +93,8 @@ class PackagePaymentController extends Controller
 
     public function approve(Event $event): RedirectResponse
     {
-        DB::transaction(function () use ($event) {
+        $published = false;
+        DB::transaction(function () use ($event, &$published) {
             $n = Event::where('id', $event->id)->where('payment_status', 'menunggu_verifikasi')->update([
                 'payment_status' => 'lunas',
                 'payment_note' => null,
@@ -97,6 +102,7 @@ class PackagePaymentController extends Controller
             ]);
 
             if ($n === 1) {
+                $published = true;
                 // Event utama dan semua kegiatan di dalamnya ditayangkan sekaligus
                 Event::where(fn ($q) => $q->where('id', $event->id)->orWhere('parent_id', $event->id))->update([
                     'status' => Event::PUBLISHED,
@@ -105,6 +111,10 @@ class PackagePaymentController extends Controller
                 ]);
             }
         });
+
+        if ($published) {
+            \App\Support\UserNotifier::send(\App\Models\Institution::find($event->institution_id)?->user, 'Event ditayangkan', "Pembayaran disetujui, event {$event->title} sudah tayang.", '/panel');
+        }
 
         return back()->with('success', 'Pembayaran disetujui dan event sudah tayang.');
     }

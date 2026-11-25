@@ -41,7 +41,7 @@ class TicketSettingsController extends Controller
             'valid_from' => ['required_if:custom_sale,true', 'nullable', 'date'],
             'valid_until' => ['required_if:custom_sale,true', 'nullable', 'date', 'after_or_equal:valid_from', "before_or_equal:{$end}"],
             'require_holder_details' => ['required', 'boolean'],
-            'max_per_order' => ['required', 'integer', 'min:1', 'max:10'],
+            'max_per_order' => ['sometimes', 'integer', 'min:1', 'max:10'],
             'support_enabled' => ['required', 'boolean'],
             'support_options' => ['nullable', 'array', 'max:50'],
             'support_options.*' => ['nullable', 'string', 'max:60'],
@@ -65,6 +65,11 @@ class TicketSettingsController extends Controller
         $data['audience'] = $event->registration_method !== 'ticket'
             ? 'umum'
             : ($data['audience'] ?? ($type->audience ?? 'peserta'));
+
+        // Tiket pendaftaran peserta dikunci sistem: 1 tiket per pesanan.
+        $data['max_per_order'] = ($event->registration_method === 'ticket' && $data['audience'] === 'peserta')
+            ? 1
+            : (int) ($data['max_per_order'] ?? 10);
 
         $opts = collect($data['support_options'] ?? [])->map(fn ($o) => trim((string) $o))->filter()
             ->unique(fn ($o) => mb_strtolower($o))->values()->all();

@@ -23,10 +23,10 @@ type Recap = {
     saved: boolean; saved_at: string | null; saved_by: string | null; saved_version: number; history: HistItem[];
 };
 
-const solid = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
-const h = 'text-lg font-black text-slate-900 dark:text-white';
-const field = 'h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
-const area = 'w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+const solid = 'rounded-2xl bg-white md:rounded-3xl shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
+const h = 'text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white';
+const field = 'h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-base font-semibold md:h-11 md:px-4 md:text-sm text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
+const area = 'w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-base font-semibold md:px-4 md:py-3 md:text-sm text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white';
 const num = (v: number | null) => (v === null || v === undefined ? '-' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 4 }).format(v));
 const TYPES = ['Teguran', 'Peringatan resmi', 'Pengurangan nilai', 'Konsekuensi khusus', 'Pembatalan hasil', 'Diskualifikasi'];
 const DEC_TEXT: Record<Decision, string> = { bersama: 'Juara bersama', ulang: 'Tanding ulang', urut: 'Hasil tanding ulang' };
@@ -66,12 +66,12 @@ function FinalizeDialog({ rec, base, onClose }: { rec: Recap; base: string; onCl
     };
 
     return (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true">
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/60 p-0 md:items-center md:p-4" role="dialog" aria-modal="true">
+            <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:max-h-[90vh] md:rounded-3xl md:p-6 dark:bg-slate-900">
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><AlertTriangle className="h-6 w-6" /></span>
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white">Simpan hasil kategori {rec.category.name}?</h3>
+                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Simpan hasil kategori {rec.category.name}?</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil disimpan sebagai <b>versi baru di riwayat</b>. Setelah disimpan, penalti, nilai juri, dan keputusan dewan juri terkunci sampai Anda menekan <b>Edit</b>. Penetapan akhir dilakukan di tab Penetapan & SK. Periksa dulu 4 hal ini.</p>
                     </div>
                 </div>
@@ -100,8 +100,8 @@ function FinalizeDialog({ rec, base, onClose }: { rec: Recap; base: string; onCl
                 </ol>
 
                 <div className="mt-6 flex flex-wrap justify-end gap-2">
-                    <button type="button" onClick={onClose} className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
-                    <button type="button" disabled={!allOk || busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                    <button type="button" onClick={onClose} className="h-12 rounded-full border border-slate-200 px-5 text-sm font-extrabold md:h-11 md:rounded-2xl text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
+                    <button type="button" disabled={!allOk || busy} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 md:bg-gradient-to-r md:from-blue-600 md:to-violet-600 px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Simpan hasil
                     </button>
                 </div>
@@ -158,7 +158,7 @@ function CouncilCard({ c, rec, base }: { c: Council; rec: Recap; base: string })
                     {c.order && <p className="font-bold">Urutan: {c.order.map((x, i) => `${i + 1}. ${x}`).join('  ·  ')}</p>}
                     <p>{c.note}</p>
                     <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{c.decided_at}{c.decided_by ? ` · ${c.decided_by}` : ''}</p>
-                    {!(rec.locked || rec.saved) && <button type="button" onClick={() => setEdit(true)} className="mt-2 rounded-lg bg-white px-3 py-1.5 text-xs font-extrabold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">Ubah keputusan</button>}
+                    {!(rec.locked || rec.saved) && <button type="button" onClick={() => setEdit(true)} className="mt-2 inline-flex h-10 items-center rounded-lg bg-white px-3 text-xs font-extrabold text-slate-800 md:h-auto md:py-1.5 ring-1 ring-slate-300 hover:bg-slate-50">Ubah keputusan</button>}
                 </div>
             )}
 
@@ -177,14 +177,14 @@ function CouncilCard({ c, rec, base }: { c: Council; rec: Recap; base: string })
                             {c.ids.map((id, i) => (
                                 <label key={id} className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
                                     <span className="font-mono text-xs">{c.codes[i]}</span>
-                                    <input type="number" min={1} max={c.ids.length} value={ranks[id] ?? ''} onChange={(e) => setRanks({ ...ranks, [id]: e.target.value })} placeholder="urutan" className="h-10 w-24 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900" />
+                                    <input type="number" min={1} max={c.ids.length} value={ranks[id] ?? ''} onChange={(e) => setRanks({ ...ranks, [id]: e.target.value })} placeholder="urutan" className="h-10 w-24 rounded-xl border border-slate-300 bg-white px-3 text-base font-semibold md:text-sm text-slate-900" />
                                 </label>
                             ))}
                         </div>
                     )}
                     <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Catatan keputusan dewan juri (wajib)" className={area} />
                     {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
-                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gavel className="h-4 w-4" />} Simpan keputusan
                     </button>
                 </div>
@@ -264,7 +264,50 @@ function TieDetail({ r }: { r: Row }) {
 function RecapTable({ rec }: { rec: Recap }) {
     const [open, setOpen] = useState<number | null>(null);
     return (
-        <div className="mt-4 overflow-x-auto">
+        <>
+            <div className="mt-3 space-y-2 md:hidden">
+                {rec.rows.length === 0 && <p className="py-6 text-center text-[13px] text-slate-600 dark:text-slate-300">Belum ada peserta terdaftar.</p>}
+                {rec.rows.map((r) => (
+                    <div key={r.id} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
+                        <div className="flex items-start gap-3">
+                            <RankBadge rank={r.rank} shared={r.rank_shared} />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="rounded-lg bg-indigo-50 px-2 py-0.5 font-mono text-[11px] font-bold text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200">{r.code}</span>
+                                    {r.order != null && <span className="text-sm font-semibold text-slate-900 dark:text-white">#{r.order}</span>}
+                                </div>
+                                {(r as any).name && <div className="mt-0.5 truncate text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(r as any).name}</div>}
+                            </div>
+                            <div className="shrink-0 text-right">
+                                <div className="text-base leading-tight font-semibold text-slate-900 dark:text-white">{num(r.final ?? r.score)}</div>
+                                {r.provisional && <div className="text-[11px] font-semibold text-amber-700">sementara</div>}
+                            </div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-indigo-500" style={{ width: (rec.judge_need ? Math.min(100, (r.judges_done / rec.judge_need) * 100) : 0) + '%' }} /></span>
+                            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Juri {r.judges_done}/{rec.judge_need}</span>
+                            <span className={'rounded-full px-2 py-0.5 text-[11px] font-semibold ' + statusStyle[r.status]}>{statusText[r.status]}</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                            {([['Nilai dasar', r.base], ['Pengurangan', r.deduction], ['Penalti', r.penalty]] as [string, number | null][]).map(([l, v]) => (
+                                <div key={l}>
+                                    <div className="text-[13px] font-semibold text-slate-800 dark:text-slate-100">{num(v)}</div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{l}</div>
+                                </div>
+                            ))}
+                        </div>
+                        {r.tie && (
+                            <button type="button" onClick={() => setOpen(open === r.id ? null : r.id)} className="mt-2 flex h-10 w-full items-center gap-2 rounded-xl bg-indigo-50 px-3 text-left dark:bg-indigo-500/10">
+                                <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">SERI</span>
+                                <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200">{r.tie.council ? (r.tie.decision ? 'diputuskan' : 'menunggu keputusan') : 'terpecahkan'}</span>
+                                <ChevronDown className={'h-4 w-4 shrink-0 text-slate-500 transition ' + (open === r.id ? 'rotate-180' : '')} />
+                            </button>
+                        )}
+                        {open === r.id && r.tie && <div className="mt-2 rounded-xl bg-indigo-50/60 p-3 dark:bg-indigo-500/10"><TieDetail r={r} /></div>}
+                    </div>
+                ))}
+            </div>
+            <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1000px] text-left text-sm">
                 <thead>
                     <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-white/10 dark:text-slate-400">
@@ -317,6 +360,7 @@ function RecapTable({ rec }: { rec: Recap }) {
                 </tbody>
             </table>
         </div>
+        </>
     );
 }
 
@@ -347,12 +391,12 @@ function PenaltySection({ rec, base }: { rec: Recap; base: string }) {
 
     return (
         <div className="mt-6 border-t border-slate-200 pt-6 dark:border-white/10">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-2 md:gap-4">
                 <div className="min-w-0 max-w-2xl">
                     <h3 className={h}>Penalti</h3>
                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">Dicatat panitia, diperiksa, lalu diputuskan lewat musyawarah panitia sebelum hasil ditetapkan. Setiap catatan wajib disertai alasan yang jelas.</p>
                 </div>
-                <button type="button" disabled={frozen} onClick={() => setOpen(!open)} title={frozen ? (rec.locked ? 'Hasil sudah ditetapkan' : 'Hasil sudah disimpan. Klik Edit untuk membukanya kembali.') : undefined} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                <button type="button" disabled={frozen} onClick={() => setOpen(!open)} title={frozen ? (rec.locked ? 'Hasil sudah ditetapkan' : 'Hasil sudah disimpan. Klik Edit untuk membukanya kembali.') : undefined} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 md:bg-gradient-to-r md:from-blue-600 md:to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
                     {frozen ? <Lock className="h-4 w-4" /> : open ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {frozen ? (rec.locked ? 'Terkunci' : 'Hasil disimpan') : open ? 'Batal' : 'Catat penalti'}
                 </button>
             </div>
@@ -371,7 +415,7 @@ function PenaltySection({ rec, base }: { rec: Recap; base: string }) {
                     </div>
                     <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Alasan (wajib)" className={area} />
                     {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
-                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
                         {busy && <Loader2 className="h-4 w-4 animate-spin" />} Simpan penalti
                     </button>
                 </div>
@@ -388,8 +432,8 @@ function PenaltySection({ rec, base }: { rec: Recap; base: string }) {
                                 <span className="flex items-center gap-2">
                                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${p.status === 'disetujui' ? 'bg-emerald-100 text-emerald-900' : p.status === 'ditolak' ? 'bg-slate-200 text-slate-700' : 'bg-amber-100 text-amber-900'}`}>{p.status}</span>
                                     {p.status === 'diajukan' && !frozen && <>
-                                        <button type="button" onClick={() => decide(p.id, 'disetujui')} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-emerald-700">Setujui</button>
-                                        <button type="button" onClick={() => decide(p.id, 'ditolak')} className="rounded-lg bg-slate-500 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-slate-600">Tolak</button>
+                                        <button type="button" onClick={() => decide(p.id, 'disetujui')} className="inline-flex h-10 items-center rounded-lg bg-emerald-600 px-3 text-[11px] font-extrabold md:h-auto md:px-2.5 md:py-1 text-white hover:bg-emerald-700">Setujui</button>
+                                        <button type="button" onClick={() => decide(p.id, 'ditolak')} className="inline-flex h-10 items-center rounded-lg bg-slate-500 px-3 text-[11px] font-extrabold md:h-auto md:px-2.5 md:py-1 text-white hover:bg-slate-600">Tolak</button>
                                     </>}
                                 </span>
                             </div>
@@ -421,20 +465,20 @@ function ReopenDialog({ rec, base, onClose }: { rec: Recap; base: string; onClos
     };
 
     return (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true">
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/60 p-0 md:items-center md:p-4" role="dialog" aria-modal="true">
+            <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:max-h-[90vh] md:rounded-3xl md:p-6 dark:bg-slate-900">
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700"><Pencil className="h-6 w-6" /></span>
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white">Buka kunci hasil kategori {rec.category.name}?</h3>
+                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Buka kunci hasil kategori {rec.category.name}?</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil versi {rec.saved_version} dibuka kembali: penalti, keputusan seri, dan nilai juri bisa diubah lagi. Pembukaan ini <b>tercatat di riwayat</b> beserta alasannya. Setelah selesai, simpan hasil lagi untuk membuat versi baru.</p>
                     </div>
                 </div>
                 <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Alasan membuka kembali (wajib)" className={`${area} mt-4`} />
                 {err && <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{err}</p>}
                 <div className="mt-5 flex flex-wrap justify-end gap-2">
-                    <button type="button" onClick={onClose} className="h-11 rounded-2xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
-                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
+                    <button type="button" onClick={onClose} className="h-12 rounded-full border border-slate-200 px-5 text-sm font-extrabold md:h-11 md:rounded-2xl text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200">Batal</button>
+                    <button type="button" disabled={busy} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 px-6 text-sm font-extrabold text-white hover:bg-indigo-700 disabled:opacity-60">
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Buka kunci
                     </button>
                 </div>
@@ -469,10 +513,10 @@ function HistorySection({ rec, open }: { rec: Recap; open?: boolean }) {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: any }) {
     return (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" onClick={onClose}>
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/60 p-0 md:items-center md:p-4" role="dialog" aria-modal="true" onClick={onClose}>
+            <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[28px] bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:max-h-[90vh] md:rounded-3xl md:p-6 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white">{title}</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">{title}</h3>
                     <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
                 <div className="[&>div]:!mt-2 [&>div]:!border-t-0 [&>div]:!pt-0 [&>details]:!mt-2">{children}</div>
@@ -496,16 +540,16 @@ function FollowUp({ rec, base }: { rec: Recap; base: string }) {
     if (hist > 0) items.push({ k: 'riwayat', t: 'Riwayat perubahan', d: `${hist} catatan simpan dan buka kembali`, wait: 0 });
 
     return (
-        <div className="mt-6 rounded-2xl border border-slate-200 dark:border-white/10">
+        <div className="mt-3 rounded-2xl border border-slate-200 md:mt-6 dark:border-white/10">
             <p className="px-4 pt-3 text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tindak lanjut panitia</p>
             <ul className="divide-y divide-slate-100 dark:divide-white/10">
                 {items.map((x) => (
-                    <li key={x.k} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <li key={x.k} className="flex items-center justify-between gap-3 px-3 py-2 md:flex-wrap md:px-4 md:py-3">
                         <div className="min-w-0">
-                            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{x.t}</p>
+                            <p className="text-sm font-semibold text-slate-900 md:font-extrabold dark:text-white">{x.t}</p>
                             <p className={`text-xs font-semibold ${x.wait > 0 ? 'text-amber-700' : 'text-slate-500'}`}>{x.d}</p>
                         </div>
-                        <button type="button" onClick={() => setM(x.k)} className={`h-9 shrink-0 rounded-xl px-4 text-xs font-extrabold ${x.wait > 0 && !frozen ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200'}`}>
+                        <button type="button" onClick={() => setM(x.k)} className={`h-10 shrink-0 rounded-xl px-4 text-xs font-extrabold md:h-9 ${x.wait > 0 && !frozen ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200'}`}>
                             {x.wait > 0 && !frozen ? 'Putuskan' : x.k === 'penalti' && !frozen ? 'Kelola' : 'Lihat'}
                         </button>
                     </li>
@@ -543,50 +587,50 @@ export default function Rekap() {
     const go = (n: number) => setIdx((n + recaps.length) % recaps.length);
 
     return (
-        <div className="space-y-5">
-            <div className={`${solid} p-5 sm:p-6`}>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-[14rem]">
+        <div className="space-y-3 pb-24 md:space-y-5 md:pb-0">
+            <div className={`${solid} p-3 md:p-6`}>
+                <div className="flex flex-wrap items-start justify-between gap-2 md:gap-4">
+                    <div className="w-full md:w-auto md:min-w-[14rem]">
                         <h3 className={h}>Rekap nilai per lomba</h3>
-                        <div className="mt-2 flex items-center gap-3">
-                            <span className="h-2.5 w-40 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: `${pct}%` }} /></span>
-                            <span className="text-sm font-extrabold text-slate-600 dark:text-slate-300">{done}/{recaps.length} ditetapkan</span>
+                        <div className="mt-1.5 flex items-center gap-2 md:mt-2 md:gap-3">
+                            <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 md:h-2.5 md:w-40 md:flex-none dark:bg-white/10"><span className="block h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: `${pct}%` }} /></span>
+                            <span className="text-[13px] font-semibold text-slate-600 md:text-sm md:font-extrabold dark:text-slate-300">{done}/{recaps.length} ditetapkan</span>
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <a href={`${base}/rekap/lembar${q}`} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25"><Download className="h-4 w-4" /> Unduh lembar manual (PDF)</a>
-                        <a href={`${base}/rekap/lembar-kosong${q}`} onClick={(e) => { const n = window.prompt('Berapa tim per unduhan?', '10'); if (!n) { e.preventDefault(); return; } const u = `${base}/rekap/lembar-kosong${q}`; e.currentTarget.href = `${u}${u.includes('?') ? '&' : '?'}jumlah=${encodeURIComponent(n)}`; }} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"><Download className="h-4 w-4" /> Lembar kosong (PDF)</a>
-                        <a href={`${base}/rekap/excel${q}`} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"><FileSpreadsheet className="h-4 w-4" /> Unduh Excel hitung nilai (.xlsx)</a>
+                    <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+                        <a href={`${base}/rekap/lembar${q}`} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 md:bg-gradient-to-r md:from-blue-600 md:to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 max-md:col-span-2 max-md:!h-10"><Download className="h-4 w-4" /> Unduh lembar manual (PDF)</a>
+                        <a href={`${base}/rekap/lembar-kosong${q}`} onClick={(e) => { const n = window.prompt('Berapa tim per unduhan?', '10'); if (!n) { e.preventDefault(); return; } const u = `${base}/rekap/lembar-kosong${q}`; e.currentTarget.href = `${u}${u.includes('?') ? '&' : '?'}jumlah=${encodeURIComponent(n)}`; }} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 max-md:!h-auto max-md:!min-h-10 max-md:!px-3 max-md:!py-1.5 max-md:!text-xs max-md:leading-tight"><Download className="h-4 w-4 shrink-0" /> Lembar kosong (PDF)</a>
+                        <a href={`${base}/rekap/excel${q}`} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-800 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 max-md:!h-auto max-md:!min-h-10 max-md:!px-3 max-md:!py-1.5 max-md:!text-xs max-md:leading-tight"><FileSpreadsheet className="h-4 w-4 shrink-0" /> Unduh Excel hitung nilai (.xlsx)</a>
                     </div>
                 </div>
 
-                <div className="mt-5 flex items-center gap-2 border-b border-slate-100 pb-5 dark:border-white/10">
-                    <button type="button" onClick={() => go(i - 1)} disabled={recaps.length < 2} aria-label="Sebelumnya" className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronLeft className="h-4 w-4" /></button>
-                    <select value={i} onChange={(e) => setIdx(Number(e.target.value))} className={`${field} flex-1 !h-11 font-extrabold`}>
+                <div className="mt-3 flex items-center gap-2 border-b border-slate-100 pb-3 md:mt-5 md:pb-5 dark:border-white/10">
+                    <button type="button" onClick={() => go(i - 1)} disabled={recaps.length < 2} aria-label="Sebelumnya" className="flex h-10 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 md:h-11 md:w-11 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronLeft className="h-4 w-4" /></button>
+                    <select value={i} onChange={(e) => setIdx(Number(e.target.value))} className={`${field} min-w-0 flex-1 !h-10 !px-2 !text-sm font-extrabold md:!h-11 md:!px-4`}>
                         {recaps.map((r, k) => <option key={r.category.id} value={k}>{r.locked ? '🔒 ' : r.saved ? '✔ ' : r.enabled ? '● ' : '○ '}{r.category.name} ({r.locked ? 'ditetapkan' : r.saved ? 'tersimpan' : r.enabled ? 'disahkan' : 'belum disahkan'})</option>)}
                     </select>
-                    <button type="button" onClick={() => go(i + 1)} disabled={recaps.length < 2} aria-label="Berikutnya" className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronRight className="h-4 w-4" /></button>
-                    <span className="w-12 text-right text-sm font-extrabold text-slate-500">{i + 1}/{recaps.length}</span>
+                    <button type="button" onClick={() => go(i + 1)} disabled={recaps.length < 2} aria-label="Berikutnya" className="flex h-10 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 md:h-11 md:w-11 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10"><ChevronRight className="h-4 w-4" /></button>
+                    <span className="w-9 text-right text-xs font-extrabold text-slate-500 md:w-12 md:text-sm">{i + 1}/{recaps.length}</span>
                 </div>
 
                 {rec.locked ? (
-                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
+                    <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 md:mt-4 md:px-4 md:py-3 dark:bg-emerald-500/10">
                         <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-700" />
-                        <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Hasil kategori {rec.category.name} sudah ditetapkan{rec.finalized_at ? ` pada ${rec.finalized_at}` : ''}{rec.finalized_by ? ` oleh ${rec.finalized_by}` : ''}. Nilai, penalti, dan keputusan sudah tertutup untuk diubah.</p>
+                        <p className="text-[13px] leading-snug font-bold text-emerald-900 md:text-sm dark:text-emerald-200">Hasil kategori {rec.category.name} sudah ditetapkan{rec.finalized_at ? ` pada ${rec.finalized_at}` : ''}{rec.finalized_by ? ` oleh ${rec.finalized_by}` : ''}. Nilai, penalti, dan keputusan sudah tertutup untuk diubah.</p>
                     </div>
                 ) : rec.saved ? (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-white/5">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Hasil terkunci (versi {rec.saved_version}). Buka kunci dulu kalau ada yang perlu diubah.</p>
-                        <button type="button" onClick={() => setReopen(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl border border-amber-300 bg-white px-5 text-sm font-extrabold text-amber-800 hover:bg-amber-50"><Unlock className="h-4 w-4" /> Buka kunci</button>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 md:mt-4 md:gap-3 md:px-4 md:py-3 dark:bg-white/5">
+                        <p className="text-[13px] leading-snug font-bold text-slate-800 md:text-sm dark:text-slate-100">Hasil terkunci (versi {rec.saved_version}). Buka kunci dulu kalau ada yang perlu diubah.</p>
+                        <button type="button" onClick={() => setReopen(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl border border-amber-300 bg-white px-5 text-sm font-extrabold text-amber-800 hover:bg-amber-50 max-md:!h-10"><Unlock className="h-4 w-4" /> Buka kunci</button>
                     </div>
                 ) : (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-white/5">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{rec.enabled ? (rec.saved_version > 0 ? 'Hasil dibuka untuk diedit. Kunci ulang setelah perubahan selesai.' : 'Nilai masih sementara. Simpan hasil setelah semua pemeriksaan lolos.') : `Penilaian kategori ${rec.category.name} belum disahkan.`}</p>
-                        <button type="button" disabled={!rec.enabled} onClick={() => setDialog(true)} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"><Lock className="h-4 w-4" /> {rec.saved_version > 0 ? 'Kunci ulang hasil' : 'Simpan hasil'}</button>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2.5 md:mt-4 md:gap-3 md:px-4 md:py-3 dark:bg-white/5">
+                        <p className="text-[13px] leading-snug font-bold text-slate-800 md:text-sm dark:text-slate-100">{rec.enabled ? (rec.saved_version > 0 ? 'Hasil dibuka untuk diedit. Kunci ulang setelah perubahan selesai.' : 'Nilai masih sementara. Simpan hasil setelah semua pemeriksaan lolos.') : `Penilaian kategori ${rec.category.name} belum disahkan.`}</p>
+                        <button type="button" disabled={!rec.enabled} onClick={() => setDialog(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-full md:h-11 md:rounded-2xl bg-indigo-600 md:bg-gradient-to-r md:from-blue-600 md:to-violet-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none max-md:!h-10"><Lock className="h-4 w-4" /> {rec.saved_version > 0 ? 'Kunci ulang hasil' : 'Simpan hasil'}</button>
                     </div>
                 )}
 
-                <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:bg-white/5 dark:text-slate-200">{rec.info}</p>
+                <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2.5 text-xs leading-snug text-slate-700 md:mt-4 md:px-4 md:py-3 md:text-sm dark:bg-white/5 dark:text-slate-200">{rec.info}</p>
 
                 <RecapTable key={rec.category.id} rec={rec} />
                 <FollowUp key={`f${rec.category.id}`} rec={rec} base={base} />

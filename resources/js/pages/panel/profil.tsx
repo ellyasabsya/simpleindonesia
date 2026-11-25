@@ -1,3 +1,5 @@
+import ProfilLembagaMobile from '@/components/mobile/pages/profil-lembaga-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import UserLayout from '@/components/user/user-layout';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Building2, CalendarDays, Camera, Check, CheckCircle2, Globe, Loader2, Mail, MapPin, Phone, ShieldCheck, type LucideIcon } from 'lucide-react';
@@ -45,7 +47,7 @@ function Chip({ icon: Icon, children, color }: { icon: LucideIcon; children: Rea
     );
 }
 
-export default function Profil({ institution, stats }: { institution: Institution; stats: { events: number; published: number } }) {
+function ProfilDesktop({ institution, stats }: { institution: Institution; stats: { events: number; published: number } }) {
     const fileRef = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
 
@@ -227,6 +229,18 @@ export default function Profil({ institution, stats }: { institution: Institutio
                     </div>
                 </div>
             </form>
+        </UserLayout>
+    );
+}
+
+type ProfilProps = { institution: Institution; stats: { events: number; published: number } };
+
+export default function Profil(props: ProfilProps) {
+    const phone = usePhone();
+    if (!phone) return <ProfilDesktop {...props} />;
+    return (
+        <UserLayout title="Profil Lembaga" hasPanel>
+            <ProfilLembagaMobile {...props} />
         </UserLayout>
     );
 }

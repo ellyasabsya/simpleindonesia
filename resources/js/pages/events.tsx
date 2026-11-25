@@ -6,6 +6,7 @@ import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
 import EventsMobile from '@/components/mobile/pages/events-mobile';
+import EventsBar from '@/components/mobile/pages/events-bar';
 import PublicScreen from '@/components/mobile/public/public-screen';
 import { usePhone } from '@/components/mobile/use-phone';
 
@@ -123,7 +124,10 @@ export default function Events() {
         return (
             <>
                 <Head title="Semua Event - SIMPLE" />
-                <PublicScreen title="Semua Event" large>
+                <PublicScreen
+                    title="Semua Event"
+                    bar={<EventsBar q={q} setQ={setQ} onVisit={visit} categories={categories} kategori={filters.kategori} />}
+                >
                     <EventsMobile events={events} categories={categories} total={total} filters={filters} q={q} setQ={setQ} onVisit={visit} />
                 </PublicScreen>
             </>

@@ -19,11 +19,12 @@ class TicketOrderController extends Controller
         $status = in_array($status, ['all', 'menunggu_verifikasi', 'lunas', 'batal', 'menunggu'], true) ? $status : 'menunggu_verifikasi';
         $q = trim((string) $request->query('q', ''));
 
-        $counts = DB::table('ticket_orders')->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $counts = DB::table('ticket_orders')->where('payment_method', 'transfer_manual')->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
         $orders = DB::table('ticket_orders')
             ->join('events', 'events.id', '=', 'ticket_orders.event_id')
             ->join('ticket_types', 'ticket_types.id', '=', 'ticket_orders.ticket_type_id')
+            ->where('ticket_orders.payment_method', 'transfer_manual')
             ->when($status !== 'all', fn ($w) => $w->where('ticket_orders.status', $status))
             ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
                 $s->where('ticket_orders.code', 'like', "%{$q}%")
@@ -109,12 +110,31 @@ class TicketOrderController extends Controller
             : back()->with('error', 'Pesanan sudah diproses sebelumnya. Muat ulang halaman.');
     }
 
-    public function reject(int $order): RedirectResponse
+    public function reject(Request $request, int $order): RedirectResponse
     {
-        DB::table('ticket_orders')->whereIn('id', $this->groupIds($order))->where('status', 'menunggu_verifikasi')
-            ->update(['status' => 'batal', 'updated_at' => now()]);
+        $reason = mb_substr(trim((string) $request->input('reason', '')), 0, 300);
+        $rows = DB::table('ticket_orders')->whereIn('id', $this->groupIds($order))->where('status', 'menunggu_verifikasi')->get();
+        if ($rows->isEmpty()) {
+            return back()->with('error', 'Pesanan sudah diproses sebelumnya. Muat ulang halaman.');
+        }
 
-        return back()->with('success', 'Pesanan ditolak.');
+        DB::table('ticket_orders')->whereIn('id', $rows->pluck('id'))->update([
+            'status' => 'batal',
+            'rejected_at' => now(),
+            'reject_reason' => $reason !== '' ? $reason : null,
+            'updated_at' => now(),
+        ]);
+
+        $o = $rows->first();
+        \App\Support\TicketMail::send(
+            $o->buyer_email,
+            'Bukti transfer pesanan '.$o->code.' ditolak',
+            "Halo {$o->buyer_name},\n\nBukti transfer untuk pesanan {$o->code} belum bisa kami terima."
+            .($reason !== '' ? "\nAlasan: {$reason}" : '')
+            ."\n\nAnda bisa mengirim bukti yang benar dari menu Tiket Saya: ".url('/tiket')."\nBila kuota tiket masih tersedia, pesanan akan diverifikasi ulang."
+        );
+
+        return back()->with('success', 'Pesanan ditolak dan pembeli diberi tahu lewat email.');
     }
 
     public function proof(int $order)

@@ -5,12 +5,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 type Invite = { id: number; name: string; email: string; status: string };
 type Found = { name: string; city?: string | null };
 
-const solid = 'rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
+const solid = 'rounded-2xl bg-white md:rounded-3xl shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-white/10';
 const initial = (n: string) => (n.trim()[0] ?? '?').toUpperCase();
 
 function Avatar({ name, tone = 'indigo' }: { name: string; tone?: 'indigo' | 'amber' }) {
     return (
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-black text-white ${tone === 'amber' ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-blue-600 to-violet-600'}`}>
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-black text-white ${tone === 'amber' ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-indigo-600'}`}>
             {initial(name)}
         </span>
     );
@@ -20,17 +20,17 @@ export function JuriHeader({ active, need }: { title?: string; category?: string
     const ok = active >= need;
     const pct = need > 0 ? Math.min(100, Math.round((active / need) * 100)) : 0;
     return (
-        <div className={`${solid} px-5 py-4`}>
+        <div className={`${solid} px-3 py-3 md:px-5 md:py-4`}>
             <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-black leading-none text-slate-900 dark:text-white">{active}</span>
+                    <span className="text-xl font-semibold leading-none md:text-2xl md:font-black text-slate-900 dark:text-white">{active}</span>
                     <span className="text-sm font-bold text-slate-500 dark:text-slate-400">dari {need} juri aktif</span>
                     {ok && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-extrabold text-emerald-900"><Check className="h-3 w-3" /> Cukup</span>}
                 </div>
                 <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{pct}%</span>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
-                <div className={`h-full rounded-full transition-all ${ok ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-600 to-violet-600'}`} style={{ width: `${pct}%` }} />
+                <div className={`h-full rounded-full transition-all ${ok ? 'bg-emerald-500' : 'bg-indigo-600'}`} style={{ width: `${pct}%` }} />
             </div>
         </div>
     );
@@ -61,14 +61,14 @@ export function JuriMenunggu() {
             <p className="mb-2 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300"><Clock className="h-3.5 w-3.5" /> Menunggu persetujuan ({invites.length})</p>
             <ul className="space-y-2">
                 {invites.map((i) => (
-                    <li key={i.id} className="flex items-center gap-3 rounded-2xl border border-l-4 border-slate-200 border-l-amber-400 bg-white px-4 py-3 dark:border-white/10 dark:border-l-amber-400 dark:bg-slate-900">
+                    <li key={i.id} className="flex items-center gap-3 rounded-2xl border border-l-4 border-slate-200 border-l-amber-400 bg-white px-3 py-2.5 md:px-4 md:py-3 dark:border-white/10 dark:border-l-amber-400 dark:bg-slate-900">
                         <Avatar name={i.name} tone="amber" />
                         <div className="min-w-0 flex-1">
                             <div className="truncate font-extrabold text-slate-900 dark:text-white">{i.name}</div>
                             <div className="truncate text-xs text-slate-600 dark:text-slate-300">{i.email}</div>
                         </div>
                         <span className="hidden rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-900 sm:inline">Undangan terkirim</span>
-                        <button type="button" onClick={() => cancel(i)} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Batalkan undangan ${i.name}`} title="Batalkan undangan"><Trash2 className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => cancel(i)} className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 md:size-auto md:p-2" aria-label={`Batalkan undangan ${i.name}`} title="Batalkan undangan"><Trash2 className="h-4 w-4" /></button>
                     </li>
                 ))}
             </ul>
@@ -120,11 +120,11 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
     };
 
     return (
-        <div className={`${solid} p-5 sm:p-6`}>
-            <div className="flex items-start gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30"><UserPlus className="h-6 w-6" /></span>
+        <div className={`${solid} p-3 md:p-6`}>
+            <div className="flex items-start gap-3 md:gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white md:h-12 md:w-12 md:bg-gradient-to-br md:from-blue-600 md:to-violet-600 md:shadow-lg md:shadow-indigo-500/30"><UserPlus className="h-6 w-6" /></span>
                 <div className="min-w-0">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white">Undang juri</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Undang juri</h3>
                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">Masukkan email akun SIMPLE calon juri. Undangan tampil di dashboard mereka.</p>
                 </div>
             </div>
@@ -132,7 +132,7 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
             <div className="relative mt-5">
                 <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
-                    className="h-12 w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-12 text-base font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white"
+                    className="h-10 w-full rounded-2xl border border-slate-300 bg-white pl-12 pr-12 md:h-12 text-base font-semibold text-slate-900 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/15 dark:bg-slate-950 dark:text-white"
                     type="email" inputMode="email" autoComplete="off" placeholder="nama@email.com"
                     value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
                 />
@@ -142,16 +142,16 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
             {error && <p className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}</p>}
 
             {found && (
-                <div className="mt-3 flex flex-wrap items-center gap-4 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3.5 dark:bg-emerald-500/10">
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-3 md:gap-4 md:px-4 md:py-3.5 dark:bg-emerald-500/10">
                     <Avatar name={found.name} />
                     <div className="min-w-0 flex-1">
-                        <div className="truncate text-base font-black text-slate-900 dark:text-white">{found.name}</div>
+                        <div className="truncate text-[15px] font-semibold md:text-base md:font-black text-slate-900 dark:text-white">{found.name}</div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold">
                             <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-300"><Check className="h-3.5 w-3.5" /> Akun SIMPLE ditemukan</span>
                             {found.city && <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300"><MapPin className="h-3.5 w-3.5" /> {found.city}</span>}
                         </div>
                     </div>
-                    <button type="button" disabled={sending} onClick={send} className={`${btn} inline-flex items-center gap-2 !px-5 !py-2.5`}>
+                    <button type="button" disabled={sending} onClick={send} className={`${btn} inline-flex w-full items-center justify-center gap-2 !px-5 !py-2.5 md:w-auto`}>
                         {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Kirim undangan
                     </button>
                 </div>
@@ -188,29 +188,29 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
     };
 
     return (
-        <div className={`${solid} border-l-4 border-l-amber-400 p-5 sm:p-6`}>
-            <h3 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">Belum ditugaskan <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">{list.length}</span></h3>
+        <div className={`${solid} border-l-4 border-l-amber-400 p-3 md:p-6`}>
+            <h3 className="flex items-center gap-2 text-[15px] font-semibold md:text-base md:font-black text-slate-900 dark:text-white">Belum ditugaskan <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">{list.length}</span></h3>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Klik kategori untuk menugaskan juri.</p>
             <ul className="mt-4 space-y-3">
                 {list.map((j) => {
                     return (
-                        <li key={j.id} className="rounded-2xl border border-slate-200 p-4 dark:border-white/10">
+                        <li key={j.id} className="rounded-2xl border border-slate-200 p-3 md:p-4 dark:border-white/10">
                             <div className="flex items-center gap-3">
                                 <Avatar name={j.name} tone="amber" />
                                 <div className="min-w-0 flex-1">
                                     <div className="truncate font-extrabold text-slate-900 dark:text-white">{j.name}</div>
                                     {j.contact && <div className="truncate text-xs text-slate-600 dark:text-slate-300">{j.contact}</div>}
                                 </div>
-                                {!j.sibling && <button type="button" onClick={() => remove(j)} className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Hapus ${j.name}`}><Trash2 className="h-4 w-4" /></button>}
+                                {!j.sibling && <button type="button" onClick={() => remove(j)} className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 md:size-auto md:p-2" aria-label={`Hapus ${j.name}`}><Trash2 className="h-4 w-4" /></button>}
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                                 {cats.map((c) => (
-                                    <button key={c.id} type="button" disabled={busy !== null} onClick={() => assign(j.id, [c.id])} className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-extrabold text-indigo-800 transition hover:bg-indigo-600 hover:text-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+                                    <button key={c.id} type="button" disabled={busy !== null} onClick={() => assign(j.id, [c.id])} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 md:h-auto md:py-1.5 text-xs font-extrabold text-indigo-800 transition hover:bg-indigo-600 hover:text-white disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
                                         {busy === j.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} {cats.length === 1 ? 'Tugaskan' : '+ ' + (c.name || 'Semua peserta')}
                                     </button>
                                 ))}
                                 {cats.length > 1 && (
-                                    <button type="button" disabled={busy !== null} onClick={() => assign(j.id, cats.map((c) => c.id))} className="rounded-full border border-slate-200 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 transition hover:border-indigo-300 disabled:opacity-50 dark:border-white/10 dark:text-slate-300">Semua kategori</button>
+                                    <button type="button" disabled={busy !== null} onClick={() => assign(j.id, cats.map((c) => c.id))} className="h-10 rounded-full border border-slate-200 px-3.5 md:h-auto md:py-1.5 text-xs font-extrabold text-slate-600 transition hover:border-indigo-300 disabled:opacity-50 dark:border-white/10 dark:text-slate-300">Semua kategori</button>
                                 )}
                             </div>
                             {errs[j.id] && <p className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {errs[j.id]}</p>}

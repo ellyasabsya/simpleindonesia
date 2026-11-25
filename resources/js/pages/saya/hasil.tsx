@@ -1,10 +1,21 @@
 import { Link } from '@inertiajs/react';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import UserLayout from '@/components/user/user-layout';
+import { HasilMobile } from '@/components/mobile/pages/saya-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Row = { rank: number | null; code: string; final: number | null; mine: boolean };
 
 export default function Hasil({ event_title, mode, rows = [] }: { event_title: string; mode: 'hidden' | 'own' | 'all'; rows?: Row[] }) {
+    const phone = usePhone();
+    if (phone) {
+        return (
+            <UserLayout title="Hasil lomba" hasPanel={false}>
+                <HasilMobile event_title={event_title} mode={mode} rows={rows} />
+            </UserLayout>
+        );
+    }
+
     return (
         <UserLayout title="Hasil lomba" hasPanel={false}>
             <div className="space-y-6">

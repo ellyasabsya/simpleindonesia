@@ -1,12 +1,19 @@
-import { router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { CheckCircle2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import AuthLayout from '@/components/auth/auth-layout';
+import SubmitButton from '@/components/auth/submit-button';
+import AuthMobile, { MSubmit, NOTICE_OK } from '@/components/mobile/pages/auth-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 export default function VerifyEmail() {
     const { auth } = usePage<{ auth?: { user?: { email?: string } } }>().props;
     const [sent, setSent] = useState(false);
     const [busy, setBusy] = useState(false);
+    const phone = usePhone();
 
-    const resend = () => {
+    const resend = (e: FormEvent) => {
+        e.preventDefault();
         setBusy(true);
         router.post('/email/verification-notification', {}, {
             preserveScroll: true,
@@ -15,34 +22,71 @@ export default function VerifyEmail() {
         });
     };
 
+    if (phone) {
+        return (
+            <>
+                <Head title="Verifikasi Email - SIMPLE" />
+                <AuthMobile
+                    badge="Satu langkah lagi"
+                    title="Verifikasi email Anda"
+                    subtitle={'Kami mengirim tautan verifikasi ke ' + (auth?.user?.email ?? 'email Anda') + '. Setelah terverifikasi, tiket yang dibeli dengan email ini muncul di Tiket Saya dan hasil lomba dapat dibuka.'}
+                    footer={
+                        <>
+                            Bukan akun Anda?{' '}
+                            <button type="button" onClick={() => router.post('/logout')} className="font-semibold text-indigo-700 dark:text-indigo-300">
+                                Keluar
+                            </button>
+                        </>
+                    }
+                >
+                    {sent && (
+                        <p className={NOTICE_OK}>
+                            <CheckCircle2 className="size-4 shrink-0" />
+                            Tautan verifikasi baru sudah dikirim.
+                        </p>
+                    )}
+                    <form onSubmit={resend}>
+                        <MSubmit processing={busy}>{busy ? 'Mengirim…' : 'Kirim ulang tautan'}</MSubmit>
+                    </form>
+                </AuthMobile>
+            </>
+        );
+    }
+
     return (
-        <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-6">
-            <h1 className="text-2xl font-semibold">Verifikasi email Anda</h1>
-            <p className="text-sm text-gray-600">
-                Kami mengirim tautan verifikasi ke {auth?.user?.email ?? 'email Anda'}. Setelah email
-                terverifikasi, tiket yang dibeli dengan email ini akan muncul di Tiket Saya dan hasil
-                lomba dapat dibuka.
-            </p>
+        <AuthLayout
+            pageTitle="Verifikasi Email"
+            badge="Satu langkah lagi"
+            title="Verifikasi email Anda"
+            subtitle={`Kami mengirim tautan verifikasi ke ${auth?.user?.email ?? 'email Anda'}. Setelah email terverifikasi, tiket yang dibeli dengan email ini akan muncul di Tiket Saya dan hasil lomba dapat dibuka.`}
+            panelHeading={
+                <>
+                    Amankan Akun Anda, <span className="text-amber-200">Lebih Cerdas</span>
+                </>
+            }
+            panelText="Verifikasi email agar tiket, hasil lomba, dan notifikasi event terhubung dengan akun Anda."
+        >
             {sent && (
-                <p className="rounded bg-green-50 p-3 text-sm text-green-700">
+                <div className="mt-6 flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                    <CheckCircle2 className="size-4 shrink-0" />
                     Tautan verifikasi baru sudah dikirim.
-                </p>
+                </div>
             )}
-            <button
-                type="button"
-                onClick={resend}
-                disabled={busy}
-                className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-            >
-                {busy ? 'Mengirim…' : 'Kirim ulang tautan'}
-            </button>
-            <button
-                type="button"
-                onClick={() => router.post('/logout')}
-                className="text-sm text-gray-500 underline"
-            >
-                Keluar
-            </button>
-        </div>
+
+            <form onSubmit={resend} className="mt-7 space-y-5">
+                <SubmitButton processing={busy}>{busy ? 'Mengirim…' : 'Kirim ulang tautan'}</SubmitButton>
+            </form>
+
+            <p className="mt-7 text-center text-[15px] text-slate-600 dark:text-slate-300">
+                Bukan akun Anda?{' '}
+                <button
+                    type="button"
+                    onClick={() => router.post('/logout')}
+                    className="font-bold text-indigo-800 hover:underline dark:text-indigo-300"
+                >
+                    Keluar
+                </button>
+            </p>
+        </AuthLayout>
     );
 }

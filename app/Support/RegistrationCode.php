@@ -116,6 +116,21 @@ class RegistrationCode
             $norm[$k] = trim((string) $n);
         }
         $email = mb_strtolower(trim($email));
+        // Kunci per email: satu email hanya boleh punya satu pendaftaran peserta per kegiatan, apa pun nama pemegangnya.
+        if ($email !== '') {
+            $taken = DB::table('ticket_orders')
+                ->where('event_id', $eventId)
+                ->whereIn('status', ['lunas', 'menunggu_verifikasi', 'menunggu'])
+                ->where(fn ($q) => $q->where('status', '!=', 'menunggu')->orWhere('expires_at', '>', now()))
+                ->whereIn('ticket_type_id', DB::table('ticket_types')->where('event_id', $eventId)
+                    ->where(fn ($q) => $q->where('audience', 'peserta')->orWhere('name', 'like', 'Pendaftaran%'))
+                    ->select('id'))
+                ->whereRaw('LOWER(TRIM(buyer_email)) = ?', [$email])
+                ->exists();
+            if ($taken) {
+                return $email;
+            }
+        }
         if ($email === '' || ! $norm) {
             return null;
         }

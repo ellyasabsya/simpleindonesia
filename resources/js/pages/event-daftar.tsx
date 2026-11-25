@@ -6,6 +6,9 @@ import { CheckCircle2, ClipboardList, Clock, Copy, Lock, Plus, ShieldCheck, Tras
 import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 
 import FileDrop from '@/components/file-drop';
+import AppBar from '@/components/mobile/app-bar';
+import { PAGE } from '@/components/mobile/kit/soft';
+import { usePhone } from '@/components/mobile/use-phone';
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
 type Field = { key: string; label: string; type: FieldType; required: boolean; options: string[] };
 type Cat = { id: number; name: string; label: string };
@@ -42,38 +45,85 @@ type FormData = {
 };
 
 const rupiah = (n: number) => 'Rp' + new Intl.NumberFormat('id-ID').format(n);
-const card = 'rounded-3xl border border-white/70 bg-white/85 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
-const box = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-white/5';
-const lbl = 'mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-slate-500';
+const card = 'daftar-card rounded-3xl border border-white/70 bg-white/85 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
+const box = 'daftar-box w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 dark:border-white/10 dark:bg-white/5';
+const lbl = 'daftar-lbl mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-slate-500';
 const FILE_ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf';
+
+const DAFTAR_CSS = `
+[data-mobile-daftar] .daftar-card{border:0;border-radius:24px;background:#fff;box-shadow:0 0 0 1px rgba(15,23,42,.07);backdrop-filter:none}
+.dark [data-mobile-daftar] .daftar-card{background:rgba(255,255,255,.04);box-shadow:0 0 0 1px rgba(255,255,255,.1)}
+[data-mobile-daftar] .daftar-card.p-6,[data-mobile-daftar] .daftar-card.p-8,[data-mobile-daftar] .daftar-card .p-6{padding:16px}
+[data-mobile-daftar] .daftar-box{border:0;border-radius:16px;background:rgba(15,23,42,.045);padding:8px 12px;font-size:16px;min-height:40px;border-radius:12px;box-shadow:none}
+.dark [data-mobile-daftar] .daftar-box{background:rgba(255,255,255,.07)}
+[data-mobile-daftar] .daftar-box:focus{box-shadow:0 0 0 3px rgba(99,102,241,.25)}
+[data-mobile-daftar] .daftar-lbl{font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:#475569;padding-left:4px}
+.dark [data-mobile-daftar] .daftar-lbl{color:#cbd5e1}
+[data-mobile-daftar] h1{font-size:20px;line-height:1.25;font-weight:600}
+[data-mobile-daftar] h2{font-size:17px;font-weight:600}
+[data-mobile-daftar] .font-extrabold{font-weight:600}
+[data-mobile-daftar] .bg-blue-600{background-color:#4f46e5}
+[data-mobile-daftar] .bg-blue-50{background-color:rgba(79,70,229,.08)}
+[data-mobile-daftar] .text-blue-600,[data-mobile-daftar] .text-blue-700{color:#4338ca}
+.dark [data-mobile-daftar] .text-blue-600,.dark [data-mobile-daftar] .text-blue-700{color:#a5b4fc}
+[data-mobile-daftar] button[type=submit],[data-mobile-daftar] a.bg-blue-600{background-image:none;background-color:#4f46e5;border-radius:9999px;min-height:40px}
+[data-mobile-daftar] [style*="grid-template-columns"]{grid-template-columns:1fr !important;gap:12px}
+[data-mobile-daftar] .daftar-lbl{margin-bottom:4px}
+[data-mobile-daftar] .daftar-head{padding:14px !important}
+[data-mobile-daftar] .daftar-head > div:first-child{gap:12px}
+[data-mobile-daftar] .daftar-head img{width:48px;height:48px;border-radius:12px}
+[data-mobile-daftar] .daftar-head > div:first-child > span{width:40px;height:40px;border-radius:12px}
+[data-mobile-daftar] .daftar-head > div:first-child > span svg{width:20px;height:20px}
+[data-mobile-daftar] .daftar-head .dh-kicker{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500}
+[data-mobile-daftar] .daftar-head h1{font-size:17px;margin-top:2px}
+[data-mobile-daftar] .daftar-head p{font-size:12px;margin-top:2px;line-height:1.3}
+[data-mobile-daftar] .daftar-steps{grid-template-columns:none !important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-top:12px;padding-top:12px}
+[data-mobile-daftar] .daftar-steps .ds-row{margin-top:6px;gap:6px}
+[data-mobile-daftar] .daftar-steps .ds-n{width:20px;height:20px;font-size:11px}
+[data-mobile-daftar] .daftar-steps .ds-t{font-size:11px;font-weight:600;line-height:1.2}
+[data-mobile-daftar] .daftar-steps .ds-sub{display:none}
+[data-mobile-daftar] .daftar-card .dsec-h{padding:12px 14px !important;gap:10px}
+[data-mobile-daftar] .dsec-n{width:24px;height:24px;border-radius:8px;font-size:12px}
+[data-mobile-daftar] .dsec-h h2{font-size:15px;line-height:1.25}
+[data-mobile-daftar] .dsec-h p{font-size:12px;line-height:1.3}
+[data-mobile-daftar] .daftar-card .dsec-b{padding:12px 14px !important;display:flex;flex-direction:column;gap:10px}
+[data-mobile-daftar] .dsec-b > *{margin:0 !important}
+[data-mobile-daftar] .dsec-b .grid{gap:10px}
+[data-mobile-daftar] .dsec-b .p-4{padding:10px}
+[data-mobile-daftar] .daftar-form{gap:12px}
+[data-mobile-daftar] .daftar-form > div:first-child{display:flex;flex-direction:column;gap:12px}
+[data-mobile-daftar] .daftar-form > div:first-child > *{margin:0 !important}
+[data-mobile-daftar] .daftar-card .p-5{padding:12px 14px}
+[data-mobile-daftar] .daftar-card .text-lg{font-size:15px}
+`;
 
 function Section({ n, title, hint, action, children }: { n: number; title: string; hint: string; action?: ReactNode; children: ReactNode }) {
     return (
         <section className={card}>
-            <div className="flex items-start gap-4 border-b border-slate-100 p-6 dark:border-white/10">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-extrabold text-white">{n}</span>
+            <div className="dsec-h flex items-start gap-4 border-b border-slate-100 p-6 dark:border-white/10">
+                <span className="dsec-n flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-extrabold text-white">{n}</span>
                 <div className="mr-auto">
                     <h2 className="text-lg font-extrabold">{title}</h2>
                     <p className="text-sm text-slate-500">{hint}</p>
                 </div>
                 {action}
             </div>
-            <div className="space-y-4 p-6">{children}</div>
+            <div className="dsec-b space-y-4 p-6">{children}</div>
         </section>
     );
 }
 
 function Steps({ steps, active, done }: { steps: Props['steps']; active: number; done: boolean }) {
     return (
-        <div className="mt-6 grid gap-4 border-t border-slate-100 pt-6 dark:border-white/10" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        <div className="daftar-steps mt-6 grid gap-4 border-t border-slate-100 pt-6 dark:border-white/10" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
             {steps.map((s, i) => (
                 <div key={s.title}>
                     <div className={`h-1 rounded-full ${i <= active ? 'bg-blue-600' : 'bg-slate-200 dark:bg-white/10'}`} />
-                    <div className="mt-3 flex items-center gap-3">
-                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${i <= active ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 dark:bg-white/10'}`}>{done && i === steps.length - 1 ? '✓' : i + 1}</span>
+                    <div className="ds-row mt-3 flex items-center gap-3">
+                        <span className={`ds-n flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${i <= active ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500 dark:bg-white/10'}`}>{done && i === steps.length - 1 ? '✓' : i + 1}</span>
                         <div>
-                            <div className="text-sm font-extrabold">{s.title}</div>
-                            <div className="text-xs text-slate-500">{i === active ? (done && i === steps.length - 1 ? 'Selesai' : 'Anda di sini') : i < active ? 'Selesai' : s.sub}</div>
+                            <div className="ds-t text-sm font-extrabold">{s.title}</div>
+                            <div className="ds-sub text-xs text-slate-500">{i === active ? (done && i === steps.length - 1 ? 'Selesai' : 'Anda di sini') : i < active ? 'Selesai' : s.sub}</div>
                         </div>
                     </div>
                 </div>
@@ -190,6 +240,7 @@ function FollowupForm({ eventId, n, followup }: { eventId: number; n: number; fo
 
 export default function EventDaftar(p: Props) {
     const { event, isTeam, fee, bank, categories, fields, steps, activeStep, closed, registration, justSent, done, followup, user, backUrl } = p;
+    const phone = usePhone();
     const single = categories.length === 1 ? String(categories[0].id) : '';
     const form = useForm<FormData>({
         contact_name: user.name ?? '',
@@ -238,7 +289,7 @@ export default function EventDaftar(p: Props) {
     const next = () => ++n;
 
     const head = (
-        <div className={`${card} p-6 sm:p-8`}>
+        <div className={`${card} daftar-head p-6 sm:p-8`}>
             <div className="flex items-center gap-5">
                 {event.poster ? (
                     <img src={event.poster} alt="" className="h-24 w-24 shrink-0 rounded-2xl object-cover shadow" />
@@ -246,7 +297,7 @@ export default function EventDaftar(p: Props) {
                     <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white"><ClipboardList className="h-7 w-7" /></span>
                 )}
                 <div>
-                    <div className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Formulir pendaftaran</div>
+                    <div className="dh-kicker text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Formulir pendaftaran</div>
                     <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{event.title}</h1>
                     <p className="mt-1 text-sm text-slate-500">{[when, event.location].filter(Boolean).join(' · ')}</p>
                 </div>
@@ -293,12 +344,20 @@ export default function EventDaftar(p: Props) {
     ) : null;
 
     return (
-        <div className="relative min-h-screen overflow-x-hidden">
+        <div data-mobile-daftar={phone ? '' : undefined} className={'relative min-h-screen overflow-x-hidden ' + (phone ? PAGE : '')}>
+            {phone && (
+                <>
+                    <style>{DAFTAR_CSS}</style>
+                    <AppBar title="Pendaftaran" back={backUrl} />
+                </>
+            )}
             <Head title={`Daftar ${event.title}`} />
-            <PageBackground />
-            <SiteNavbar hideMenu />
-            <main className="relative z-10 mx-auto w-full max-w-7xl space-y-6 px-6 pb-16 pt-28">
-                <Link href={backUrl} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600">← Kembali ke Detail Event</Link>
+            {!phone && <PageBackground />}
+            {!phone && <SiteNavbar hideMenu />}
+            <main className={'relative z-10 mx-auto w-full max-w-7xl ' + (phone ? 'space-y-3 px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'space-y-6 px-6 pb-16 pt-28')}>
+                {!phone && (
+                    <Link href={backUrl} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600">← Kembali ke Detail Event</Link>
+                )}
                 {head}
 
                 {statusFull ? (
@@ -309,7 +368,7 @@ export default function EventDaftar(p: Props) {
                         <p className="mt-3 text-lg font-extrabold">{closed}</p>
                     </div>
                 ) : (
-                    <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                    <form onSubmit={submit} className="daftar-form grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                         <div className="space-y-6">
                             <Section n={next()} title={isTeam ? 'Identitas Pendaftar' : 'Identitas Peserta'} hint={isTeam ? 'Panitia menghubungi nomor dan email ini bila ada yang perlu dikonfirmasi.' : 'Pastikan nomor dan email aktif.'}>
                                 {isTeam && (
@@ -333,7 +392,7 @@ export default function EventDaftar(p: Props) {
                                 </div>
                                 <div>
                                     <label className={lbl}>{isTeam ? 'Email aktif penanggung jawab' : 'Email'} *</label>
-                                    <input type="email" className={box} value={d.contact_email} onChange={(e) => set('contact_email', e.target.value)} maxLength={150} />
+                                    <input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" type="email" className={box} value={d.contact_email} onChange={(e) => set('contact_email', e.target.value)} maxLength={150} />
                                     {err('contact_email')}
                                 </div>
                                 {!isTeam && (
@@ -505,7 +564,7 @@ export default function EventDaftar(p: Props) {
                     </form>
                 )}
             </main>
-            <Footer />
+            {!phone && <Footer />}
         </div>
     );
 }

@@ -76,6 +76,8 @@ class CalendarController extends Controller
                 ])->all();
         }
 
+        $props['info'] = app(\App\Http\Controllers\Panel\EventInfoController::class)->props($event);
+
         $dash = app(\App\Http\Controllers\Panel\EventDashboardController::class);
 
         return \Closure::bind(fn () => $this->render('panel/events/kalender', $event, $props), $dash, \App\Http\Controllers\Panel\EventDashboardController::class)();
@@ -84,12 +86,18 @@ class CalendarController extends Controller
     public function updatePhases(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event);
+        $eventEnd = Carbon::parse($event->ends_at)->toDateString();
         $data = $request->validate([
-            'registration_start' => ['nullable', 'date'],
-            'registration_end' => ['nullable', 'date', 'after_or_equal:registration_start'],
-            'preparation_start' => ['nullable', 'date'],
-            'preparation_end' => ['nullable', 'date', 'after_or_equal:preparation_start'],
-        ], ['after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal mulai.', 'date' => 'Format tanggal tidak valid.']);
+            'registration_start' => ['nullable', 'date', 'required_with:registration_end'],
+            'registration_end' => ['nullable', 'date', 'required_with:registration_start', 'after_or_equal:registration_start', 'before_or_equal:'.$eventEnd],
+            'preparation_start' => ['nullable', 'date', 'required_with:preparation_end'],
+            'preparation_end' => ['nullable', 'date', 'required_with:preparation_start', 'after_or_equal:preparation_start', 'before_or_equal:'.$eventEnd],
+        ], [
+            'after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal mulai.',
+            'before_or_equal' => 'Tahapan tidak boleh melewati tanggal event selesai.',
+            'required_with' => 'Lengkapi tanggal mulai dan selesai.',
+            'date' => 'Format tanggal tidak valid.',
+        ]);
 
         DB::table('events')->where('id', $event->id)->update($data + ['updated_at' => now()]);
 

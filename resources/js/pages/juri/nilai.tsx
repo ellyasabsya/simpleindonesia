@@ -2,6 +2,9 @@ import { Link, usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import JuriLayout from '@/components/juri/juri-layout';
+import { JURI_CSS } from '@/components/mobile/kit/juri-css';
+import { usePhone } from '@/components/mobile/use-phone';
+import JuriNilaiMobile from '@/components/mobile/juri/juri-nilai-mobile';
 
 type Crit = { id: number; name: string; description: string | null; weight: number; max_score: number; group?: string | null };
 type Part = { id: number; name: string; school: string | null; code?: string; code_tail?: string };
@@ -21,6 +24,7 @@ const codeOf = (p: Part) => p.code || `ID-${p.id}`;
 
 export default function JuriNilai({ token, judge, event, enabled, scale, criteria, participants, scores }: Props) {
     const page = usePage().props as any;
+    const phone = usePhone();
     const flash = page.flash ?? {};
     const [drafts, setDrafts] = useState<Record<number, boolean>>({});
     useEffect(() => {
@@ -43,8 +47,31 @@ export default function JuriNilai({ token, judge, event, enabled, scale, criteri
     const blocked = !judge.active ? 'Akses Anda sebagai juri sedang dinonaktifkan oleh panitia.' : !enabled ? 'Penilaian belum dibuka atau sudah ditutup oleh panitia.' : null;
     const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+    if (phone) {
+        return (
+            <JuriLayout title={`Penilaian - ${event.title}`} judgeName={judge.name}>
+                <JuriNilaiMobile
+                    token={token}
+                    event={event.title}
+                    judgeName={judge.name}
+                    criteriaCount={criteria.length}
+                    scale={num(scale)}
+                    blocked={blocked}
+                    success={flash.success}
+                    participants={participants.map((x) => ({ id: x.id, name: x.name, school: x.school, code: codeOf(x), done: isDone(x), draft: !!drafts[x.id] }))}
+                />
+            </JuriLayout>
+        );
+    }
+
     return (
         <JuriLayout title={`Penilaian - ${event.title}`} judgeName={judge.name}>
+            {phone && (
+                <>
+                    <span data-mobile-juri hidden />
+                    <style>{JURI_CSS}</style>
+                </>
+            )}
             <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-[13px] font-bold shadow-sm dark:bg-white/10"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" />Penilaian Juri · {today}</div>
                 <h1 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:text-[2.75rem]">Nilai <span className="bg-gradient-to-r from-indigo-600 to-sky-400 bg-clip-text text-transparent">{event.title}</span></h1>
@@ -101,7 +128,7 @@ export default function JuriNilai({ token, judge, event, enabled, scale, criteri
                         <Link key={p.id} href={`/juri/${token}?peserta=${p.id}`} className="group relative overflow-hidden rounded-3xl bg-white/85 p-5 pt-6 shadow-md ring-1 ring-white/70 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-xl hover:ring-2 hover:ring-indigo-400 dark:bg-white/10 dark:ring-white/10">
                             <div className={`absolute inset-x-8 top-0 h-1 rounded-b-full ${done ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="inline-block max-w-full whitespace-nowrap rounded-xl bg-gradient-to-r from-indigo-700 to-blue-500 px-3.5 py-1.5 text-base font-extrabold tracking-wide text-white shadow-sm">{codeOf(p)}</span>
+                                <span className="inline-block max-w-full whitespace-nowrap rounded-xl bg-indigo-600 px-3.5 py-1.5 text-base font-extrabold tracking-wide text-white shadow-sm">{codeOf(p)}</span>
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${done ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-amber-950'}`}>{done ? 'Sudah dinilai' : 'Belum dinilai'}</span>
                                     {drafts[p.id] && <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-800">Ada draf</span>}

@@ -1,8 +1,10 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import { router } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, Check, Download, Paperclip, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Download, Paperclip, ScanLine, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import RegistrationInfoCard from '@/components/panel/registration-info-card';
+import RegistrasiFormMobile from '@/components/mobile/pages/registrasi-form-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'checkbox' | 'date' | 'file';
 type Field = { key: string; label: string; type: FieldType; required: boolean; options: string[]; archived?: boolean; stage?: 'register' | 'after' };
@@ -49,6 +51,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
     const [q, setQ] = useState('');
     const [st, setSt] = useState('');
     const [page, setPage] = useState(1);
+    const phone = usePhone();
 
     const patch = (i: number, p: Partial<Item>) => { setSaved(false); setItems((a) => a.map((x, j) => (j === i ? { ...x, ...p } : x))); };
     const move = (i: number, d: number) => { setSaved(false); setItems((a) => { const j = i + d; if (j < 0 || j >= a.length) return a; const c = [...a]; [c[i], c[j]] = [c[j], c[i]]; return c; }); };
@@ -129,7 +132,20 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
 
     return (
         <PanelLayout title="Registrasi">
-            <div className="space-y-5">
+            {phone && (
+                <RegistrasiFormMobile
+                    eventId={eventId} fee={fee} isTeam={isTeam} published={published} quota={quota} used={used}
+                    menunggu={count('menunggu')} disetujui={count('terdaftar')} total={rows.length}
+                    hasAfter={fields.some((f) => !f.archived && f.stage === 'after')}
+                    tab={tab} setTab={setTab} q={q} setQ={setQ} st={st} setSt={setSt} statusMap={STATUS}
+                    list={list} view={view} pg={pg} pages={pages} setPage={setPage}
+                    shown={shown} answer={show} review={review}
+                    onDelete={(r) => { if (confirm(`Hapus pendaftar ${r.name}? Data dan berkasnya ikut terhapus.`)) router.delete(`/panel/event/${eventId}/registrasi/pendaftar/${r.id}`, { preserveScroll: true }); }}
+                    items={items} types={TYPES} patch={patch} move={move} add={add} remove={remove}
+                    save={save} saving={saving} saved={saved} errors={errors}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-5'}>
                 <RegistrationInfoCard fee={fee} isTeam={isTeam} className={card}>
                     {!published && <p className="mt-2 text-xs font-semibold text-amber-700">Event belum terbit, jadi form publik belum bisa dibuka.</p>}
                 </RegistrationInfoCard>
@@ -158,6 +174,7 @@ export default function RegistrasiForm({ eventId, fields, quota, used, fee, isTe
                                 {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                             </select>
                             <a href={`/panel/event/${eventId}/registrasi/export`} className="inline-flex items-center gap-2 rounded-xl bg-indigo-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-800"><Download className="h-4 w-4" /> Ekspor CSV</a>
+                            <a href={`/panel/event/${eventId}/checkin`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"><ScanLine className="h-4 w-4" /> Buka scanner</a>
                         </div>
                         <div className="mt-4 overflow-x-auto">
                             <table className="w-full min-w-[960px] text-left text-sm">

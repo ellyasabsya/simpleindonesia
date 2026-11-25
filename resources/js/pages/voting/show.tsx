@@ -1,4 +1,6 @@
 import { openPayScreen } from '@/lib/pay-screen';
+import VotingShowMobile, { BuySheetMobile } from '@/components/mobile/pages/voting-show-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search, Swords, Trophy, Upload, User, Volume2, VolumeX, X, Zap, Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -64,6 +66,7 @@ function BuyModal({ p, rank, props, onClose }: { p: P; rank: number; props: Prop
         participant_id: p.id, gift_id: null, votes: String(s.min_votes), buyer_name: '', message: '',
     });
     const d = form.data;
+    const phone = usePhone();
     const gift = gifts.find((g) => g.id === d.gift_id);
     const votes = gift ? gift.votes : Math.min(MAX_VOTES, Number(d.votes) || 0);
     const base = gift ? gift.price : votes * s.price;
@@ -103,6 +106,17 @@ function BuyModal({ p, rank, props, onClose }: { p: P; rank: number; props: Prop
             },
         });
     };
+
+    if (phone) {
+        return (
+            <BuySheetMobile
+                p={p} rank={rank} s={s} gifts={gifts} online={online} event={event} fee_percent={fee_percent}
+                d={d} form={form} gift={gift} votes={votes} base={base} fee={fee} total={total}
+                done={done} paying={paying} pendingCode={pendingCode} payMsg={payMsg} err={err} ok={ok}
+                setVotes={setVotes} submit={submit} pay={pay} onClose={onClose} max={MAX_VOTES}
+            />
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -256,14 +270,16 @@ export default function VotingShow(props: Props) {
     const cd = useCountdown(period.end);
     const started = !period.start || new Date(period.start).getTime() <= Date.now();
     const canBuy = started && !cd.over;
+    const phone = usePhone();
 
     useEffect(() => {
         const t = setInterval(async () => {
+            if (document.visibilityState !== 'visible') return;
             try {
                 const r = await fetch(`/voting/${event.id}/data`, { headers: { Accept: 'application/json' } });
                 if (r.ok) setLive(await r.json());
             } catch { /* abaikan */ }
-        }, 5000);
+        }, 10000);
         return () => clearInterval(t);
     }, [event.id]);
 
@@ -319,6 +335,20 @@ export default function VotingShow(props: Props) {
     const chip = (on: boolean) => `shrink-0 rounded-full border px-4 py-2 text-xs font-extrabold tracking-widest uppercase transition ${on ? 'border-cyan-300 bg-cyan-300/15 text-cyan-200' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`;
     const votesLabel = (v: number | null) => (v === null ? '' : nf(v));
     const order = [1, 0, 2];
+
+    if (phone) {
+        return (
+            <>
+                <VotingShowMobile
+                    event={event} period={period} settings={settings} categories={categories} live={live}
+                    tab={tab} setTab={setTab} cat={cat} setCat={setCat} q={q} setQ={setQ}
+                    canBuy={canBuy} started={started} cd={cd} sound={sound} toggleSound={toggleSound}
+                    list={list} scope={scope} scopeVotes={scopeVotes} title={title} hasNone={hasNone} onBuy={setBuy}
+                />
+                {buy && <BuyModal p={buy} rank={settings.show_ranking ? live.participants.findIndex((x) => x.id === buy.id) + 1 : 0} props={props} onClose={() => setBuy(null)} />}
+            </>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#050816] via-[#0a1030] to-[#1a0b3a] pb-32 text-white">

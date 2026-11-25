@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/hooks/use-theme';
@@ -13,8 +13,14 @@ const navLinks = [
     { label: 'Berita', id: 'berita' },
 ];
 
-// Navbar sama persis dengan beranda; menu mengarah ke section di beranda
-export default function SiteNavbar({ active = 'event', hideMenu = false }: { active?: string; hideMenu?: boolean }) {
+const pageLinks: Record<string, string> = { event: '/events', tiket: '/tickets', voting: '/voting', paket: '/paket', berita: '/berita' };
+const hrefFor = (id: string) => (id === 'hero' ? '/' : (pageLinks[id] ?? `/#${id}`));
+
+// Navbar sama persis dengan beranda; menu mengarah ke halaman daftar atau section di beranda
+export default function SiteNavbar({ active, hideMenu = false }: { active?: string; hideMenu?: boolean }) {
+    const path = usePage().url.split('?')[0].split('#')[0];
+    const byPath = Object.entries(pageLinks).find(([, href]) => path === href || path.startsWith(href + '/'))?.[0];
+    const current = byPath ?? active;
     const [scrolled, setScrolled] = useState(false);
     const { dark, toggle } = useTheme();
     const { user, dashboardUrl } = useAuth();
@@ -36,9 +42,7 @@ export default function SiteNavbar({ active = 'event', hideMenu = false }: { act
         >
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
                 <Link href="/" className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">
-                        S
-                    </span>
+                    <img src="/logo-s-sm.png" alt="SIMPLE" className="h-10 w-10 shrink-0 object-contain" />
                     <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
                 </Link>
 
@@ -46,9 +50,13 @@ export default function SiteNavbar({ active = 'event', hideMenu = false }: { act
                     {navLinks.map((link) => (
                         <a
                             key={link.id}
-                            href={`/#${link.id}`}
+                            href={hrefFor(link.id)}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                router.visit(hrefFor(link.id));
+                            }}
                             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                                link.id === active
+                                link.id === current
                                     ? 'bg-white text-indigo-900 shadow dark:bg-indigo-500/30 dark:text-white'
                                     : 'text-slate-600 hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white'
                             }`}

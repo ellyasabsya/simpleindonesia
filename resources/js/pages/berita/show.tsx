@@ -6,6 +6,8 @@ import type { ComponentProps } from 'react';
 import Footer from '@/components/landing/footer';
 import Navbar from '@/components/landing/navbar';
 import PageBackground from '@/components/page-background';
+import BeritaShowMobile from '@/components/mobile/pages/berita-show-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Article = {
     id: number;
@@ -170,6 +172,9 @@ function BeritaShowInner({
 }
 
 export default function BeritaShow(props: ComponentProps<typeof BeritaShowInner>) {
+    const phone = usePhone();
+    if (phone) return <BeritaShowMobile {...props} />;
+
     return (
         <div className="relative min-h-screen text-slate-900 transition-colors dark:text-white">
             <PageBackground />

@@ -2,6 +2,8 @@ import PanelLayout from '@/components/panel/panel-layout';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Camera, Check, Eye, Gift, Layers, Link2, MessageSquare, Pencil, Plus, Trash2, Trophy, Users, Wallet, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import VotingPanelMobile from '@/components/mobile/pages/voting-panel-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Settings = {
     enabled: boolean; price_per_vote: number; min_votes: number; message_enabled: boolean; message_max: number;
@@ -15,7 +17,7 @@ type Props = { eventId: number; settings: Settings; categories: Cat[]; participa
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
 const lbl = 'text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300';
-const inp = 'mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:bg-slate-100 dark:border-white/10 dark:bg-white/5';
+const inp = 'mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base sm:px-4 sm:py-2.5 sm:text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 disabled:bg-slate-100 dark:border-white/10 dark:bg-white/5';
 const btn = 'rounded-2xl bg-indigo-900 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50';
 const EMOJIS = ['🔥', '🐻', '🚀', '🦁', '💎', '👑', '⭐', '❤️', '🎉', '🏆', '⚡', '🌟'];
 
@@ -38,14 +40,14 @@ function SettingRow({ title, desc, children }: { title: string; desc: string; ch
 
 function Modal({ title, sub, onClose, onSubmit, footer, children }: { title: string; sub: string; onClose: () => void; onSubmit: (e: React.FormEvent) => void; footer: React.ReactNode; children: React.ReactNode }) {
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 p-4" onClick={onClose}>
-            <form onSubmit={onSubmit} className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-6 py-5 dark:border-white/10">
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-900/70 p-0 sm:items-center sm:p-4" onClick={onClose}>
+            <form onSubmit={onSubmit} className="flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-3xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-5 dark:border-white/10">
                     <div><h3 className="text-xl font-extrabold">{title}</h3><p className="text-sm text-slate-500">{sub}</p></div>
                     <button type="button" aria-label="Tutup" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
-                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">{children}</div>
-                <div className="flex gap-2 border-t border-slate-100 px-6 py-4 dark:border-white/10">{footer}</div>
+                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">{children}</div>
+                <div className="flex gap-2 border-t border-slate-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4 dark:border-white/10">{footer}</div>
             </form>
         </div>
     );
@@ -55,7 +57,7 @@ function Preview({ s, names }: { s: { show_sender: boolean; show_ranking: boolea
     const base = names.length >= 3 ? names.slice(0, 3) : ['Tim Garuda', 'Tim Elang', 'Tim Rajawali'];
     const votes = [1240, 980, 655];
     return (
-        <div className="rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-800 p-5 text-white">
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-800 p-3 text-white sm:rounded-3xl sm:p-5">
             <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-indigo-200"><Eye className="h-4 w-4" /> Pratinjau halaman penonton</div>
             <div className="mt-4 space-y-2">
                 {s.show_ranking ? base.map((n, i) => (
@@ -105,6 +107,7 @@ function PhotoPicker({ current, file, removed, onFile, onRemove }: { current: st
 
 export default function Voting({ eventId, settings, categories, participants, gifts }: Props) {
     const base = `/panel/event/${eventId}/voting`;
+    const phone = usePhone();
     const [tab, setTab] = useState<'peserta' | 'harga' | 'pesan' | 'tampilan'>('peserta');
     const [filter, setFilter] = useState<'all' | 'none' | number>('all');
     const [catDraft, setCatDraft] = useState('');
@@ -176,7 +179,23 @@ export default function Voting({ eventId, settings, categories, participants, gi
 
     return (
         <PanelLayout title="Voting">
-            <div className="space-y-5">
+            {phone && (
+                <VotingPanelMobile
+                    enabled={settings.enabled} onToggle={toggle} pricePerVote={settings.price_per_vote}
+                    activeParts={activeParts} noPhoto={noPhoto}
+                    categories={categories} participants={participants} gifts={gifts}
+                    tab={tab} setTab={setTab} filter={filter} setFilter={setFilter} shown={shown} catName={catName}
+                    catDraft={catDraft} setCatDraft={setCatDraft} catErr={catErr} addCat={addCat} delCat={delCat}
+                    copied={copied} copy={copy} copyAll={copyAll}
+                    onNewP={openNewP} onEditP={openEditP} onDelP={delP}
+                    onNewG={openNewG} onEditG={openEditG} onDelG={delG}
+                    onToggleG={(g) => router.post(`${base}/gift/${g.id}/toggle`, {}, { preserveScroll: true })}
+                    d={d} setD={(k, v) => sf.setData(k as any, v as any)} se={se}
+                    dirty={sf.isDirty} valid={sValid} saving={sf.processing} onSave={saveSettings}
+                    preview={<Preview s={d} names={participants.filter((p) => p.active).map((p) => p.name)} />}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-5'}>
 
                 <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
                     <div>

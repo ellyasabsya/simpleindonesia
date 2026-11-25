@@ -181,7 +181,7 @@ class RegistrationFormController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, array_merge(
-                ['Nama', 'Email', 'WhatsApp', 'Sekolah / Instansi', 'Kategori', 'Tim', 'Status', 'Total tagihan', 'Waktu daftar'],
+                ['Nama', 'Email', 'WhatsApp', 'Sekolah / Instansi', 'Kategori', 'Tim', 'Status', 'Total tagihan', 'Waktu daftar', 'Kehadiran'],
                 array_map(fn ($f) => $safe($f['label']), $fields)
             ), ',', '"', '\\');
 
@@ -201,6 +201,7 @@ class RegistrationFormController extends Controller
                         $r->status,
                         (int) $r->total_fee,
                         Carbon::parse($r->created_at)->setTimezone($tz)->format('Y-m-d H:i'),
+                        $r->checked_in_at ? 'Hadir '.Carbon::parse($r->checked_in_at)->setTimezone($tz)->format('Y-m-d H:i') : 'Belum hadir',
                     ];
                     foreach ($fields as $f) {
                         $v = $a[$f['key']] ?? '';

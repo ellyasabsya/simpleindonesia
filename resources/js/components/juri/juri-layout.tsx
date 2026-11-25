@@ -28,7 +28,7 @@ export default function JuriLayout({ title, judgeName, children }: { title: stri
             <header className="fixed inset-x-0 top-0 z-40 border-b border-white/60 bg-white/60 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-white/10 dark:bg-indigo-950/40">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-900 text-xl font-black text-white">S</span>
+                        <img src="/logo-s-sm.png" alt="SIMPLE" className="h-10 w-10 shrink-0 object-contain" />
                         <span className="text-xl font-extrabold tracking-[0.2em] text-indigo-900 dark:text-white">SIMPLE</span>
                         <span className="ml-1 hidden rounded-full bg-white/70 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-indigo-700 shadow-sm sm:inline dark:bg-white/10 dark:text-indigo-200">Penilaian juri</span>
                     </div>

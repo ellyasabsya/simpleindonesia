@@ -49,7 +49,7 @@ class JudgePublicController extends Controller
             'token' => $token,
             'judge' => ['name' => $j->name, 'active' => (bool) $j->active],
             'event' => ['title' => $ev->title.($catName ? ' - '.$catName : '')],
-            'enabled' => (bool) $s->enabled && empty($s->saved_at) && empty($s->finalized_at),
+            'enabled' => (bool) $s->enabled && (bool) $s->judging_open && empty($s->saved_at) && empty($s->finalized_at),
             'scale' => (int) $s->scale,
             'criteria' => $crit->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'description' => $c->description, 'weight' => round((float) $c->eff_weight, 2), 'max_score' => (int) $c->max_score, 'group' => $c->parent_name])->values(),
             'participants' => array_map(fn ($p) => ['name' => $p['code'], 'school' => null] + $p, Judging::participants($j->event_id, $cid)),
@@ -77,7 +77,7 @@ class JudgePublicController extends Controller
             'token' => $token,
             'judge' => ['name' => $j->name, 'active' => (bool) $j->active],
             'event' => ['title' => $ev->title.($catName ? ' - '.$catName : '')],
-            'enabled' => (bool) $s->enabled && empty($s->saved_at) && empty($s->finalized_at),
+            'enabled' => (bool) $s->enabled && (bool) $s->judging_open && empty($s->saved_at) && empty($s->finalized_at),
             'scale' => (int) $s->scale,
             'criteria' => $crit->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'description' => $c->description, 'weight' => round((float) $c->eff_weight, 2), 'max_score' => (int) $c->max_score, 'group' => $c->parent_name])->values(),
             'participant' => $list->get($idx),
@@ -94,7 +94,7 @@ class JudgePublicController extends Controller
         $cid = (int) $j->category_id;
         abort_unless($cid >= 0, 403);
         abort_unless($j->active, 403);
-        abort_unless(Judging::settings($j->event_id, $cid)->enabled, 403);
+        abort_unless(Judging::settings($j->event_id, $cid)->enabled && Judging::settings($j->event_id, $cid)->judging_open, 403);
         $lk = Judging::settings($j->event_id, $cid);
         if (! empty($lk->finalized_at) || ! empty($lk->saved_at)) {
             throw ValidationException::withMessages(['scores' => 'Penilaian kategori ini sudah dikunci oleh panitia. Nilai tidak bisa diubah lagi.']);

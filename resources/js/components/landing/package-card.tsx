@@ -28,7 +28,7 @@ type Theme = {
     btn: string;
 };
 
-const themes: Record<string, Theme> = {
+export const themes: Record<string, Theme> = {
     iklan: {
         icon: Megaphone,
         badge: 'Iklan',

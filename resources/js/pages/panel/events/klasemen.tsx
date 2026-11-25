@@ -1,6 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Check, ChevronDown, Copy, MessageCircle, Send, Share2, Star, Trophy, Users, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, Copy, MessageCircle, Send, Share2, Star, Trophy, Users, X } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 
 type Row = { rank: number | null; shared?: boolean; code: string; name?: string; school?: string; judges_done: number; base: number | null; deduction: number | null; penalty: number | null; score: number | null; provisional?: boolean; status?: string };
@@ -203,8 +203,8 @@ function ShareModal({ title, link, api, ready, onClose }: { title: string; link:
         setBusy(false);
     };
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm print:hidden" onClick={onClose}>
-            <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-amber-200" style={{ fontFamily: FONT }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm md:items-center md:p-4 print:hidden" onClick={onClose}>
+            <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl ring-1 ring-amber-200 md:max-h-none md:overflow-hidden md:rounded-3xl md:pb-0" style={{ fontFamily: FONT }} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500 px-5 py-4">
                     <div className="flex items-center gap-2.5 text-amber-950">
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/40 ring-1 ring-white/60"><Share2 className="h-5 w-5" /></span>
@@ -213,7 +213,7 @@ function ShareModal({ title, link, api, ready, onClose }: { title: string; link:
                             <p className="max-w-[16rem] truncate text-xs font-semibold text-amber-950/70">{title}</p>
                         </div>
                     </div>
-                    <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/40 text-amber-950 hover:bg-white/60"><X className="h-4 w-4" /></button>
+                    <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/40 text-amber-950 hover:bg-white/60 md:h-8 md:w-8"><X className="h-4 w-4" /></button>
                 </div>
 
                 <div className="space-y-5 p-5">
@@ -224,7 +224,7 @@ function ShareModal({ title, link, api, ready, onClose }: { title: string; link:
                         <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Link publik</p>
                             <p className="mt-1 break-all rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">{link}</p>
-                            <button type="button" onClick={copy} disabled={!ready} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-40">
+                            <button type="button" onClick={copy} disabled={!ready} className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-extrabold text-white disabled:opacity-40 md:h-auto md:py-1.5">
                                 {copied ? <><Check className="h-3.5 w-3.5" /> Tersalin</> : <><Copy className="h-3.5 w-3.5" /> Salin link</>}
                             </button>
                         </div>
@@ -425,6 +425,110 @@ function HeroPage({ title, back, self, category, nav, status, s, isPublic, onSha
     );
 }
 
+function MobileKlasemen({ props, status, onShare }: { props: Props; status: string; onShare?: () => void }) {
+    const { title, back, self, ov, category, nav, single, isPublic, shareReady } = props;
+    const k = Math.min(Math.max(ov.points.length, 1), 5);
+    const cur = category ? `${self}?sub=${category.sub_id}&kategori=${category.id}` : self;
+    const tone = (r: number | null) => (r === 1 ? 'bg-amber-50 ring-amber-300' : r === 2 ? 'bg-slate-50 ring-slate-300' : r === 3 ? 'bg-orange-50 ring-orange-300' : 'bg-white ring-slate-200');
+    const dot = (r: number | null, shared?: boolean) => {
+        const bg = r === 1 ? 'bg-amber-500 text-white' : r === 2 ? 'bg-slate-500 text-white' : r === 3 ? 'bg-orange-600 text-white' : 'bg-blue-100 text-blue-900';
+        return <span className={'inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full px-2 text-sm font-semibold ' + bg}>{r === null ? '–' : `${r}${shared ? '=' : ''}`}</span>;
+    };
+    const rows = category ? category.table : [];
+    return (
+        <div className="min-h-dvh bg-gradient-to-b from-sky-100 to-white px-3 pt-2 pb-28 md:hidden print:hidden" style={{ fontFamily: FONT }}>
+            <div className="flex items-center gap-2">
+                <Link href={back} aria-label="Kembali" className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-[13px] font-semibold text-blue-950 shadow-sm ring-1 ring-slate-200">
+                    <ChevronLeft className="h-4 w-4" /> {isPublic ? 'Beranda' : 'Penilaian'}
+                </Link>
+                {status && <span className="ml-auto rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-300">{status}</span>}
+            </div>
+            <h1 className="mt-2 text-xl leading-tight font-semibold text-slate-900">{category ? 'Klasemen Kategori' : 'Juara Umum'}</h1>
+            <p className="mt-0.5 text-xs font-semibold text-slate-600">{category ? `${category.sub} · ${category.name ? `Kategori ${category.name}` : 'Kategori Umum'}` : title}</p>
+
+            <select
+                value={cur}
+                onChange={(e) => router.visit(e.target.value)}
+                aria-label="Tampilan klasemen"
+                className="mt-2 h-10 w-full rounded-full border border-slate-300 bg-white px-3 text-base font-semibold text-blue-950"
+            >
+                {!single && <option value={self}>Juara umum</option>}
+                {nav.map((n) => (
+                    <option key={`${n.sub_id}-${n.id}`} value={`${self}?sub=${n.sub_id}&kategori=${n.id}`}>{n.sub} · {n.name ? n.name : 'Umum'}</option>
+                ))}
+            </select>
+
+            {onShare && (
+                <button type="button" onClick={onShare} className={'mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold ' + (shareReady ? 'bg-amber-400 text-amber-950' : 'bg-slate-200 text-slate-500')}>
+                    <Share2 className="h-4 w-4" /> Bagikan klasemen
+                </button>
+            )}
+
+            <div className="mt-2 space-y-1.5">
+                {category ? (
+                    <>
+                        {rows.length === 0 && <p className="py-8 text-center text-[13px] text-slate-600">Belum ada data peringkat.</p>}
+                        {rows.map((t, i) => (
+                            <div key={`${t.code}-${i}`} className={'rounded-2xl p-2.5 ring-1 ' + tone(t.rank)}>
+                                <div className="flex items-start gap-3">
+                                    {dot(t.rank, t.shared)}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="truncate text-sm font-semibold text-slate-900">{t.code}{t.name ? <span className="font-medium text-slate-500"> · {t.name}</span> : null}</div>
+                                        <div className="truncate text-[11px] font-semibold text-slate-600">{t.school || '–'}</div>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <div className="text-base leading-tight font-semibold text-slate-900">{num(t.score)}{t.provisional ? '*' : ''}</div>
+                                        <div className="text-[11px] font-semibold text-slate-500 capitalize">{t.status ?? '–'}</div>
+                                    </div>
+                                </div>
+                                <div className="mt-1.5 grid grid-cols-4 gap-1 border-t border-slate-200/70 pt-1.5 text-center">
+                                    {([['Juri', `${t.judges_done}/${category.need}`], ['Dasar', num(t.base)], ['Potongan', t.deduction ? num(t.deduction) : '–'], ['Penalti', t.penalty ? num(t.penalty) : '–']] as [string, string][]).map(([l, v]) => (
+                                        <div key={l}>
+                                            <div className="text-[13px] font-semibold text-slate-800">{v}</div>
+                                            <div className="text-[11px] text-slate-500">{l}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {rows.some((t) => t.provisional) && <p className="px-1 text-[11px] font-semibold text-slate-500">* nilai sementara</p>}
+                    </>
+                ) : (
+                    <>
+                        {ov.standings.length === 0 && <p className="py-8 text-center text-[13px] text-slate-600">Belum ada data peringkat.</p>}
+                        {ov.standings.map((st, i) => (
+                            <div key={i} className={'rounded-2xl p-2.5 ring-1 ' + tone(st.rank)}>
+                                <div className="flex items-center gap-3">
+                                    {dot(st.rank, st.shared)}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="truncate text-sm font-semibold text-slate-900">{st.school}</span>
+                                            {st.tie && <span className="shrink-0 text-[11px] font-semibold text-rose-600">seri</span>}
+                                        </div>
+                                        {st.why && <div className="text-[11px] leading-snug text-slate-500">{st.why}</div>}
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <div className="text-base leading-tight font-semibold text-slate-900">{num(st.points)}</div>
+                                        <div className="text-[11px] text-slate-500">poin</div>
+                                    </div>
+                                </div>
+                                <div className="mt-1.5 grid gap-1 border-t border-slate-200/70 pt-1.5 text-center" style={{ gridTemplateColumns: `repeat(${k}, minmax(0, 1fr))` }}>
+                                    {st.counts.slice(0, k).map((n, j) => (
+                                        <div key={j} className="flex items-baseline justify-center gap-1">
+                                            <div className="text-[13px] font-semibold text-slate-800">{n}</div>
+                                            <div className="text-[11px] text-slate-500">Juara {j + 1}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function Klasemen(props: Props) {
     const { ov, category } = props;
     const [shareOpen, setShareOpen] = useState(false);
@@ -439,8 +543,11 @@ export default function Klasemen(props: Props) {
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
             </Head>
-            <style>{`html,body{margin:0;overflow:hidden}@keyframes shine{0%{left:-60%}60%,100%{left:150%}}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:landscape;margin:0}}`}</style>
+            <style>{`html,body{margin:0}@media (min-width:768px){html,body{overflow:hidden}}@keyframes shine{0%{left:-60%}60%,100%{left:150%}}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:landscape;margin:0}}`}</style>
+            <div className="hidden md:block print:block">
             {hero ? <HeroPage {...props} status={status} s={winners[0]} onShare={props.isPublic ? undefined : () => setShareOpen(true)} /> : <PodiumPage {...props} status={status} onShare={props.isPublic ? undefined : () => setShareOpen(true)} />}
+            </div>
+            <MobileKlasemen props={props} status={status} onShare={props.isPublic ? undefined : () => setShareOpen(true)} />
             {shareOpen && !props.isPublic && (
                 <ShareModal
                     title={props.title}

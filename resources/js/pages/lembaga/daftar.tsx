@@ -6,6 +6,9 @@ import SubmitButton from '@/components/auth/submit-button';
 import PageBackground from '@/components/page-background';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import LembagaMobile from '@/components/mobile/pages/lembaga-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
+import UserLayout from '@/components/user/user-layout';
 
 type Institution = { name: string; email: string; phone: string; status: string };
 
@@ -31,6 +34,7 @@ export default function DaftarLembaga({ institution }: { institution: Institutio
     const { dark, toggle } = useTheme();
     const { dashboardUrl } = useAuth();
     const { data, setData, post, processing, errors } = useForm({ name: '', email: '', phone: '' });
+    const phone = usePhone();
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -38,6 +42,22 @@ export default function DaftarLembaga({ institution }: { institution: Institutio
     };
 
     const status = institution ? statusInfo[institution.status] ?? statusInfo.pending : null;
+
+    if (phone) {
+        return (
+            <UserLayout title="Daftar Lembaga">
+                <LembagaMobile
+                    institution={institution}
+                    status={status}
+                    data={data}
+                    setData={(k, v) => setData(k, v)}
+                    errors={errors}
+                    processing={processing}
+                    onSubmit={submit}
+                />
+            </UserLayout>
+        );
+    }
 
     return (
         <>

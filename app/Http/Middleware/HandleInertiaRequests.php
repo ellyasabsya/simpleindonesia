@@ -2,21 +2,46 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Event;
+use App\Models\EventComment;
 use App\Models\Institution;
+use App\Models\InstitutionMember;
+use App\Models\Withdrawal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
+    private ?array $adminCountsMemo = null;
+
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
+    /** Hitungan "pending" admin: 1x hitung per 30 detik, bukan tiap halaman. */
+    private function adminCounts(): array
+    {
+        return $this->adminCountsMemo ??= Cache::remember('admin_pending_counts', 30, fn () => [
+            'comments' => EventComment::whereNotNull('reported_at')->count(),
+            'lembaga' => Institution::where('status', Institution::PENDING)->count(),
+            'review' => Event::whereNull('parent_id')->where('status', 'pending')
+                ->where(fn ($w) => $w->whereNull('payment_status')->orWhere('payment_status', '!=', 'menunggu_verifikasi'))->count(),
+            'penarikan' => Withdrawal::where('status', 'menunggu')->count(),
+            'paket' => Event::whereNull('parent_id')->where('payment_status', 'menunggu_verifikasi')->count(),
+            'tiket' => DB::table('ticket_orders')->where('status', 'menunggu_verifikasi')->count(),
+        ]);
+    }
+
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $isAdmin = $user?->isAdmin() ?? false;
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -27,24 +52,21 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'auth' => [
-                'user' => $request->user()
-                    ? $request->user()->only('id', 'name', 'email', 'role')
-                    : null,
+                'user' => $user ? $user->only('id', 'name', 'email', 'role') : null,
             ],
-            'userHasPanel' => function () use ($request) {
-                $user = $request->user();
+            'userHasPanel' => function () use ($user) {
                 if (! $user) {
                     return false;
                 }
 
-                return Institution::where('user_id', $user->id)->where('status', Institution::APPROVED)->exists()
-                    || \App\Models\InstitutionMember::where('user_id', $user->id)->where('status', 'aktif')
-                        ->whereIn('institution_id', Institution::where('status', Institution::APPROVED)->select('id'))->exists();
+                return Cache::remember('user_has_panel:'.$user->id, 120, fn () => Institution::where('user_id', $user->id)->where('status', Institution::APPROVED)->exists()
+                    || InstitutionMember::where('user_id', $user->id)->where('status', 'aktif')
+                        ->whereIn('institution_id', Institution::where('status', Institution::APPROVED)->select('id'))->exists());
             },
-            'notifications' => fn () => $request->user()?->isAdmin()
+            'notifications' => fn () => $isAdmin
                 ? [
-                    'unread_count' => $request->user()->unreadNotifications()->count(),
-                    'items' => $request->user()->notifications()->latest()->limit(8)->get()->map(fn ($n) => [
+                    'unread_count' => $user->unreadNotifications()->count(),
+                    'items' => $user->notifications()->latest()->limit(8)->get()->map(fn ($n) => [
                         'id' => $n->id,
                         'title' => $n->data['title'] ?? '',
                         'message' => $n->data['message'] ?? '',
@@ -53,8 +75,8 @@ class HandleInertiaRequests extends Middleware
                         'created_at' => $n->created_at?->toISOString(),
                     ])->all(),
                 ]
-                : ($request->user()
-                    ? $request->user()->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
+                : ($user
+                    ? $user->notifications()->latest()->limit(10)->get()->map(fn ($n) => [
                         'id' => $n->id,
                         'text' => $n->data['text'] ?? trim(($n->data['title'] ?? '').' — '.($n->data['message'] ?? ''), ' —'),
                         'url' => $n->data['url'] ?? null,
@@ -62,25 +84,12 @@ class HandleInertiaRequests extends Middleware
                         'at' => $n->created_at?->toIso8601String(),
                     ])->all()
                     : []),
-            'pending_comments' => fn () => $request->user()?->isAdmin()
-                ? \App\Models\EventComment::whereNotNull('reported_at')->count()
-                : 0,
-            'pending_lembaga' => fn () => $request->user()?->isAdmin()
-                ? Institution::where('status', Institution::PENDING)->count()
-                : 0,
-            'pending_review' => fn () => $request->user()?->isAdmin()
-                ? \App\Models\Event::whereNull('parent_id')->where('status', 'pending')
-                    ->where(fn ($w) => $w->whereNull('payment_status')->orWhere('payment_status', '!=', 'menunggu_verifikasi'))->count()
-                : 0,
-            'pending_penarikan' => fn () => $request->user()?->isAdmin()
-                ? \App\Models\Withdrawal::where('status', 'menunggu')->count()
-                : 0,
-            'pending_paket' => fn () => $request->user()?->isAdmin()
-                ? \App\Models\Event::whereNull('parent_id')->where('payment_status', 'menunggu_verifikasi')->count()
-                : 0,
-            'pending_tiket' => fn () => $request->user()?->isAdmin()
-                ? \Illuminate\Support\Facades\DB::table('ticket_orders')->where('status', 'menunggu_verifikasi')->count()
-                : 0,
+            'pending_comments' => fn () => $isAdmin ? $this->adminCounts()['comments'] : 0,
+            'pending_lembaga' => fn () => $isAdmin ? $this->adminCounts()['lembaga'] : 0,
+            'pending_review' => fn () => $isAdmin ? $this->adminCounts()['review'] : 0,
+            'pending_penarikan' => fn () => $isAdmin ? $this->adminCounts()['penarikan'] : 0,
+            'pending_paket' => fn () => $isAdmin ? $this->adminCounts()['paket'] : 0,
+            'pending_tiket' => fn () => $isAdmin ? $this->adminCounts()['tiket'] : 0,
         ];
     }
 }

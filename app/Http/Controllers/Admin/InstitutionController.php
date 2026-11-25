@@ -53,6 +53,9 @@ class InstitutionController extends Controller
     {
         $institution->update(['status' => Institution::APPROVED]);
 
+        \App\Support\UserNotifier::send($institution->user, 'Lembaga disetujui', 'Lembaga kamu sudah diverifikasi admin. Panel lembaga kini bisa dibuka.', '/panel');
+        \Illuminate\Support\Facades\Cache::forget('user_has_panel:'.$institution->user_id);
+
         return back()->with('success', 'Lembaga disetujui.');
     }
 

@@ -17,7 +17,6 @@ return [
         'professional' => ['label' => 'Professional', 'description' => 'Tiket, pembayaran, sertifikat, penilaian, voting, dan tim', 'icon' => '💼'],
         'ticketing' => ['label' => 'Ticketing', 'description' => 'Penjualan dan pengelolaan tiket', 'icon' => '🎟️'],
         'voting' => ['label' => 'Voting', 'description' => 'Pemungutan suara peserta', 'icon' => '🗳️'],
-        'lomba' => ['label' => 'Manajemen Lomba', 'description' => 'Peserta, juri, penilaian, dan hasil lomba', 'icon' => '🏆'],
     ],
 
     'groups' => [
@@ -27,7 +26,6 @@ return [
         'professional' => 'Professional',
         'ticketing' => 'Ticketing',
         'voting' => 'Voting',
-        'lomba' => 'Lomba',
     ],
 
     // Menu dashboard event (dipakai nanti untuk membangun sidebar)
@@ -59,30 +57,21 @@ return [
         // Umum
         'dashboard_event' => ['label' => 'Dashboard induk', 'group' => 'umum', 'menu' => 'dashboard'],
         'sertifikat' => ['label' => 'Sertifikat otomatis', 'group' => 'umum', 'menu' => 'sertifikat'],
-        'agenda_event' => ['label' => 'Agenda event (lama)', 'group' => 'umum', 'menu' => 'agenda'],
-        'statistik' => ['label' => 'Statistik dan analitik', 'group' => 'umum', 'menu' => 'statistik'],
-        'dukungan_prioritas' => ['label' => 'Dukungan prioritas', 'group' => 'umum', 'menu' => null],
 
         // Iklan
         'registrasi_peserta' => ['label' => 'Registrasi peserta', 'group' => 'iklan', 'menu' => 'registrasi'],
         'kalender_kegiatan' => ['label' => 'Kalender kegiatan', 'group' => 'iklan', 'menu' => 'kalender'],
-        'ad_publication' => ['label' => 'Publikasi event (lama)', 'group' => 'iklan', 'menu' => 'publikasi'],
 
         // Starter
         'sub_event' => ['label' => 'Sub-event', 'group' => 'starter', 'menu' => null],
         'qr_checkin' => ['label' => 'QR code dan check-in', 'group' => 'starter', 'menu' => 'checkin'],
-        'laporan_gabungan' => ['label' => 'Laporan gabungan', 'group' => 'starter', 'menu' => 'laporan'],
+        'laporan_gabungan' => ['label' => 'Laporan', 'group' => 'starter', 'menu' => 'laporan'],
 
         // Professional (Multi-jenis tiket dan Pembayaran online membuka satu menu yang sama)
         'tiket_multi' => ['label' => 'Multi-jenis tiket', 'group' => 'ticketing', 'menu' => 'tiket'],
         'pembayaran_online' => ['label' => 'Pembayaran online', 'group' => 'ticketing', 'menu' => 'tiket'],
-        'laporan_transaksi' => ['label' => 'Laporan transaksi', 'group' => 'professional', 'menu' => 'transaksi'],
         'penilaian_juri' => ['label' => 'Penilaian juri', 'group' => 'professional', 'menu' => 'penilaian'],
         'voting_event' => ['label' => 'Voting', 'group' => 'voting', 'menu' => 'voting'],
         'manajemen_tim' => ['label' => 'Manajemen tim', 'group' => 'professional', 'menu' => null],
-        // Lomba
-        'lomba_participants' => ['label' => 'Peserta lomba', 'group' => 'lomba', 'menu' => 'peserta'],
-        'lomba_judging' => ['label' => 'Juri dan penilaian', 'group' => 'lomba', 'menu' => 'juri-penilaian'],
-        'lomba_results' => ['label' => 'Hasil lomba', 'group' => 'lomba', 'menu' => 'hasil-lomba'],
     ],
 ];

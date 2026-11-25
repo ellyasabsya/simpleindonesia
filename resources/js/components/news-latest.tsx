@@ -40,7 +40,7 @@ export default function NewsLatest() {
                             className="group flex gap-4 rounded-xl border border-gray-200 p-3 hover:shadow-md dark:border-gray-700"
                         >
                             <div className="h-20 w-32 shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
-                                {n.cover_url && <img src={n.cover_url} alt="" className="h-full w-full object-cover" />}
+                                {n.cover_url && <img loading="lazy" decoding="async" src={n.cover_url} alt="" className="h-full w-full object-cover" />}
                             </div>
                             <div className="min-w-0">
                                 <div className="text-xs text-gray-500">{n.date}</div>

@@ -1,6 +1,8 @@
 import { usePage as usePanelPage } from '@inertiajs/react';
 import { createPortal } from 'react-dom';
 import UserLayout from '@/components/user/user-layout';
+import PanelDashboardMobile from '@/components/mobile/pages/panel-dashboard-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 import { Link, router } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Banknote, CalendarDays, Check, Clock, Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, Wallet, X } from 'lucide-react';
 import { Fragment, useState, useEffect } from 'react';
@@ -26,6 +28,12 @@ type Props = {
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
 const ghost = 'inline-flex items-center gap-2 rounded-xl bg-white/90 px-5 py-3 text-sm font-bold shadow-sm transition hover:bg-white dark:bg-white/10 dark:hover:bg-white/20';
 const primary = 'inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-500/25 transition hover:-translate-y-0.5';
+const TINT = [
+    { bg: 'bg-sky-50 dark:bg-sky-500/15', text: 'text-sky-700 dark:text-sky-300' },
+    { bg: 'bg-emerald-50 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300' },
+    { bg: 'bg-amber-50 dark:bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300' },
+    { bg: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-700 dark:text-rose-300' },
+];
 const eyebrow = 'text-[11px] font-extrabold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300';
 
 const rp = (n: number) => 'Rp ' + (n || 0).toLocaleString('id-ID');
@@ -63,7 +71,7 @@ function Ring({ percent }: { percent: number }) {
     const r = 52;
     const c = 2 * Math.PI * r;
     return (
-        <div className="relative h-32 w-32 shrink-0">
+        <div className="relative h-24 w-24 shrink-0">
             <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
                 <defs>
                     <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#2563eb" /><stop offset="100%" stopColor="#38bdf8" /></linearGradient>
@@ -72,8 +80,8 @@ function Ring({ percent }: { percent: number }) {
                 <circle cx="60" cy="60" r={r} fill="none" strokeWidth="11" strokeLinecap="round" stroke="url(#ring-grad)" strokeDasharray={c} strokeDashoffset={c - (c * percent) / 100} />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-extrabold">{percent}%</span>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">{percent === 100 ? 'Siap' : 'Lengkap'}</span>
+                <span className="text-xl leading-none font-extrabold">{percent}%</span>
+                <span className="mt-0.5 text-[9px] leading-none font-extrabold uppercase tracking-wide text-slate-500 dark:text-slate-400">{percent === 100 ? 'Siap' : 'Lengkap'}</span>
             </div>
         </div>
     );
@@ -139,7 +147,7 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
                 {!editing && (
                     <label className="mt-5 block">
                         <span className="text-sm font-bold">Email akun SIMPLE</span>
-                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5" />
+                        <input autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-white/10 dark:bg-white/5" />
                         {errors.email && <span className="mt-1 block text-xs font-semibold text-rose-600">{errors.email}</span>}
                         <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Orang ini harus sudah punya akun SIMPLE.</span>
                     </label>
@@ -247,6 +255,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
     const can = (p: string) => isOwner || myPerms.includes(p);
     const [modal, setModal] = useState<{ open: boolean; member: Member | null }>({ open: false, member: null });
     const verified = institution.status === 'approved';
+    const phone = usePhone();
     const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const team: Member[] = [{ id: 0, name: owner.name, email: owner.email, avatar: owner.avatar, role: 'owner', permissions: ['events', 'checkin', 'finance', 'withdraw', 'members'], is_owner: true }, ...members];
@@ -302,41 +311,67 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
 
     return (
         <UserLayout title="Panel Lembaga" hasPanel>
-            <div className="space-y-8">
+            {phone && (
+                <PanelDashboardMobile
+                    institution={institution}
+                    verified={verified}
+                    isOwner={isOwner}
+                    canEvents={can('events')}
+                    canFinance={can('finance')}
+                    canWithdraw={can('withdraw')}
+                    counts={counts}
+                    attention={attention}
+                    balance={balance}
+                    events={events}
+                    pagination={pagination}
+                    filter={filter}
+                    upcoming={upcoming}
+                    checklist={checklist}
+                    percent={percent}
+                    team={team}
+                    roleLabel={(r) => ROLES[r]?.label ?? r}
+                    go={go}
+                    onAdd={() => setModal({ open: true, member: null })}
+                    onEdit={(m) => setModal({ open: true, member: m as Member })}
+                    onRemove={(m) => removeMember(m as Member)}
+                />
+            )}
+            <div className={phone ? 'hidden' : 'space-y-8'}>
                 {/* HERO */}
-                <header className="flex flex-wrap items-end justify-between gap-6">
-                    <div className="min-w-0">
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-1.5 text-xs font-bold shadow-sm dark:bg-white/10"><span className="h-2 w-2 rounded-full bg-sky-400" /> Panel Lembaga · {today}</span>
-                        <div className="mt-4 flex items-center gap-4">
-                            <Avatar name={institution.name} src={institution.logo_url} className="h-16 w-16 !rounded-3xl text-2xl" />
-                            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Kelola <span className="bg-gradient-to-r from-blue-600 to-sky-400 bg-clip-text text-transparent">{institution.name}</span></h1>
-                        </div>
-                        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-300">
-                            Event, anggota tim, dan keuangan lembaga dalam satu tempat.
-                            {verified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"><ShieldCheck className="h-3.5 w-3.5" /> Terverifikasi</span>}
-                        </p>
-                    </div>
+                <header className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-white/90 px-5 py-3 text-sm font-bold shadow-sm dark:bg-white/10"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Panel Lembaga · {today}</span>
                     <div className="flex flex-wrap gap-2">
                         <Link href="/dashboard" className={ghost}><ArrowLeft className="h-4 w-4" /> Dashboard</Link>
                         <Link href="/panel/profil" className={ghost}>Ubah profil</Link>
                         <Link href="/panel/ajukan" className={`${primary} ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                     </div>
+                
+                    <div className="flex items-center gap-4">
+                        <Avatar name={institution.name} src={institution.logo_url} className="h-16 w-16 !rounded-3xl text-2xl" />
+                        <div className="min-w-0">
+                            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Kelola <span className="bg-gradient-to-r from-blue-600 to-sky-400 bg-clip-text text-transparent">{institution.name}</span></h1>
+                            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-300">
+                                Event, anggota tim, dan keuangan lembaga dalam satu tempat.
+                                {verified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"><ShieldCheck className="h-3.5 w-3.5" /> Terverifikasi</span>}
+                            </p>
+                        </div>
+                    </div>
                 </header>
 
                 {/* RINGKASAN + KELENGKAPAN */}
-                <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-xl sm:p-8">
+                <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-5 text-white shadow-xl sm:p-6 lg:flex lg:flex-col lg:justify-center">
                         <span className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
                         <div className="relative">
                             <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sky-300">Ringkasan event</p>
-                            <div className="mt-3 flex items-baseline gap-3"><span className="text-6xl font-extrabold">{counts.total}</span><span className="text-white/70">total event lembaga</span></div>
-                            <div className="mt-6 flex h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                            <div className="mt-3 flex items-baseline gap-3"><span className="text-5xl font-extrabold">{counts.total}</span><span className="text-white/70">total event lembaga</span></div>
+                            <div className="mt-4 flex h-2.5 w-full overflow-hidden rounded-full bg-white/10">
                                 {segments.filter((x) => x.n > 0).map((x) => <span key={x.s} className={STATUS[x.s].dot} style={{ width: `${(x.n / counts.total) * 100}%` }} />)}
                             </div>
                             <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
                                 {segments.map((x) => <li key={x.s} className="flex items-center gap-2 text-white/80"><span className={`h-2.5 w-2.5 rounded-full ${STATUS[x.s].dot}`} /> {STATUS[x.s].label} <b className="text-white">{x.n}</b></li>)}
                             </ul>
-                            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
                                 <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10"><p className="text-[10px] font-extrabold uppercase tracking-widest text-white/60">Tingkat tayang</p><p className="mt-1 text-2xl font-extrabold">{rate}%</p><p className="text-xs text-white/60">dari total event</p></div>
                                 <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10"><p className="text-[10px] font-extrabold uppercase tracking-widest text-white/60">Perlu perhatian</p><p className="mt-1 text-2xl font-extrabold">{attention}</p><p className="text-xs text-white/60">diproses dan ditolak</p></div>
                                 <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10"><p className="text-[10px] font-extrabold uppercase tracking-widest text-white/60">Event terdekat</p><p className="mt-1 truncate text-2xl font-extrabold">{upcoming ? tgl(upcoming.starts_at) : '—'}</p><p className="truncate text-xs text-white/60">{upcoming?.title ?? 'Belum ada jadwal'}</p></div>
@@ -344,15 +379,15 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                         </div>
                     </div>
 
-                    <div className={`${card} p-6`}>
-                        <div className="flex items-center gap-5">
+                    <div className={`${card} p-5`}>
+                        <div className="flex items-center gap-4">
                             <Ring percent={percent} />
-                            <div>
-                                <p className="text-lg font-extrabold">Kelengkapan lembaga</p>
+                            <div className="min-w-0">
+                                <p className="text-base font-extrabold">Kelengkapan lembaga</p>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{percent === 100 ? 'Semua langkah selesai 🎉' : 'Lengkapi agar lembaga siap berjualan.'}</p>
                             </div>
                         </div>
-                        <ul className="mt-5 space-y-3">
+                        <ul className={`mt-4 space-y-2.5 ${percent === 100 ? 'hidden' : ''}`}>
                             {checklist.map((c) => (
                                 <li key={c.label} className="flex items-center gap-3 text-sm font-semibold">
                                     <span className={`flex h-6 w-6 items-center justify-center rounded-full ${c.done ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 dark:border-white/20'}`}>{c.done && <Check className="h-3.5 w-3.5" />}</span>
@@ -365,16 +400,17 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
 
                 {/* STATISTIK */}
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {statCards.map((s) => {
+                    {statCards.map((s, i) => {
                         const Icon = s.icon;
+                        const t = TINT[i % TINT.length];
                         return (
-                            <div key={s.label} className={`${card} p-5`}>
-                                <div className="flex items-start justify-between">
-                                    <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{s.label}</p>
-                                    <span className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${s.grad} text-white shadow-md`}><Icon className="h-5 w-5" /></span>
+                            <div key={s.label} className={`relative overflow-hidden rounded-2xl px-5 py-4 ${t.bg}`}>
+                                <Icon className={`absolute -bottom-4 -right-3 h-24 w-24 opacity-10 ${t.text}`} />
+                                <div className="relative">
+                                    <p className={`text-[11px] font-extrabold uppercase tracking-[0.18em] ${t.text}`}>{s.label}</p>
+                                    <p className={`mt-1 bg-gradient-to-br ${s.grad} bg-clip-text text-4xl font-extrabold leading-none text-transparent`}>{s.value}</p>
+                                    <p className="mt-1.5 truncate text-xs text-slate-600 dark:text-slate-300">{s.desc}</p>
                                 </div>
-                                <p className="mt-3 text-4xl font-extrabold">{s.value}</p>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{s.desc}</p>
                             </div>
                         );
                     })}
@@ -382,32 +418,24 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
 
                 {/* KEUANGAN */}
                 <section id="keuangan" className={`scroll-mt-24 space-y-4 ${can('finance') || can('withdraw') ? '' : '!hidden'}`}>
-                    <div className="flex flex-wrap items-end justify-between gap-3">
-                        <div>
-                            <p className={eyebrow}>Keuangan</p>
-                            <h2 className="mt-1 text-2xl font-extrabold">Saldo lembaga</h2>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pantau pendapatan tiket dan penarikan dana lembaga.</p>
-                        </div>
-                        <Link href="/panel/pendapatan" className={`inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline ${can('finance') ? '' : '!hidden'}`}>Lihat pendapatan <ArrowRight className="h-4 w-4" /></Link>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-sky-400 p-6 text-white shadow-xl shadow-blue-500/20">
+                                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-sky-400 p-5 text-white shadow-xl shadow-blue-500/20">
                             <span className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
                             <div className="relative">
                                 <div className="flex items-center justify-between"><p className="text-sm font-bold">Saldo tersedia</p><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20"><Wallet className="h-5 w-5" /></span></div>
-                                <p className="mt-4 text-3xl font-extrabold">{rp(balance.available)}</p>
+                                <p className="mt-2 text-2xl font-extrabold">{rp(balance.available)}</p>
                                 <p className="mt-1 text-sm text-white/80">Siap ditarik ke rekening</p>
-                                <Link href="/panel/pendapatan" className={`mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-blue-700 shadow transition hover:-translate-y-0.5 ${can('withdraw') ? '' : '!hidden'}`}>Tarik saldo <ArrowRight className="h-4 w-4" /></Link>
+                                <Link href="/panel/pendapatan" className={`mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-extrabold text-blue-700 shadow transition hover:-translate-y-0.5 ${can('withdraw') ? '' : '!hidden'}`}>Tarik saldo <ArrowRight className="h-4 w-4" /></Link>
                             </div>
                         </div>
-                        <div className="rounded-3xl bg-gradient-to-br from-slate-950 to-blue-950 p-6 text-white shadow-xl">
+                        <div className="rounded-3xl bg-gradient-to-br from-slate-950 to-blue-950 p-5 text-white shadow-xl">
                             <div className="flex items-center justify-between"><p className="text-sm font-bold">Sedang diproses</p><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10"><Clock className="h-5 w-5 text-amber-300" /></span></div>
-                            <p className="mt-4 text-3xl font-extrabold">{rp(balance.processing)}</p>
+                            <p className="mt-2 text-2xl font-extrabold">{rp(balance.processing)}</p>
                             <p className="mt-1 text-sm text-white/60">Menunggu penyelesaian pembayaran</p>
                         </div>
-                        <div className={`${card} p-6`}>
+                        <div className={`${card} p-5`}>
                             <div className="flex items-center justify-between"><p className="text-sm font-bold text-slate-600 dark:text-slate-300">Sudah ditarik</p><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/15"><Banknote className="h-5 w-5 text-emerald-600 dark:text-emerald-300" /></span></div>
-                            <p className="mt-4 text-3xl font-extrabold">{rp(balance.withdrawn)}</p>
+                            <p className="mt-2 text-2xl font-extrabold">{rp(balance.withdrawn)}</p>
                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Total dana yang sudah cair</p>
                         </div>
                     </div>
@@ -485,7 +513,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                         <Pager page={pagination.current} last={pagination.last} total={pagination.total} per={pagination.per_page} onPage={(n) => go({ page: n })} />
                     </div>
 
-                    <div id="anggota" className="scroll-mt-24 space-y-4">
+                    <div id="anggota" className="scroll-mt-24 space-y-4 lg:sticky lg:top-24 lg:self-start">
                         <div className={`${card} p-6`}>
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-extrabold">Anggota tim</h3>

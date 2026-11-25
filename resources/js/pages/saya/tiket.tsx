@@ -2,11 +2,14 @@ import { Link } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, MapPin, QrCode, Ticket } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import PesananTransferMobile, { type PendingOrder } from '@/components/mobile/pages/pesanan-transfer-mobile';
+import TiketKartuMobile from '@/components/mobile/pages/tiket-kartu-mobile';
+import PesananTransferDesktop from '@/components/user/pesanan-transfer-desktop';
 import UserLayout from '@/components/user/user-layout';
 
 type Holder = { code: string; holder_name: string; checked_in: boolean };
 type Row = {
-    id: number; code: string; quantity: number; total_price: number; status: string;
+    id: number; code: string; quantity: number; total_price: number; status: string; status_label?: string;
     title: string | null; location: string | null; starts_at: string | null; poster?: string | null;
     tickets?: Holder[];
 };
@@ -45,7 +48,7 @@ function TicketCard({ r, h, index, total }: Item) {
                     </div>
                 )}
                 <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-extrabold capitalize text-emerald-700 shadow">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {r.status}
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {r.status_label ?? r.status}
                 </span>
             </div>
 
@@ -116,7 +119,7 @@ function Pagination({ page, last, from, to, count, onChange }: { page: number; l
     );
 }
 
-export default function Tiket({ rows = [] }: { rows?: Row[] }) {
+export default function Tiket({ rows = [], pending: transfer = [] }: { rows?: Row[]; pending?: PendingOrder[] }) {
     const items: Item[] = rows.flatMap((r) => (r.tickets ?? []).map((h, index) => ({ r, h, index, total: r.tickets!.length })));
     const pending = rows.filter((r) => !r.tickets || r.tickets.length === 0);
     const last = Math.max(1, Math.ceil(items.length / PER_PAGE));
@@ -154,7 +157,17 @@ export default function Tiket({ rows = [] }: { rows?: Row[] }) {
 
     return (
         <UserLayout title="Tiket saya" hasPanel={false}>
-            <div className="w-full space-y-6">
+            <>
+            <div className="space-y-4 md:hidden">
+                <PesananTransferMobile orders={transfer} />
+                <TiketKartuMobile
+                    groups={groups}
+                    pending={pending}
+                    empty={rows.length === 0 && transfer.length === 0}
+                    footer={last > 1 ? <Pagination page={current} last={last} from={start + 1} to={start + slice.length} count={items.length} onChange={setPage} /> : null}
+                />
+            </div>
+            <div className="hidden w-full space-y-6 md:block">
                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:text-slate-300">
                     <ArrowLeft className="h-4 w-4" /> Kembali
                 </Link>
@@ -163,7 +176,7 @@ export default function Tiket({ rows = [] }: { rows?: Row[] }) {
                     <p className="mt-1 text-slate-500 dark:text-slate-300">Tiket yang sudah Anda beli. Tunjukkan QR di pintu masuk.</p>
                 </div>
 
-                {rows.length === 0 ? (
+                {rows.length === 0 && transfer.length === 0 ? (
                     <div className="rounded-3xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-white/10">
                         <Ticket className="mx-auto h-10 w-10 text-slate-300" />
                         <p className="mt-3 font-bold">Belum ada tiket</p>
@@ -171,6 +184,7 @@ export default function Tiket({ rows = [] }: { rows?: Row[] }) {
                     </div>
                 ) : (
                     <div ref={listRef} className="scroll-mt-24 space-y-10">
+                        <PesananTransferDesktop orders={transfer} />
                         {pending.map((r) => (
                             <p key={r.id} className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10">
                                 Tiket untuk pesanan <span className="font-mono font-bold">{r.code}</span> sedang diproses.
@@ -195,6 +209,7 @@ export default function Tiket({ rows = [] }: { rows?: Row[] }) {
                     </div>
                 )}
             </div>
+            </>
         </UserLayout>
     );
 }

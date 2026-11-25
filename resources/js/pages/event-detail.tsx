@@ -30,6 +30,7 @@ import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
 import { useAuth } from '@/lib/auth';
 import EventDetailMobile from '@/components/mobile/pages/event-detail-mobile';
+import { usePhone } from '@/components/mobile/use-phone';
 
 import { feeRange } from '@/lib/fee-label';
 type StatusKey = 'selesai' | 'segera' | 'berlangsung';
@@ -533,6 +534,16 @@ function EventDetailSingle() {
                 : 'text-slate-600 hover:text-indigo-900 dark:text-slate-300 dark:hover:text-white'
         }`;
 
+    const phone = usePhone();
+    if (phone) {
+        return (
+            <>
+                <Head title={`${event.title} - SIMPLE`} />
+                <EventDetailMobile event={event} parts={parts} hasHadiah={hasHadiah} cta={cta} statusText={st.text(event.status.label)} statusDot={st.dot} share={share} copied={copied} />
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`${event.title} - SIMPLE`} />
@@ -542,9 +553,6 @@ function EventDetailSingle() {
 
                 <div className="relative z-10">
                     {/* Lebar & padding sama dengan navbar (max-w-7xl, px-6) */}
-                    <div className="px-4 pt-24 pb-32 md:hidden">
-                        <EventDetailMobile event={event} parts={parts} hasHadiah={hasHadiah} cta={cta} statusText={st.text(event.status.label)} statusDot={st.dot} share={share} copied={copied} />
-                    </div>
                     <main className="hidden md:block mx-auto max-w-7xl px-6 pb-24 pt-32">
                         <Link
                             href="/events"

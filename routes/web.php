@@ -206,6 +206,11 @@ Route::middleware([
         Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':kalender')->group(function () {
         Route::get('event/{event}/kalender', [\App\Http\Controllers\Panel\CalendarController::class, 'index'])->whereNumber('event')->name('event.kalender');
         Route::put('event/{event}/kalender/tahapan', [\App\Http\Controllers\Panel\CalendarController::class, 'updatePhases'])->whereNumber('event')->name('event.kalender.tahapan');
+        Route::put('event/{event}/kalender/rundown', [\App\Http\Controllers\Panel\EventInfoController::class, 'rundownSync'])->whereNumber('event')->name('event.kalender.rundown');
+        Route::put('event/{event}/kalender/publikasi', [\App\Http\Controllers\Panel\EventInfoController::class, 'publish'])->whereNumber('event')->name('event.kalender.publikasi');
+        Route::post('event/{event}/kalender/pengumuman', [\App\Http\Controllers\Panel\EventInfoController::class, 'announcementStore'])->whereNumber('event')->name('event.kalender.pengumuman.store');
+        Route::put('event/{event}/kalender/pengumuman/{item}', [\App\Http\Controllers\Panel\EventInfoController::class, 'announcementUpdate'])->whereNumber('event')->name('event.kalender.pengumuman.update');
+        Route::delete('event/{event}/kalender/pengumuman/{item}', [\App\Http\Controllers\Panel\EventInfoController::class, 'announcementDestroy'])->whereNumber('event')->name('event.kalender.pengumuman.destroy');
         Route::post('event/{event}/kalender/agenda', [\App\Http\Controllers\Panel\CalendarController::class, 'store'])->whereNumber('event')->name('event.kalender.store');
         Route::put('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'update'])->whereNumber(['event', 'item'])->name('event.kalender.update');
         Route::delete('event/{event}/kalender/agenda/{item}', [\App\Http\Controllers\Panel\CalendarController::class, 'destroy'])->whereNumber(['event', 'item'])->name('event.kalender.destroy');
@@ -235,6 +240,7 @@ Route::middleware([
         Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':penilaian')->group(function () {
         Route::get('event/{event}/penilaian', [\App\Http\Controllers\Panel\JudgingController::class, 'index'])->whereNumber('event')->name('event.judging.index');
         Route::post('event/{event}/penilaian/aktif', [\App\Http\Controllers\Panel\JudgingController::class, 'toggle'])->whereNumber('event')->name('event.judging.toggle');
+        Route::post('event/{event}/penilaian/juri-buka', [\App\Http\Controllers\Panel\JudgingController::class, 'toggleOpen'])->whereNumber('event')->name('event.judging.toggleOpen');
         Route::put('event/{event}/penilaian/kriteria', [\App\Http\Controllers\Panel\JudgingController::class, 'saveCriteria'])->whereNumber('event')->name('event.judging.criteria');
         Route::post('event/{event}/penilaian/juri', [\App\Http\Controllers\Panel\JudgingController::class, 'storeJudge'])->whereNumber('event')->name('event.judging.storeJudge');
         Route::put('event/{event}/penilaian/juri/{item}', [\App\Http\Controllers\Panel\JudgingController::class, 'updateJudge'])->whereNumber(['event', 'item'])->name('event.judging.updateJudge');
@@ -314,8 +320,10 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/lomba-saya', '/event-saya');
     Route::get('/event-saya', [\App\Http\Controllers\MyActivityController::class, 'lomba'])->name('lomba.saya');
     Route::get('/event-saya/{registration}/hasil', [\App\Http\Controllers\MyActivityController::class, 'hasil'])->whereNumber('registration')->name('lomba.hasil');
+    Route::get('/event-saya/{event}/aturan', [\App\Http\Controllers\MyActivityController::class, 'aturan'])->whereNumber('event')->name('lomba.aturan');
     Route::get('/juri-saya', [\App\Http\Controllers\JudgeHomeController::class, 'index'])->name('juri.saya');
     Route::get('/tiket', [\App\Http\Controllers\MyActivityController::class, 'tiket'])->name('tiket.saya');
+    Route::post('/tiket/pesanan/{code}/bukti', [\App\Http\Controllers\TicketProofController::class, 'update'])->where('code', 'TKT-[A-Z0-9]{8}')->middleware('throttle:10,1')->name('tiket.bukti');
 });
 
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
@@ -344,7 +352,14 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])
         Route::delete('berita/{news}', [\App\Http\Controllers\Admin\NewsController::class, 'destroy'])->name('berita.destroy');
     });
 
-Route::middleware('auth')->get('/tickets', fn () => \Inertia\Inertia::render('tickets'))->name('tickets.semua');
+Route::get('/tickets', function (\Illuminate\Http\Request $request) {
+    // Daftar semua tiket terbuka untuk umum. Membeli (?beli=ID) wajib login, lalu kembali ke halaman beli.
+    if ($request->filled('beli') && ! $request->user()) {
+        return redirect()->guest('/login');
+    }
+
+    return \Inertia\Inertia::render('tickets');
+})->name('tickets.semua');
 Route::get('/voting', [\App\Http\Controllers\VotingPublicController::class, 'index']);
 Route::get('/voting/{event}', [\App\Http\Controllers\VotingPublicController::class, 'show'])->whereNumber('event');
 Route::get('/voting/{event}/data', [\App\Http\Controllers\VotingPublicController::class, 'data'])->whereNumber('event')->middleware('throttle:120,1');
@@ -383,3 +398,9 @@ Route::post('/midtrans/ticket-sync/{code}', [\App\Http\Controllers\MidtransContr
 Route::middleware('auth')->get('/sertifikat-saya', [\App\Http\Controllers\MyCertificateController::class, 'index'])->name('sertifikat.saya');
 Route::middleware('auth')->get('/sertifikat-saya/{certificate}', [\App\Http\Controllers\MyCertificateController::class, 'show'])->whereNumber('certificate')->name('sertifikat.saya.detail');
 Route::middleware('auth')->get('/sertifikat-saya/{certificate}/unduh', [\App\Http\Controllers\MyCertificateController::class, 'download'])->whereNumber('certificate')->name('sertifikat.saya.unduh');
+
+// Login Google
+Route::get('/auth/google', [\App\Http\Controllers\GoogleController::class, 'redirect']);
+Route::get('/auth/google/callback', [\App\Http\Controllers\GoogleController::class, 'callback']);
+
+Route::get('/info-event/{token}', [\App\Http\Controllers\Panel\EventInfoController::class, 'show'])->name('info-event.show');

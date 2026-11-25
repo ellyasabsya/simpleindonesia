@@ -4,6 +4,9 @@ import { useMemo, useState } from 'react';
 import Footer from '@/components/landing/footer';
 import PageBackground from '@/components/page-background';
 import SiteNavbar from '@/components/site-navbar';
+import BeritaMobile from '@/components/mobile/pages/berita-mobile';
+import PublicScreen from '@/components/mobile/public/public-screen';
+import { usePhone } from '@/components/mobile/use-phone';
 
 type Card = { id: number; title: string; slug: string; summary: string | null; cover_url: string | null; date: string | null };
 type PageLink = { url: string | null; label: string; active: boolean };
@@ -28,6 +31,18 @@ export default function BeritaIndex({ news }: Props) {
     const total = news.total ?? news.data.length;
     const from = news.from ?? (news.data.length ? 1 : 0);
     const to = news.to ?? news.data.length;
+    const phone = usePhone();
+
+    if (phone) {
+        return (
+            <>
+                <Head title="Semua Berita - SIMPLE" />
+                <PublicScreen title="Berita">
+                    <BeritaMobile items={items} q={q} setQ={setQ} total={total} from={from} to={to} links={news.links} />
+                </PublicScreen>
+            </>
+        );
+    }
 
     const btn = 'inline-flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-bold transition';
 

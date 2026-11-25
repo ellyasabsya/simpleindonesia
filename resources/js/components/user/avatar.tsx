@@ -13,7 +13,7 @@ export default function Avatar({ name, src, className = 'h-9 w-9 rounded-full te
     }
 
     return (
-        <span className={`${className} flex shrink-0 items-center justify-center bg-gradient-to-br from-blue-600 to-violet-600 font-bold text-white`}>
+        <span className={`${className} flex shrink-0 items-center justify-center bg-indigo-600 font-semibold text-white`}>
             {name.trim().charAt(0).toUpperCase() || '?'}
         </span>
     );
