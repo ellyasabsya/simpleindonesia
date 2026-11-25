@@ -81,6 +81,21 @@ class PackageController extends Controller
             'price.required_if' => 'Harga paket wajib diisi.',
         ]);
 
+        // Pengaman: harga add-on hanya boleh aktif kalau fitur & menunya benar-benar ada.
+        foreach (config('addons') as $def) {
+            $col = $def['price_column'];
+            if (! empty($def['legacy']) || ($data[$col] ?? null) === null) {
+                continue;
+            }
+            foreach ($def['features'] as $f) {
+                if (empty($catalog['features'][$f]['menu'])) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        $col => "Add-on {$def['label']} belum terhubung ke menu ($f). Harga tidak bisa diaktifkan.",
+                    ]);
+                }
+            }
+        }
+
         $modules = array_values($data['modules'] ?? []);
 
         // Fitur grup non-umum hanya sah kalau modulnya dicentang

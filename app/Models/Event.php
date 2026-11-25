@@ -60,8 +60,12 @@ class Event extends Model
         // Sub-event mewarisi add-on yang dibeli di event induk.
         $src = $this->parent_id ? (self::find($this->parent_id) ?? $this) : $this;
         $opt = (array) (((array) ($src->package_snapshot ?? []))['options'] ?? []);
-        if ($src->payment_status === 'lunas' && (! empty($opt['assessment_addon']) || ! empty($opt['judge_addon']))) {
-            $features[] = 'penilaian_juri';
+        if ($src->payment_status === 'lunas') {
+            foreach (config('addons') as $key => $def) {
+                if (! empty($opt[$key])) {
+                    $features = array_merge($features, $def['features']);
+                }
+            }
         }
 
         return array_values(array_unique($features));
