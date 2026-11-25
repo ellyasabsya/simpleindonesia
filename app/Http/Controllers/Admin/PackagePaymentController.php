@@ -50,6 +50,7 @@ class PackagePaymentController extends Controller
                 'detail' => implode(' · ', array_values(array_filter([
                     ($opt['sub_events'] ?? 0) > 0 ? $opt['sub_events'].' kegiatan' : null,
                     (! empty($opt['assessment_addon']) || ! empty($opt['judge_addon'])) ? 'Add-on penilaian juri' : null,
+                    ! empty($opt['certificate_addon']) ? 'Add-on sertifikat otomatis' : null,
                 ]))),
                 'total' => (int) ($snap['estimated_upfront'] ?? 0),
                 'status' => $e->payment_status,

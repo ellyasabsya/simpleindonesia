@@ -54,6 +54,7 @@ class HomeController extends Controller
                 ['Sub-event termasuk', (string) $p->included_sub_events],
                 ['Sub-event tambahan', $p->extra_sub_event_price !== null ? $rp($p->extra_sub_event_price).' / kegiatan' : 'Tidak tersedia'],
                 ...($hasJudging ? [] : [['Penilaian juri', $judging]]),
+                ['Sertifikat otomatis', in_array('sertifikat', $p->features, true) ? 'Termasuk' : ($p->certificate_addon_price !== null ? 'Add-on '.$rp($p->certificate_addon_price) : 'Tidak tersedia')],
                 ['Kategori peserta', $p->max_participant_categories ? (string) $p->max_participant_categories : 'Bebas'],
             ];
 

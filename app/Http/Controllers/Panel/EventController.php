@@ -68,7 +68,8 @@ class EventController extends Controller
                 'included_sub_events' => (int) $p->included_sub_events,
                 'extra_sub_event_price' => $p->extra_sub_event_price,
                 'assessment_addon_price' => $p->assessment_addon_price,
-                'judge_addon_price' => $p->judge_addon_price,
+                'certificate_addon_price' => $p->certificate_addon_price,
+                'has_certificate' => in_array('sertifikat', $p->features ?? [], true),
                 'has_judging' => in_array('penilaian_juri', $p->features ?? [], true),
                 'max_participant_categories' => $p->max_participant_categories,
                 'can_ticket' => in_array('tiket_multi', $p->features ?? [], true),
@@ -116,6 +117,7 @@ class EventController extends Controller
             'juknis' => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
             'assessment_addon' => ['nullable', 'boolean'],
             'judge_addon' => ['nullable', 'boolean'],
+            'certificate_addon' => ['nullable', 'boolean'],
             'subs' => ['nullable', 'array', 'max:50'],
             'agree_terms' => ['accepted'],
         ];
@@ -285,10 +287,14 @@ class EventController extends Controller
         $judge = ! empty($data['judge_addon'])
             && $package->judge_addon_price !== null
             && ! in_array('penilaian_juri', $package->features ?? [], true);
+        $cert = ! empty($data['certificate_addon'])
+            && $package->certificate_addon_price !== null
+            && ! in_array('sertifikat', $package->features ?? [], true);
         $upfront = ($package->payment_type === 'upfront' ? (int) $package->price : 0)
             + $subCost
             + ($addon ? (int) $package->assessment_addon_price : 0)
-            + ($judge ? (int) $package->judge_addon_price : 0);
+            + ($judge ? (int) $package->judge_addon_price : 0)
+            + ($cert ? (int) $package->certificate_addon_price : 0);
 
         $activeMethods = array_values(array_filter([
             \App\Models\Setting::midtransOn() ? 'midtrans' : null,
@@ -393,7 +399,7 @@ class EventController extends Controller
             \Illuminate\Support\Facades\DB::table('events')->where('id', $eventId)->update(['ticket_sales_open' => true]);
         };
 
-        $mainEvent = \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $subJuknis, $n, $series, $addon, $judge, $upfront, $payMethod, $payProof, $posterPath, $juknisPath, $detail, $saveCategories, $saveTickets) {
+        $mainEvent = \Illuminate\Support\Facades\DB::transaction(function () use ($institution, $package, $data, $subs, $subPosters, $subJuknis, $n, $series, $addon, $judge, $cert, $upfront, $payMethod, $payProof, $posterPath, $juknisPath, $detail, $saveCategories, $saveTickets) {
             $main = Event::create([
                 'institution_id' => $institution->id,
                 'package_id' => $package->id,
@@ -407,7 +413,7 @@ class EventController extends Controller
                 'status' => Event::PENDING,
                 'payment_status' => $payMethod === 'transfer_manual' ? 'menunggu_verifikasi' : ($payMethod === 'midtrans' ? 'menunggu_pembayaran' : null),
                 'package_snapshot' => $package->snapshot() + [
-                    'options' => ['sub_events' => $n, 'total_events' => max(1, $n), 'assessment_addon' => $addon, 'judge_addon' => $judge],
+                    'options' => ['sub_events' => $n, 'total_events' => max(1, $n), 'assessment_addon' => $addon, 'judge_addon' => $judge, 'certificate_addon' => $cert],
                     'estimated_upfront' => $upfront,
                     'payment_method' => $payMethod,
                     'payment_proof' => $payProof,

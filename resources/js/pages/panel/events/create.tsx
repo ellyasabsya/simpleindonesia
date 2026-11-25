@@ -21,6 +21,8 @@ type Pkg = {
     extra_sub_event_price: number | null;
     assessment_addon_price: number | null;
     judge_addon_price: number | null;
+    certificate_addon_price: number | null;
+    has_certificate: boolean;
     has_judging: boolean;
     features: string[];
 };
@@ -59,18 +61,20 @@ const isSeriesPkg = (p: Pkg) => p.is_series === true || p.event_type === 'series
 const initialSubs = (p: Pkg | null | undefined) => (p && isSeriesPkg(p) ? blanks(Math.max(1, p.included_sub_events)) : []);
 const canAddon = (p: Pkg) => p.assessment_addon_price !== null && !p.has_judging;
 const canJudge = (_p: Pkg) => false; // juri digabung ke add-on penilaian juri
-const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p) || canJudge(p);
+const canCert = (p: Pkg) => p.certificate_addon_price !== null && !p.has_certificate;
+const hasOptions = (p: Pkg) => p.extra_sub_event_price !== null || canAddon(p) || canJudge(p) || canCert(p);
 const maxCats = (p?: Pkg) => p?.max_participant_categories ?? 100;
 
 const freeEvents = (p: Pkg) => p.included_sub_events + (isSeriesPkg(p) ? 0 : 1);
 
-function cost(p: Pkg, subCount: number, addon: boolean, judge: boolean) {
+function cost(p: Pkg, subCount: number, addon: boolean, judge: boolean, cert = false) {
     const base = p.payment_type === 'upfront' ? (p.price ?? 0) : 0;
     const extra = subCount === 0 ? 0 : Math.max(0, subCount - freeEvents(p));
     const sub = p.extra_sub_event_price ? extra * p.extra_sub_event_price : 0;
     const ad = addon && canAddon(p) ? (p.assessment_addon_price ?? 0) : 0;
     const aj = judge && canJudge(p) ? (p.judge_addon_price ?? 0) : 0;
-    return { base, extra, sub, ad, aj, total: base + sub + ad + aj };
+    const ac = cert && canCert(p) ? (p.certificate_addon_price ?? 0) : 0;
+    return { base, extra, sub, ad, aj, ac, total: base + sub + ad + aj + ac };
 }
 
 /* ---------- validasi di browser (server tetap memeriksa ulang) ---------- */
@@ -920,12 +924,13 @@ export default function CreateEvent({ packages, categories, selected_package_id,
     const [step, setStep] = useState(initial && !hasOptions(initial) ? 1 : 0);
     const [local, setLocal] = useState<Errs>({});
 
-    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[]; agree_terms: boolean; agree_revenue: boolean }>({
+    const { data, setData, post, processing, errors, transform } = useForm<Detail & { package_id: number | ''; assessment_addon: boolean; judge_addon: boolean; certificate_addon: boolean; payment_method: string; payment_proof: File | null; subs: Detail[]; agree_terms: boolean; agree_revenue: boolean }>({
         agree_terms: false, agree_revenue: false,
         ...blank(),
         package_id: initial?.id ?? '',
         assessment_addon: false,
         judge_addon: false,
+        certificate_addon: false,
         payment_method: '',
         payment_proof: null,
         subs: initialSubs(initial),
@@ -1006,7 +1011,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         if (JSON.stringify(next) === JSON.stringify(old)) return;
         setData((d) => ({ ...d, ticket_types: next as any }));
     }, [series, data.registration_method, data.ends_at, data.registration_fee, JSON.stringify(data.participant_categories)]);
-    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon) : null;
+    const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon, data.certificate_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };
 
@@ -1022,6 +1027,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         subs: initialSubs(p),
         assessment_addon: false,
         judge_addon: false,
+        certificate_addon: false,
         participant_categories: d.participant_categories.slice(0, maxCats(p)),
         registration_method: d.registration_method === 'ticket' && !p.can_ticket ? '' : d.registration_method,
         competition_type: d.competition_type === 'team' && !p.can_team ? '' : d.competition_type,
@@ -1082,7 +1088,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
     const back = () => { setLocal({}); setStep(step - 1); };
 
     const stepOfField = (k: string) => {
-        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon' || k === 'judge_addon') return 'paket';
+        if (k === 'subs' || k === 'package_id' || k === 'assessment_addon' || k === 'judge_addon' || k === 'certificate_addon') return 'paket';
         const m = k.match(/^subs\.(\d+)\.(.*)$/);
         if (m) return regKey.test(m[2]) ? 'daftar' : `sub:${m[1]}`;
         if (series && k === 'registration_method') return 'daftar';
@@ -1239,6 +1245,15 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                         <span>
                                             <b>Tambah juri</b> (+{rp(pkg.judge_addon_price ?? 0)})
                                             <span className="block text-xs text-slate-500 dark:text-slate-400">Akun juri untuk memberi nilai pada peserta.</span>
+                                        </span>
+                                    </label>
+                                )}
+                                {canCert(pkg) && (
+                                    <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-indigo-200 pt-4 text-sm dark:border-white/10">
+                                        <input type="checkbox" checked={data.certificate_addon} onChange={(e) => setData('certificate_addon', e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-700" />
+                                        <span>
+                                            <b>Tambah sertifikat otomatis</b> (+{rp(pkg.certificate_addon_price ?? 0)})
+                                            <span className="block text-xs text-slate-500 dark:text-slate-400">Sertifikat diterbitkan otomatis untuk peserta event.</span>
                                         </span>
                                     </label>
                                 )}

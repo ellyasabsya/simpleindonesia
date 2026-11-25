@@ -22,6 +22,9 @@ type Pkg = {
     features: string[];
     description: string | null;
     is_active: boolean;
+    extra_sub_event_price: number | null;
+    assessment_addon_price: number | null;
+    certificate_addon_price: number | null;
 };
 
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
@@ -38,12 +41,61 @@ const empty = {
     features: [] as string[],
     description: '',
     is_active: true,
+    extra_sub_event_price: '' as string | number,
+    assessment_addon_price: '' as string | number,
+    certificate_addon_price: '' as string | number,
 };
 
 function priceParts(p: Pkg): { main: string; note: string } {
     if (p.payment_type === 'revenue_share') return { main: `${p.share_percent}%`, note: 'bagi hasil' };
     if (p.payment_type === 'upfront') return { main: rp(p.price ?? 0), note: 'bayar di muka' };
     return { main: 'Gratis', note: '' };
+}
+
+function AddonField({ title, hint, suffix, value, onChange, error }: {
+    title: string;
+    hint: string;
+    suffix?: string;
+    value: string | number;
+    onChange: (v: string) => void;
+    error?: string;
+}) {
+    const off = value === '' || value === null;
+    return (
+        <div className={`flex flex-col rounded-2xl border p-4 transition ${off ? 'border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/5' : 'border-indigo-200 bg-white shadow-sm dark:border-indigo-400/30 dark:bg-slate-800'}`}>
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{title}</p>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${off ? 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'}`}>
+                    {off ? 'Tidak tersedia' : 'Aktif'}
+                </span>
+            </div>
+            <p className="mt-1 min-h-[2rem] text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+            <div className="relative mt-3">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">Rp</span>
+                <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={value}
+                    placeholder="Kosong = tidak tersedia"
+                    onChange={(e) => onChange(e.target.value)}
+                    style={{ paddingLeft: 40 }}
+                    className={input + ' [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'}
+                />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="font-extrabold tabular-nums text-indigo-700 dark:text-indigo-300">
+                    {off ? '' : rp(Number(value)) + (suffix ?? '')}
+                </span>
+                {!off && (
+                    <button type="button" onClick={() => onChange('')} className="font-bold text-rose-600 hover:underline dark:text-rose-300">
+                        Nonaktifkan
+                    </button>
+                )}
+            </div>
+            {error && <p className="mt-1 text-xs text-rose-500">{error}</p>}
+        </div>
+    );
 }
 
 export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; catalog: Catalog }) {
@@ -74,6 +126,9 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
             features: p.features.filter((f) => catalog.features[f]),
             description: p.description ?? '',
             is_active: p.is_active,
+            extra_sub_event_price: p.extra_sub_event_price ?? '',
+            assessment_addon_price: p.assessment_addon_price ?? '',
+            certificate_addon_price: p.certificate_addon_price ?? '',
         });
         form.clearErrors();
         setOpen(true);
@@ -341,6 +396,21 @@ export default function AdminPaket({ packages, catalog }: { packages: Pkg[]; cat
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
                                     Fitur yang tidak dicentang tidak termasuk dalam paket. Kelompok Ticketing, Voting, dan Lomba muncul mengikuti modul yang dicentang.
                                 </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-white/10 dark:bg-white/5">
+                                <div className="mb-4">
+                                    <p className="font-bold">Add-on &amp; biaya tambahan</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Isi harga untuk mengaktifkan. Kosongkan jika tidak tersedia di paket ini.</p>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <AddonField title="Sub-event tambahan" hint="Biaya per kegiatan di luar kuota paket." suffix=" / kegiatan"
+                                        value={data.extra_sub_event_price} onChange={(v) => setData('extra_sub_event_price', v)} error={errors.extra_sub_event_price} />
+                                    <AddonField title="Sistem penilaian" hint="Add-on sekali bayar untuk fitur penilaian." 
+                                        value={data.assessment_addon_price} onChange={(v) => setData('assessment_addon_price', v)} error={errors.assessment_addon_price} />
+                                    <AddonField title="Sertifikat otomatis" hint="Add-on sekali bayar untuk penerbitan sertifikat otomatis."
+                                        value={data.certificate_addon_price} onChange={(v) => setData('certificate_addon_price', v)} error={errors.certificate_addon_price} />
+                                </div>
                             </div>
 
                             <div>

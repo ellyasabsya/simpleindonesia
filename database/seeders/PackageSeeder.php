@@ -37,7 +37,7 @@ class PackageSeeder extends Seeder
                 'description' => 'Program kecil',
                 'event_type' => 'single', 'price' => $harga['starter'],
                 'share_percent' => null, 'included_sub_events' => 0,
-                'extra_sub_event_price' => 99000, 'assessment_addon_price' => 250000, 'judge_addon_price' => 100000,
+                'extra_sub_event_price' => 99000, 'assessment_addon_price' => 250000, 'judge_addon_price' => null,
                 'max_participant_categories' => null,
                 'modules' => ['iklan', 'starter'], 'features' => $starter,
             ],
@@ -75,7 +75,8 @@ class PackageSeeder extends Seeder
                 ? 'revenue_share'
                 : (($r['price'] ?? 0) > 0 ? 'upfront' : 'free');
 
-            Package::updateOrCreate(['slug' => $r['slug']], $r + ['is_active' => true]);
+            // Jangan timpa pengaturan admin (harga, add-on, fitur): hanya buat paket yang belum ada.
+            Package::firstOrCreate(['slug' => $r['slug']], $r + ['is_active' => true]);
         }
 
         Package::whereNotIn('slug', array_column($rows, 'slug'))->update(['is_active' => false]);

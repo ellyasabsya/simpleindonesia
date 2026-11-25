@@ -9,7 +9,7 @@ class Package extends Model
     protected $fillable = [
         'name', 'slug', 'payment_type', 'share_percent', 'price',
         'event_type', 'included_sub_events', 'extra_sub_event_price',
-        'assessment_addon_price', 'judge_addon_price', 'max_participant_categories',
+        'assessment_addon_price', 'judge_addon_price', 'certificate_addon_price', 'max_participant_categories',
         'modules', 'features', 'description', 'is_active', 'sort_order',
     ];
 
@@ -25,6 +25,7 @@ class Package extends Model
             'extra_sub_event_price' => 'integer',
             'assessment_addon_price' => 'integer',
             'judge_addon_price' => 'integer',
+            'certificate_addon_price' => 'integer',
             'max_participant_categories' => 'integer',
         ];
     }
@@ -92,6 +93,7 @@ class Package extends Model
             'extra_sub_event_price' => $this->extra_sub_event_price,
             'assessment_addon_price' => $this->assessment_addon_price,
             'judge_addon_price' => $this->judge_addon_price,
+            'certificate_addon_price' => $this->certificate_addon_price,
             'max_participant_categories' => $this->max_participant_categories,
             'modules' => $this->modules,
             'features' => $this->features,

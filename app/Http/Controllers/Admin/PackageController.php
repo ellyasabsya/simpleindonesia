@@ -72,6 +72,9 @@ class PackageController extends Controller
             'features.*' => ['in:'.implode(',', array_keys($catalog['features']))],
             'description' => ['nullable', 'string', 'max:500'],
             'is_active' => ['boolean'],
+            'extra_sub_event_price' => ['nullable', 'integer', 'min:0'],
+            'assessment_addon_price' => ['nullable', 'integer', 'min:0'],
+            'certificate_addon_price' => ['nullable', 'integer', 'min:0'],
         ], [
             'name.required' => 'Nama paket wajib diisi.',
             'share_percent.required_if' => 'Persentase bagi hasil wajib diisi.',
@@ -95,6 +98,9 @@ class PackageController extends Controller
             'features' => $features,
             'description' => $data['description'] ?? null,
             'is_active' => $data['is_active'] ?? true,
+            'extra_sub_event_price' => $data['extra_sub_event_price'] ?? null,
+            'assessment_addon_price' => $data['assessment_addon_price'] ?? null,
+            'certificate_addon_price' => $data['certificate_addon_price'] ?? null,
         ];
     }
 
