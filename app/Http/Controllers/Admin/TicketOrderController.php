@@ -58,7 +58,7 @@ class TicketOrderController extends Controller
                     'url' => "/admin/pesanan-tiket/{$o->id}/bukti",
                     'is_pdf' => strtolower(pathinfo($o->payment_proof, PATHINFO_EXTENSION)) === 'pdf',
                 ] : null,
-                'created_at' => Carbon::parse($o->created_at)->locale('id')->translatedFormat('j M Y, H:i'),
+                'created_at' => Carbon::parse($o->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->locale('id')->translatedFormat('j M Y, H:i'),
             ]);
 
         return Inertia::render('admin/pesanan-tiket', [

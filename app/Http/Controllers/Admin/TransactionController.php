@@ -111,7 +111,7 @@ class TransactionController extends Controller
                 };
                 $m = strtolower((string) $o->payment_method);
                 $rows->push([
-                    'at' => Carbon::parse($o->paid_at ?? $o->created_at)->format('Y-m-d H:i'),
+                    'at' => Carbon::parse($o->paid_at ?? $o->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                     'code' => $o->code,
                     'type' => 'tiket',
                     'dir' => 'masuk',
@@ -137,7 +137,7 @@ class TransactionController extends Controller
                     continue;
                 }
                 $rows->push([
-                    'at' => Carbon::parse($e->payment_reviewed_at ?? $e->updated_at)->format('Y-m-d H:i'),
+                    'at' => Carbon::parse($e->payment_reviewed_at ?? $e->updated_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                     'code' => 'PKT-'.$e->id,
                     'type' => 'paket',
                     'dir' => 'masuk',
@@ -165,7 +165,7 @@ class TransactionController extends Controller
             foreach ($votes->cursor() as $o) {
                 $ev = $events[$o->event_id] ?? null;
                 $rows->push([
-                    'at' => Carbon::parse($o->paid_at ?? $o->created_at)->format('Y-m-d H:i'),
+                    'at' => Carbon::parse($o->paid_at ?? $o->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                     'code' => $o->code,
                     'type' => 'vote',
                     'dir' => 'masuk',
@@ -192,7 +192,7 @@ class TransactionController extends Controller
             foreach ($withdrawals->cursor() as $w) {
                 $ev = $events[$w->event_id] ?? null;
                 $rows->push([
-                    'at' => Carbon::parse($w->transferred_at ?? $w->created_at)->format('Y-m-d H:i'),
+                    'at' => Carbon::parse($w->transferred_at ?? $w->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                     'code' => 'WD-'.$w->id,
                     'type' => 'penarikan',
                     'dir' => 'keluar',
