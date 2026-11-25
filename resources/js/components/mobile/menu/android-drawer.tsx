@@ -7,7 +7,7 @@ import { badgeText } from './menu-utils';
 const itemCls = 'flex h-14 items-center gap-3 rounded-full px-4 text-sm font-medium';
 
 /** Menu gaya Material 3: navigation drawer dari kiri, menu aktif ditandai pil. */
-export default function AndroidDrawer({ open, onClose, groups, user, dark, toggleTheme, onLogout }: MenuPanelProps) {
+export default function AndroidDrawer({ open, onClose, groups, user, dark, toggleTheme, onLogout, hideHome }: MenuPanelProps) {
     return (
         <div className={`fixed inset-0 z-[60] ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
             <div
@@ -63,10 +63,12 @@ export default function AndroidDrawer({ open, onClose, groups, user, dark, toggl
                         {dark ? <Sun className="size-6" /> : <Moon className="size-6" />}
                         <span className="flex-1 text-left">{dark ? 'Mode terang' : 'Mode gelap'}</span>
                     </button>
-                    <Link href="/?publik=1" onClick={onClose} className={`${itemCls} active:bg-black/10 dark:active:bg-white/10`}>
+                    {!hideHome && (
+                        <Link href="/?publik=1" onClick={onClose} className={`${itemCls} active:bg-black/10 dark:active:bg-white/10`}>
                         <House className="size-6" />
                         <span className="flex-1">Halaman Utama</span>
                     </Link>
+                    )}
                     <button type="button" onClick={onLogout} className={`${itemCls} w-full text-[#b3261e] active:bg-black/10 dark:text-[#f2b8b5] dark:active:bg-white/10`}>
                         <LogOut className="size-6" />
                         <span className="flex-1 text-left">Keluar</span>

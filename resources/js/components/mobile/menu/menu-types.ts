@@ -23,4 +23,6 @@ export type MenuPanelProps = {
     dark: boolean;
     toggleTheme: () => void;
     onLogout: () => void;
+    /** true = sembunyikan tautan Halaman Utama (dipakai menu admin). */
+    hideHome?: boolean;
 };

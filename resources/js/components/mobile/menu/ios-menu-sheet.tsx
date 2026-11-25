@@ -18,7 +18,7 @@ const row = 'flex min-h-12 w-full items-center gap-3.5 px-4 py-2.5 text-left tex
 const tile = 'flex size-9 shrink-0 items-center justify-center rounded-xl ';
 
 /** Menu satu gaya (iOS dan Android): sheet bawah dengan kartu bergaris tipis, sama dengan sheet notifikasi. */
-export default function MenuSheet({ open, onClose, groups, user, dark, toggleTheme, onLogout }: MenuPanelProps) {
+export default function MenuSheet({ open, onClose, groups, user, dark, toggleTheme, onLogout, hideHome }: MenuPanelProps) {
     return (
         <div className={`fixed inset-0 z-[60] ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
             <div onClick={onClose} className={`absolute inset-0 bg-slate-900/50 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0'}`} />
@@ -73,13 +73,15 @@ export default function MenuSheet({ open, onClose, groups, user, dark, toggleThe
                             <span className="flex-1">Mode gelap</span>
                             <Switch on={dark} />
                         </button>
-                        <Link href="/?publik=1" onClick={onClose} className={row}>
+                        {!hideHome && (
+                            <Link href="/?publik=1" onClick={onClose} className={row}>
                             <span className={tile + FIELD + ' text-indigo-700 dark:text-indigo-300'}>
                                 <House className="size-5" />
                             </span>
                             <span className="flex-1">Halaman Utama</span>
                             <ChevronRight className={'size-4 shrink-0 ' + MUTED} />
                         </Link>
+                        )}
                         <button type="button" onClick={onLogout} className={row + ' text-rose-600 dark:text-rose-400'}>
                             <span className={tile + FIELD}>
                                 <LogOut className="size-5" />

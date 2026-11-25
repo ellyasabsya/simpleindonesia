@@ -52,6 +52,7 @@ export default function AdminScreen({ title, user, notifications, dark, toggleTh
                 dark={dark}
                 toggleTheme={toggleTheme}
                 onLogout={() => router.post('/logout')}
+                hideHome
             />
         </>
     );
