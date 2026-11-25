@@ -113,9 +113,8 @@ class PackageController extends Controller
             'features' => $features,
             'description' => $data['description'] ?? null,
             'is_active' => $data['is_active'] ?? true,
-            'extra_sub_event_price' => $data['extra_sub_event_price'] ?? null,
-            'assessment_addon_price' => $data['assessment_addon_price'] ?? null,
-            'certificate_addon_price' => $data['certificate_addon_price'] ?? null,
+            // hanya kolom add-on yang benar-benar dikirim form; yang tidak dikirim (misal form mobile) tidak disentuh
+            ...array_intersect_key($data, array_flip(['extra_sub_event_price', 'assessment_addon_price', 'certificate_addon_price'])),
         ];
     }
 
