@@ -209,6 +209,7 @@ Route::middleware([
         Route::post('event/{event}/voting/gift/{item}/toggle', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggleGift'])->whereNumber(['event', 'item'])->name('event.voting.toggleGift');
         Route::delete('event/{event}/voting/gift/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyGift'])->whereNumber(['event', 'item'])->name('event.voting.destroyGift');
         Route::post('event/{event}/voting/peserta/{item}/link', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'resetLink'])->whereNumber(['event', 'item'])->name('event.voting.resetLink');
+        Route::get('event/{event}/voting/transaksi', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'transactions'])->whereNumber(['event', 'item'])->name('event.voting.transactions');
         });
         Route::middleware(\App\Http\Middleware\EnsureEventMenuAccess::class.':kalender')->group(function () {
         Route::get('event/{event}/kalender', [\App\Http\Controllers\Panel\CalendarController::class, 'index'])->whereNumber('event')->name('event.kalender');
@@ -289,6 +290,7 @@ Route::middleware([
         Route::post('event/{event}/tiket/jenis', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'store'])->whereNumber('event')->name('event.tiket.tambah');
         Route::put('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'update'])->whereNumber(['event', 'type'])->name('event.tiket.ubah');
         Route::delete('event/{event}/tiket/jenis/{type}', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'destroy'])->whereNumber(['event', 'type'])->name('event.tiket.hapus');
+        Route::get('event/{event}/tiket/transaksi', [\App\Http\Controllers\Panel\TicketSettingsController::class, 'transaksi'])->whereNumber('event')->name('event.tiket.transaksi');
         });
     });
 

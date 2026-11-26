@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { CARD, FIELD, GROUP, MUTED, PRESS } from '../kit/soft';
+import VotingTransaksi from '@/components/panel/voting-transaksi';
 
 type Cat = { id: number; name: string; opens_at: string | null; closes_at: string | null };
 type Part = { id: number; category_id: number | null; name: string; description: string | null; active: boolean; photo: string | null; upload_url: string };
@@ -11,7 +12,7 @@ type D = {
     price_per_vote: string; min_votes: string; message_enabled: boolean; message_max: string; sound_min_votes: string;
     show_sender: boolean; show_ranking: boolean; show_votes: boolean;
 };
-type Tab = 'peserta' | 'harga' | 'pesan' | 'tampilan';
+type Tab = 'peserta' | 'harga' | 'pesan' | 'tampilan' | 'transaksi';
 type Filter = 'all' | 'none' | number;
 
 type Props = {
@@ -166,7 +167,7 @@ function CategorySchedule({ categories, base, maxEnd, unassigned }: { categories
 /** Voting HP (ringkas): status, ringkasan, tab Peserta, Harga & Gift, Pesan, Tampilan. */
 export default function VotingPanelMobile(p: Props) {
     const { d } = p;
-    const tabs: [Tab, string, string][] = [['peserta', 'Peserta', 'Kategori dan peserta'], ['harga', 'Harga', 'Harga dan gift'], ['pesan', 'Pesan', 'Pesan dan efek'], ['tampilan', 'Tampilan', 'Tampilan publik']];
+    const tabs: [Tab, string, string][] = [['peserta', 'Peserta', 'Kategori dan peserta'], ['harga', 'Harga', 'Harga dan gift'], ['pesan', 'Pesan', 'Pesan dan efek'], ['tampilan', 'Tampilan', 'Tampilan publik'], ['transaksi', 'Transaksi', 'Transaksi dan pendapatan']];
     const stats: [string, string][] = [['Kategori', String(p.categories.length)], ['Peserta', String(p.activeParts)], ['Gift', String(p.gifts.filter((g) => g.active).length)], ['Per vote', rp(p.pricePerVote)]];
     const num = (k: 'price_per_vote' | 'min_votes' | 'message_max' | 'sound_min_votes', min: number, extra = '') => (
         <input type="number" inputMode="numeric" min={min} value={d[k]} onChange={(e) => p.setD(k, e.target.value)} className={extra || inp} />
@@ -342,7 +343,9 @@ export default function VotingPanelMobile(p: Props) {
                 </section>
             )}
 
-            {p.tab !== 'peserta' && (
+            {p.tab === 'transaksi' && <VotingTransaksi base={p.base} compact />}
+
+            {p.tab !== 'peserta' && p.tab !== 'transaksi' && (
                 <section className={'flex items-center gap-3 rounded-2xl p-3 ' + CARD}>
                     <p className={'min-w-0 flex-1 text-[11px] font-medium ' + (p.dirty ? 'text-amber-700 dark:text-amber-300' : MUTED)}>{p.dirty ? 'Ada perubahan yang belum disimpan.' : 'Semua pengaturan tersimpan.'}</p>
                     <button type="button" onClick={p.onSave} disabled={!p.dirty || !p.valid || p.saving} className={'h-10 shrink-0 rounded-full bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-50 dark:bg-indigo-500 ' + PRESS}>{p.saving ? 'Menyimpan...' : 'Simpan'}</button>

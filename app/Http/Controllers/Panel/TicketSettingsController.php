@@ -109,6 +109,98 @@ class TicketSettingsController extends Controller
         return $data;
     }
 
+    /** Transaksi tiket event ini (dan sub-event bila rangkaian), JSON untuk tab Transaksi. */
+    public function transaksi(Request $request, Event $event)
+    {
+        $inst = $request->attributes->get('institution');
+        abort_unless($inst && $event->institution_id === $inst->id, 404);
+
+        $ids = array_merge([$event->id], DB::table('events')->where('parent_id', $event->id)->pluck('id')->all());
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+
+        $status = (string) $request->query('status', 'all');
+        if (! in_array($status, ['all', 'lunas', 'menunggu', 'menunggu_verifikasi', 'batal'], true)) {
+            $status = 'all';
+        }
+        $q = trim((string) $request->query('q', ''));
+        $date = fn (string $k) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query($k)) ? (string) $request->query($k) : null;
+        $from = $date('from');
+        $to = $date('to');
+        $per = in_array((int) $request->query('per_page'), [10, 15, 25, 50], true) ? (int) $request->query('per_page') : 15;
+
+        $scope = fn () => DB::table('ticket_orders as o')
+            ->join('ticket_types as t', 't.id', '=', 'o.ticket_type_id')
+            ->join('events as e', 'e.id', '=', 'o.event_id')
+            ->whereIn('o.event_id', $ids);
+
+        $by = $scope()
+            ->selectRaw('o.status as st, count(*) as n, sum(o.quantity) as qty, sum(o.subtotal) as subtotal_sum, sum(o.fee) as fee_sum')
+            ->groupBy('o.status')->get()->keyBy('st');
+        $cnt = fn (string $k) => (int) ($by[$k]->n ?? 0);
+        $lunas = $by['lunas'] ?? null;
+
+        $page = $scope()
+            ->when($status !== 'all', fn ($w) => $w->where('o.status', $status))
+            ->when($q !== '', fn ($w) => $w->where(function ($s) use ($q) {
+                $s->where('o.code', 'like', "%{$q}%")
+                    ->orWhere('o.buyer_name', 'like', "%{$q}%")
+                    ->orWhere('o.buyer_email', 'like', "%{$q}%")
+                    ->orWhere('o.group_code', 'like', "%{$q}%");
+            }))
+            ->when($from, fn ($w) => $w->whereDate('o.created_at', '>=', $from))
+            ->when($to, fn ($w) => $w->whereDate('o.created_at', '<=', $to))
+            ->orderByDesc('o.id')
+            ->paginate($per, [
+                'o.id', 'o.code', 'o.group_code', 'o.buyer_name', 'o.buyer_email', 'o.quantity', 'o.subtotal', 'o.fee', 'o.total',
+                'o.status', 'o.payment_method', 'o.midtrans_payment_type', 'o.payment_proof', 'o.reject_reason', 'o.visit_date',
+                'o.created_at', 'o.paid_at', 't.name as type_name', 'e.title as event_title',
+            ]);
+
+        $fmt = fn ($v) => $v ? \Carbon\Carbon::parse($v)->setTimezone($tz)->toIso8601String() : null;
+
+        return response()->json([
+            'stats' => [
+                'orders' => (int) ($lunas->n ?? 0),
+                'tickets' => (int) ($lunas->qty ?? 0),
+                'revenue' => (int) ($lunas->subtotal_sum ?? 0),
+                'fee' => (int) ($lunas->fee_sum ?? 0),
+                'paid' => (int) (($lunas->subtotal_sum ?? 0) + ($lunas->fee_sum ?? 0)),
+            ],
+            'counts' => [
+                'all' => (int) $by->sum('n'),
+                'lunas' => $cnt('lunas'),
+                'menunggu' => $cnt('menunggu'),
+                'menunggu_verifikasi' => $cnt('menunggu_verifikasi'),
+                'batal' => $cnt('batal'),
+            ],
+            'orders' => [
+                'data' => collect($page->items())->map(fn ($o) => [
+                    'id' => (int) $o->id,
+                    'code' => $o->code,
+                    'group_code' => $o->group_code,
+                    'buyer_name' => $o->buyer_name,
+                    'buyer_email' => $o->buyer_email,
+                    'quantity' => (int) $o->quantity,
+                    'subtotal' => (int) $o->subtotal,
+                    'fee' => (int) $o->fee,
+                    'total' => (int) $o->total,
+                    'status' => $o->status,
+                    'payment_method' => $o->payment_method,
+                    'payment_type' => $o->midtrans_payment_type,
+                    'has_proof' => ! empty($o->payment_proof),
+                    'reject_reason' => $o->reject_reason,
+                    'visit_date' => $o->visit_date,
+                    'created_at' => $fmt($o->created_at),
+                    'paid_at' => $fmt($o->paid_at),
+                    'type_name' => $o->type_name,
+                    'event_title' => $o->event_title,
+                ])->values()->all(),
+                'page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
     public function toggle(Request $request, Event $event): RedirectResponse
     {
         $this->guard($request, $event, true);

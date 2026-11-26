@@ -1,9 +1,10 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import { router, useForm, usePage } from '@inertiajs/react';
-import { Camera, Check, Eye, Gift, Layers, Link2, MessageSquare, Pencil, Plus, Trash2, Trophy, Users, Wallet, X } from 'lucide-react';
+import { Camera, Check, Eye, Gift, Layers, Link2, MessageSquare, Pencil, Plus, Receipt, Trash2, Trophy, Users, Wallet, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import VotingPanelMobile from '@/components/mobile/pages/voting-panel-mobile';
 import { usePhone } from '@/components/mobile/use-phone';
+import VotingTransaksi, { useVotingStats } from '@/components/panel/voting-transaksi';
 
 type Settings = {
     enabled: boolean; price_per_vote: number; min_votes: number; message_enabled: boolean; message_max: number;
@@ -193,7 +194,8 @@ function CategoryTable({ categories, participants, base, unassigned, maxEnd, onD
 export default function Voting({ eventId, eventEnd, settings, categories, participants, gifts }: Props) {
     const base = `/panel/event/${eventId}/voting`;
     const phone = usePhone();
-    const [tab, setTab] = useState<'peserta' | 'harga' | 'pesan' | 'tampilan'>('peserta');
+    const { stats, setStats } = useVotingStats(base);
+    const [tab, setTab] = useState<'peserta' | 'harga' | 'pesan' | 'tampilan' | 'transaksi'>('peserta');
     const [filter, setFilter] = useState<'all' | 'none' | number>('all');
     const [catDraft, setCatDraft] = useState('');
     const [catErr, setCatErr] = useState('');
@@ -261,9 +263,18 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
         { k: 'harga', t: 'Harga & Gift', i: Wallet },
         { k: 'pesan', t: 'Pesan & Efek', i: MessageSquare },
         { k: 'tampilan', t: 'Tampilan', i: Eye },
+        { k: 'transaksi', t: 'Transaksi', i: Receipt },
     ] as const;
     const chip = (on: boolean) => `rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${on ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200'}`;
 
+    const reqs = [
+        { ok: activeParts >= 2, bad: `Minimal 2 peserta aktif (sekarang ${activeParts})` },
+        { ok: activeParts > 0 && noPhoto === 0, bad: activeParts === 0 ? 'Belum ada peserta' : `${noPhoto} peserta belum punya foto` },
+        { ok: unassigned === 0 && activeParts > 0, bad: activeParts === 0 ? 'Belum ada peserta' : `${unassigned} peserta belum punya kategori` },
+        { ok: schedOk, bad: categories.length === 0 ? 'Buat kategori dan atur jadwalnya' : `${unscheduled} kategori belum dijadwalkan` },
+    ];
+    const reqDone = reqs.filter((x) => x.ok).length;
+    const reqTodo = Array.from(new Set(reqs.filter((x) => !x.ok).map((x) => x.bad)));
     return (
         <PanelLayout title="Voting">
             {phone && (
@@ -283,34 +294,48 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                     preview={<Preview s={d} names={participants.filter((p) => p.active).map((p) => p.name)} />}
                 />
             )}
-            <div className={phone ? 'hidden' : 'space-y-5'}>
+            <div className={phone ? 'hidden' : 'space-y-7'}>
 
-                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
-                    <div>
-                        <h2 className="text-xl font-extrabold">Voting {settings.enabled ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Aktif</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Belum aktif</span>}</h2>
-                        <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                            <span className={`rounded-full px-2.5 py-1 ${activeParts >= 2 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts >= 2 ? '✓' : '•'} Minimal 2 peserta aktif ({activeParts})</span>
-                            <span className={`rounded-full px-2.5 py-1 ${activeParts > 0 && noPhoto === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts > 0 && noPhoto === 0 ? '✓ Semua peserta punya foto' : `• ${noPhoto} peserta belum punya foto`}</span>
-                            <span className={`rounded-full px-2.5 py-1 ${unassigned === 0 && activeParts > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{unassigned === 0 && activeParts > 0 ? '✓ Semua peserta punya kategori' : activeParts === 0 ? '• Belum ada peserta' : `• ${unassigned} peserta belum punya kategori`}</span>
-                            <span className={`rounded-full px-2.5 py-1 ${schedOk ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{schedOk ? '✓ Jadwal kategori lengkap' : categories.length === 0 ? '• Buat kategori dan atur jadwalnya' : `• ${unscheduled} kategori belum dijadwalkan`}</span>
-                        </div>
+                <div className={`${card} p-6 sm:p-8`}>
+                    <h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold">
+                        Voting
+                        {settings.enabled
+                            ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Aktif</span>
+                            : <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">Belum aktif</span>}
+                    </h2>
+                    <p className="mt-1.5 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
+
+                    <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-slate-200/70 sm:grid-cols-4 dark:bg-white/10">
+                        {[
+                            { l: 'Pendapatan event', v: stats ? rp(stats.net) : '…', sub: stats ? `Harga ${rp(settings.price_per_vote)} per vote` : '', accent: true },
+                            { l: 'Transaksi lunas', v: stats ? new Intl.NumberFormat('id-ID').format(stats.orders) : '…', sub: stats && stats.pending > 0 ? `${stats.pending} menunggu bayar` : '', accent: false },
+                            { l: 'Vote terjual', v: stats ? new Intl.NumberFormat('id-ID').format(stats.votes) : '…', sub: '', accent: false },
+                            { l: 'Peserta aktif', v: String(activeParts), sub: `${categories.length} kategori`, accent: false },
+                        ].map((x) => (
+                            <div key={x.l} className="bg-white/90 px-4 py-3.5 dark:bg-slate-900/60">
+                                <dt className={lbl}>{x.l}</dt>
+                                <dd className={`mt-1 text-xl font-extrabold ${x.accent ? 'text-indigo-700 dark:text-indigo-300' : ''}`}>{x.v}</dd>
+                                {x.sub && <div className="mt-0.5 text-xs text-slate-500">{x.sub}</div>}
+                            </div>
+                        ))}
+                    </dl>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <span className={`inline-flex items-center gap-1.5 text-sm font-bold ${reqTodo.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                            {reqTodo.length === 0 && <Check className="h-4 w-4" />}
+                            {reqDone} dari {reqs.length} syarat terpenuhi
+                        </span>
+                        {reqTodo.map((t) => <span key={t} className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{t}</span>)}
                     </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-4">
-                    <div className={`${card} p-5`}><div className={lbl}>Kategori</div><div className="mt-2 text-3xl font-extrabold">{categories.length}</div></div>
-                    <div className={`${card} p-5`}><div className={lbl}>Peserta aktif</div><div className="mt-2 text-3xl font-extrabold">{activeParts}</div></div>
-                    <div className={`${card} p-5`}><div className={lbl}>Gift aktif</div><div className="mt-2 text-3xl font-extrabold">{gifts.filter((g) => g.active).length}</div></div>
-                    <div className={`${card} p-5`}><div className={lbl}>Harga per vote</div><div className="mt-2 text-3xl font-extrabold text-indigo-700">{rp(settings.price_per_vote)}</div></div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
+                <div className="relative z-10 -mb-px flex gap-1 overflow-x-auto pl-3 pt-1">
                     {tabs.map(({ k, t, i: Icon }) => (
-                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex shrink-0 items-center gap-2 rounded-t-2xl border border-b-0 px-4 py-3 text-sm font-extrabold transition ${tab === k ? 'border-white/70 bg-white text-indigo-800 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
                     ))}
                 </div>
 
+                <div className="!mt-0 space-y-7 [&>:first-child]:rounded-tl-none [&>:first-child>:first-child]:rounded-tl-none">
                 {tab === 'peserta' && (
                     <>
                         <div className={`${card} p-6`}>
@@ -443,12 +468,15 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                     </div>
                 )}
 
-                {tab !== 'peserta' && (
+                {tab === 'transaksi' && <VotingTransaksi base={base} onStats={setStats} />}
+
+                {tab !== 'peserta' && tab !== 'transaksi' && (
                     <div className={`${card} flex flex-wrap items-center justify-between gap-3 p-4`}>
                         <p className={`text-sm font-semibold ${sf.isDirty ? 'text-amber-700' : 'text-slate-500'}`}>{sf.isDirty ? 'Ada perubahan yang belum disimpan.' : 'Semua pengaturan tersimpan.'}</p>
                         <button type="button" onClick={saveSettings} disabled={!sf.isDirty || !sValid || sf.processing} className={btn}>{sf.processing ? 'Menyimpan…' : 'Simpan pengaturan'}</button>
                     </div>
                 )}
+                </div>
             </div>
 
             {pm && (

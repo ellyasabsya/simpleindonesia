@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import TiketPanelMobile from '@/components/mobile/pages/tiket-panel-mobile';
 import { usePhone } from '@/components/mobile/use-phone';
+import TiketTransaksi from '@/components/panel/tiket-transaksi';
+import TiketRingkasan from '@/components/panel/tiket-ringkasan';
 
 type T = {
     id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number; valid_date?: string | null;
@@ -145,6 +147,14 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
     const subs = subList ?? [];
     const isParent = !!parentMode;
     const [filter, setFilter] = useState(0);
+    const [tab, setTab] = useState<'jenis' | 'transaksi'>('jenis');
+    const tabBar = (
+        <div className="flex gap-2">
+            {([['jenis', 'Jenis tiket'], ['transaksi', 'Transaksi']] as const).map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>{label}</button>
+            ))}
+        </div>
+    );
     const [q, setQ] = useState('');
     const [targetSub, setTargetSub] = useState<number>(subs[0]?.id ?? eventId);
     const baseOf = (id: number) => `/panel/event/${id}/tiket`;
@@ -188,7 +198,10 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
 
     return (
         <PanelLayout title="Tiket">
-            {phone && (
+            {phone && <div className="mb-3"><TiketRingkasan base={baseOf(eventId)} /></div>}
+            {phone && <div className="mb-3">{tabBar}</div>}
+            {phone && tab === 'transaksi' && <TiketTransaksi base={baseOf(eventId)} isParent={isParent} />}
+            {phone && tab === 'jenis' && (
                 <TiketPanelMobile
                     salesOpen={salesOpen} manual={!!manual} isParent={isParent} audienceChoice={audienceChoice !== false} feePercent={feePercent}
                     subs={subs} all={types} shown={shown} totalSold={totalSold} totalRevenue={totalRevenue}
@@ -234,15 +247,18 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                     </button>
                 </div>)}
 
-                <div className="grid gap-4 sm:grid-cols-3">
-                    <div className={`${card} p-5`}><div className={lbl}>Jenis tiket</div><div className="mt-2 text-3xl font-extrabold">{shown.length}</div></div>
-                    <div className={`${card} p-5`}><div className={lbl}>Tiket terpakai</div><div className="mt-2 text-3xl font-extrabold">{totalSold}</div></div>
-                    <div className={`${card} p-5`}><div className={lbl}>Penjualan lunas</div><div className="mt-2 text-3xl font-extrabold text-indigo-700">{rp(totalRevenue)}</div></div>
-                </div>
+                <TiketRingkasan base={baseOf(eventId)} />
+                {tab === 'transaksi' && (
+                    <div className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6 dark:border-white/10 dark:bg-white/5">
+                        <div className="mb-4">{tabBar}</div>
+                        <TiketTransaksi base={baseOf(eventId)} isParent={isParent} />
+                    </div>
+                )}
+                {tab === 'jenis' && (<>
 
                 <div className={`${card} p-6`}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-xl font-extrabold">Jenis tiket</h3>
+                        {tabBar}
                         <button type="button" onClick={openNew} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah jenis</button>
                     </div>
                     {isParent && (
@@ -318,6 +334,8 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                         })}
                     </div>
                 </div>
+
+                </>)}
 
                 {!manual && <p className="rounded-2xl bg-sky-50 p-4 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">Biaya layanan {feePercent}% dibayar pembeli di atas harga tiket dan tidak mengurangi hak lembaga. Tiket gratis tidak dikenai biaya layanan dan tidak butuh verifikasi pembayaran.</p>}
             </div>

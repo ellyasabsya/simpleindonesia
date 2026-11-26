@@ -150,6 +150,96 @@ class VotingSettingsController extends Controller
         return back()->with('success', 'Pengaturan voting disimpan.');
     }
 
+    /* ---------- Transaksi & pendapatan ---------- */
+
+    /** Statistik pendapatan dan daftar transaksi voting (JSON untuk tab Transaksi). */
+    public function transactions(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $this->guard($request, $event);
+        $f = $request->validate([
+            'status' => ['nullable', 'in:all,lunas,menunggu,batal'],
+            'q' => ['nullable', 'string', 'max:60'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+        $pending = ['menunggu', 'menunggu_verifikasi'];
+        // Pendapatan event = total dibayar penonton dikurangi biaya layanan. Ubah rumus di sini kalau perlu.
+        $net = 'o.amount - o.service_fee';
+
+        $t = DB::table('voting_orders as o')->where('o.event_id', $event->id)->where('o.status', 'lunas')
+            ->selectRaw("COUNT(*) as n, COALESCE(SUM(o.amount), 0) as gross, COALESCE(SUM(o.service_fee), 0) as fee, COALESCE(SUM({$net}), 0) as net, COALESCE(SUM(o.votes), 0) as votes")->first();
+        $byStatus = DB::table('voting_orders')->where('event_id', $event->id)->selectRaw('status, COUNT(*) as n')->groupBy('status')->pluck('n', 'status');
+        $pend = (int) collect($pending)->sum(fn ($s) => (int) ($byStatus[$s] ?? 0));
+        $failed = max(0, (int) $byStatus->sum() - (int) ($byStatus['lunas'] ?? 0) - $pend);
+        $n = (int) $t->n;
+        $stats = [
+            'orders' => $n, 'gross' => (int) $t->gross, 'fee' => (int) $t->fee, 'net' => (int) $t->net,
+            'votes' => (int) $t->votes, 'avg' => $n > 0 ? (int) round($t->net / $n) : 0, 'pending' => $pend, 'failed' => $failed,
+        ];
+
+        $day = 'DATE(COALESCE(o.paid_at, o.created_at))';
+        $daily = DB::table('voting_orders as o')->where('o.event_id', $event->id)->where('o.status', 'lunas')
+            ->selectRaw("{$day} as d, COUNT(*) as n, SUM({$net}) as net")->groupByRaw($day)->orderByDesc('d')->limit(14)->get()
+            ->reverse()->values()->map(fn ($r) => ['date' => (string) $r->d, 'orders' => (int) $r->n, 'net' => (int) $r->net])->all();
+
+        $base = fn () => DB::table('voting_orders as o')
+            ->join('voting_participants as p', 'p.id', '=', 'o.participant_id')
+            ->leftJoin('voting_categories as c', 'c.id', '=', 'p.category_id')
+            ->where('o.event_id', $event->id)->where('o.status', 'lunas');
+
+        $participants = $base()->selectRaw("p.name, c.name as category, COUNT(*) as n, SUM(o.votes) as v, SUM({$net}) as net")
+            ->groupBy('p.id', 'p.name', 'c.name')->orderByDesc('net')->limit(10)->get()
+            ->map(fn ($r) => ['name' => $r->name, 'category' => $r->category, 'orders' => (int) $r->n, 'votes' => (int) $r->v, 'net' => (int) $r->net])->all();
+
+        $categories = $base()->selectRaw("COALESCE(c.name, 'Tanpa kategori') as name, COUNT(*) as n, SUM(o.votes) as v, SUM({$net}) as net")
+            ->groupBy('c.id', 'c.name')->orderByDesc('net')->get()
+            ->map(fn ($r) => ['name' => $r->name, 'orders' => (int) $r->n, 'votes' => (int) $r->v, 'net' => (int) $r->net])->all();
+
+        $q = DB::table('voting_orders as o')
+            ->join('voting_participants as p', 'p.id', '=', 'o.participant_id')
+            ->leftJoin('voting_categories as c', 'c.id', '=', 'p.category_id')
+            ->leftJoin('voting_gifts as g', 'g.id', '=', 'o.gift_id')
+            ->where('o.event_id', $event->id);
+        $st = $f['status'] ?? 'all';
+        if ($st === 'lunas') {
+            $q->where('o.status', 'lunas');
+        } elseif ($st === 'menunggu') {
+            $q->whereIn('o.status', $pending);
+        } elseif ($st === 'batal') {
+            $q->whereNotIn('o.status', array_merge($pending, ['lunas']));
+        }
+        $term = trim((string) preg_replace('/[%_\\\\]/', '', $f['q'] ?? ''));
+        if ($term !== '') {
+            $q->where(fn ($w) => $w->where('o.code', 'like', "%{$term}%")->orWhere('o.buyer_name', 'like', "%{$term}%")->orWhere('p.name', 'like', "%{$term}%"));
+        }
+        if (! empty($f['from'])) {
+            $q->whereDate('o.created_at', '>=', $f['from']);
+        }
+        if (! empty($f['to'])) {
+            $q->whereDate('o.created_at', '<=', $f['to']);
+        }
+
+        $page = $q->orderByDesc('o.id')->select([
+            'o.id', 'o.code', 'o.buyer_name', 'o.votes', 'o.amount', 'o.service_fee', 'o.status', 'o.midtrans_payment_type', 'o.created_at', 'o.paid_at',
+            'p.name as participant', 'c.name as category', 'g.emoji', 'g.name as gift', DB::raw("({$net}) as net"),
+        ])->paginate(25);
+
+        return response()->json([
+            'stats' => $stats, 'daily' => $daily, 'participants' => $participants, 'categories' => $categories,
+            'orders' => [
+                'data' => $page->getCollection()->map(fn ($r) => [
+                    'id' => (int) $r->id, 'code' => $r->code, 'created_at' => $r->created_at, 'paid_at' => $r->paid_at,
+                    'buyer_name' => $r->buyer_name, 'participant' => $r->participant, 'category' => $r->category,
+                    'gift' => $r->gift ? trim($r->emoji.' '.$r->gift) : null,
+                    'votes' => (int) $r->votes, 'amount' => (int) $r->amount, 'service_fee' => (int) $r->service_fee, 'net' => (int) $r->net,
+                    'status' => $r->status === 'lunas' ? 'lunas' : (in_array($r->status, $pending, true) ? 'menunggu' : 'batal'),
+                    'payment_type' => $r->midtrans_payment_type,
+                ])->values()->all(),
+                'page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total(),
+            ],
+        ]);
+    }
+
     /* ---------- Kategori ---------- */
 
     public function storeCategory(Request $request, Event $event): RedirectResponse

@@ -236,7 +236,11 @@ class EventDashboardController extends EventScopedController
         $out['voting'] = $make([
             $step('Tambah minimal 2 peserta aktif', $activeParts >= 2, "$base/voting"),
             $step('Lengkapi foto semua peserta', $activeParts > 0 && (clone $parts)->whereNull('photo')->doesntExist(), "$base/voting"),
-            $step('Atur periode voting', (bool) ($vs && $vs->vote_start && $vs->vote_end), "$base/voting"),
+            $step('Atur periode voting', (function () use ($parts) {
+                $catIds = (clone $parts)->where('active', true)->whereNotNull('category_id')->distinct()->pluck('category_id');
+                return $catIds->isNotEmpty() && \Illuminate\Support\Facades\DB::table('voting_categories')->whereIn('id', $catIds)
+                    ->where(fn ($q) => $q->whereNull('opens_at')->orWhereNull('closes_at'))->doesntExist();
+            })(), "$base/voting"),
             $step('Buka voting', (bool) ($vs && $vs->enabled), "$base/voting"),
         ]);
 
