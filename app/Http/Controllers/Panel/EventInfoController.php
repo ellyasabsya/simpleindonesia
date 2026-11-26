@@ -40,13 +40,28 @@ class EventInfoController extends Controller
         return Carbon::parse($v)->locale('id')->translatedFormat('j M Y, H:i');
     }
 
+    private function det($v): array
+    {
+        $a = $v ? json_decode((string) $v, true) : [];
+        if (! is_array($a)) {
+            return [];
+        }
+
+        return array_values(array_map(fn ($x) => [
+            'time' => ! empty($x['time']) ? substr((string) $x['time'], 0, 5) : null,
+            'title' => (string) ($x['title'] ?? ''),
+            'pic' => $x['pic'] ?? null,
+            'notes' => $x['notes'] ?? null,
+        ], $a));
+    }
+
     private function rundown(int $eventId): array
     {
         return DB::table('event_rundown_items')->where('event_id', $eventId)
             ->orderBy('date')->orderBy('start_time')->orderBy('sort')->orderBy('id')->get()
             ->map(fn ($r) => [
                 'date' => $this->d($r->date), 'start_time' => $this->t($r->start_time), 'end_time' => $this->t($r->end_time),
-                'title' => $r->title, 'kind' => $r->kind, 'pic' => $r->pic, 'location' => $r->location, 'notes' => $r->notes,
+                'title' => $r->title, 'kind' => $r->kind, 'pic' => $r->pic, 'location' => $r->location, 'notes' => $r->notes, 'details' => $this->det($r->details ?? null),
             ])->all();
     }
 
@@ -96,6 +111,11 @@ class EventInfoController extends Controller
             'items.*.pic' => ['nullable', 'string', 'max:100'],
             'items.*.location' => ['nullable', 'string', 'max:150'],
             'items.*.notes' => ['nullable', 'string', 'max:500'],
+            'items.*.details' => ['nullable', 'array', 'max:40'],
+            'items.*.details.*.time' => ['nullable', 'date_format:H:i'],
+            'items.*.details.*.title' => ['required', 'string', 'max:150'],
+            'items.*.details.*.pic' => ['nullable', 'string', 'max:100'],
+            'items.*.details.*.notes' => ['nullable', 'string', 'max:300'],
         ], [
             'required' => ':attribute wajib diisi.',
             'date_format' => 'Format jam tidak valid.',
@@ -117,6 +137,7 @@ class EventInfoController extends Controller
                     'event_id' => $event->id, 'date' => $it['date'], 'start_time' => $it['start_time'],
                     'end_time' => $it['end_time'] ?? null, 'title' => $it['title'], 'kind' => $it['kind'],
                     'pic' => $it['pic'] ?? null, 'location' => $it['location'] ?? null, 'notes' => $it['notes'] ?? null,
+                    'details' => ! empty($it['details']) ? json_encode(array_values($it['details']), JSON_UNESCAPED_UNICODE) : null,
                     'sort' => $i, 'created_at' => now(), 'updated_at' => now(),
                 ];
             }

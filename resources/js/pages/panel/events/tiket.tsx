@@ -1,6 +1,6 @@
 import PanelLayout from '@/components/panel/panel-layout';
 import { router, useForm, usePage } from '@inertiajs/react';
-import { CheckCircle2, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Lock, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import TiketPanelMobile from '@/components/mobile/pages/tiket-panel-mobile';
@@ -145,6 +145,7 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
     const subs = subList ?? [];
     const isParent = !!parentMode;
     const [filter, setFilter] = useState(0);
+    const [q, setQ] = useState('');
     const [targetSub, setTargetSub] = useState<number>(subs[0]?.id ?? eventId);
     const baseOf = (id: number) => `/panel/event/${id}/tiket`;
     const base = baseOf(isParent ? targetSub : eventId);
@@ -183,6 +184,7 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
     const shown = isParent && filter ? types.filter((t) => t.sub_id === filter) : types;
     const totalSold = shown.reduce((a, t) => a + t.sold, 0);
     const totalRevenue = shown.reduce((a, t) => a + t.revenue, 0);
+    const listed = q.trim() ? shown.filter((t) => ((t.name ?? '') + ' ' + (t.sub ?? '')).toLowerCase().includes(q.trim().toLowerCase())) : shown;
 
     return (
         <PanelLayout title="Tiket">
@@ -251,42 +253,66 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                             ))}
                         </div>
                     )}
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        {shown.map((t) => {
+                    {shown.length > 6 && (
+                        <div className="relative mt-4 max-w-sm">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari jenis tiket" className={`${inp} !mt-0 pl-9`} />
+                        </div>
+                    )}
+                    {listed.length === 0 && (
+                        <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/10">{shown.length === 0 ? 'Belum ada jenis tiket.' : 'Tidak ada jenis tiket yang cocok.'}</div>
+                    )}
+                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        {listed.map((t) => {
                             const pct = t.quota > 0 ? Math.min(100, Math.round((t.sold / t.quota) * 100)) : 0;
+                            const habis = t.remaining <= 0;
+                            const bar = habis ? 'bg-rose-500' : pct >= 80 ? 'bg-amber-500' : 'bg-indigo-500';
+                            const sisaCls = habis ? 'font-bold text-rose-600 dark:text-rose-300' : pct >= 80 ? 'font-bold text-amber-700 dark:text-amber-300' : 'font-semibold text-slate-700 dark:text-slate-200';
                             return (
-                                <div key={t.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            {isParent && t.sub && <div className="mb-1 inline-block rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">{t.sub}</div>}
-                                            <div className="text-lg font-extrabold">{t.name}{audienceChoice !== false && <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-bold ${t.audience === 'umum' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{t.audience === 'umum' ? 'Umum' : 'Peserta'}</span>}</div>
-                                            <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">{t.price === 0 ? 'Gratis' : rp(t.price)}</div>
+                                <div key={t.id} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-3.5 transition hover:border-indigo-300 hover:shadow-md dark:border-white/10 dark:bg-white/5">
+                                    <div className="flex items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            {isParent && t.sub && <div className="mb-0.5 truncate text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{t.sub}</div>}
+                                            <div className="flex items-center gap-1.5">
+                                                <h4 className="min-w-0 truncate text-sm font-extrabold" title={t.name}>{t.name}</h4>
+                                                {audienceChoice !== false && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${t.audience === 'umum' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>{t.audience === 'umum' ? 'Umum' : 'Peserta'}</span>}
+                                                {t.locked && <span title="Harga terkunci karena sudah ada pesanan" className="shrink-0 text-slate-400"><Lock className="h-3.5 w-3.5" /></span>}
+                                            </div>
+                                            <div className="mt-0.5 text-lg font-extrabold leading-tight text-indigo-600 dark:text-indigo-300">{t.price === 0 ? 'Gratis' : rp(t.price)}</div>
                                         </div>
-                                        <div className="flex gap-1">
-                                            <button type="button" aria-label="Ubah" onClick={() => openEdit(t)} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
-                                            <button type="button" aria-label="Hapus" disabled={t.locked} title={t.locked ? 'Sudah ada pesanan' : 'Hapus'} onClick={() => remove(t)} className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                                        <div className="flex shrink-0 gap-0.5 opacity-60 transition group-hover:opacity-100 focus-within:opacity-100">
+                                            <button type="button" aria-label="Ubah" title="Ubah" onClick={() => openEdit(t)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
+                                            <button type="button" aria-label="Hapus" disabled={t.locked} title={t.locked ? 'Sudah ada pesanan' : 'Hapus'} onClick={() => remove(t)} className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
                                         </div>
                                     </div>
-                                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} /></div>
-                                    <div className="mt-2 flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>Terpakai {t.sold} dari {t.quota}</span><span>Sisa {t.remaining}</span></div>
-                                    <dl className="mt-3 space-y-1 text-xs text-slate-500">
-                                        <div className="flex justify-between"><dt>Masa berlaku</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.valid_date ? 'Hanya ' + dayName(t.valid_date) : t.valid_days + ' hari sejak tanggal event'}</dd></div>
-                                        <div className="flex justify-between"><dt>Jadwal jual</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.custom_sale ? `${t.valid_from} s/d ${t.valid_until}` : 'Mengikuti penjualan event'}</dd></div>
-                                        <div className="flex justify-between"><dt>Data pemegang</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.require_holder_details ? 'Nama, email, telepon' : 'Nama saja'}</dd></div>
-                                        {t.audience !== 'peserta' && <div className="flex justify-between"><dt>Maks. per pesanan</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.max_per_order} tiket</dd></div>}
-                                        <div className="flex justify-between"><dt>Penjualan lunas</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{rp(t.revenue)}</dd></div>
-                                    </dl>
+
+                                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} /></div>
+                                    <div className="mt-1.5 flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                                        <span>Terpakai {t.sold} dari {t.quota}</span>
+                                        <span className={sisaCls}>{habis ? 'Habis' : `Sisa ${t.remaining}`}</span>
+                                    </div>
+
+                                    <details className="mt-2 border-t border-slate-100 pt-2 dark:border-white/10">
+                                        <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-700 hover:underline dark:text-indigo-300">Detail tiket</summary>
+                                        <dl className="mt-1.5 space-y-1 text-[11px] text-slate-500">
+                                            <div className="flex justify-between gap-3"><dt>Masa berlaku</dt><dd className="text-right font-semibold text-slate-700 dark:text-slate-200">{t.valid_date ? 'Hanya ' + dayName(t.valid_date) : t.valid_days + ' hari sejak tanggal event'}</dd></div>
+                                            <div className="flex justify-between gap-3"><dt>Jadwal jual</dt><dd className="text-right font-semibold text-slate-700 dark:text-slate-200">{t.custom_sale ? `${t.valid_from} s/d ${t.valid_until}` : 'Mengikuti penjualan event'}</dd></div>
+                                            <div className="flex justify-between gap-3"><dt>Data pemegang</dt><dd className="text-right font-semibold text-slate-700 dark:text-slate-200">{t.require_holder_details ? 'Nama, email, telepon' : 'Nama saja'}</dd></div>
+                                            {t.audience !== 'peserta' && <div className="flex justify-between gap-3"><dt>Maks. per pesanan</dt><dd className="text-right font-semibold text-slate-700 dark:text-slate-200">{t.max_per_order} tiket</dd></div>}
+                                            <div className="flex justify-between gap-3"><dt>Penjualan lunas</dt><dd className="text-right font-semibold text-slate-700 dark:text-slate-200">{rp(t.revenue)}</dd></div>
+                                        </dl>
+                                    </details>
+
                                     {t.support_enabled && (
-                                        <div className="mt-3 rounded-xl bg-indigo-50 p-3 dark:bg-indigo-500/10">
-                                            <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-800 dark:text-indigo-200">Pendukung terbanyak</div>
-                                            <ol className="mt-2 space-y-1 text-xs">
+                                        <details className="mt-1.5">
+                                            <summary className="cursor-pointer select-none text-[11px] font-bold text-indigo-700 hover:underline dark:text-indigo-300">Pendukung terbanyak ({t.support_ranking.length})</summary>
+                                            <ol className="mt-1.5 space-y-1 rounded-xl bg-indigo-50 p-2.5 text-[11px] dark:bg-indigo-500/10">
                                                 {t.support_ranking.map((r, i) => (
-                                                    <li key={r.name} className="flex justify-between"><span className="font-semibold">{i + 1}. {r.name}</span><span>{r.votes} dukungan</span></li>
+                                                    <li key={r.name} className="flex justify-between gap-3"><span className="min-w-0 truncate font-semibold">{i + 1}. {r.name}</span><span className="shrink-0">{r.votes} dukungan</span></li>
                                                 ))}
                                             </ol>
-                                        </div>
+                                        </details>
                                     )}
-                                    {t.locked && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500"><Lock className="h-3.5 w-3.5" /> Harga terkunci karena sudah ada pesanan</p>}
                                 </div>
                             );
                         })}

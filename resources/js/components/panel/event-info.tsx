@@ -1,9 +1,10 @@
 import { router, useForm } from '@inertiajs/react';
-import { AlertTriangle, CalendarDays, Check, Circle, ClipboardList, Copy, ExternalLink, Megaphone, Pencil, Pin, Plus, Share2, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Check, ChevronDown, Circle, ClipboardList, Copy, ExternalLink, Megaphone, Pencil, Pin, Plus, Share2, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-export type RundownItem = { date: string; start_time: string; end_time: string | null; title: string; kind: string; pic: string | null; location: string | null; notes: string | null };
+export type Detail = { time: string | null; title: string; pic: string | null; notes: string | null };
+export type RundownItem = { date: string; start_time: string; end_time: string | null; title: string; kind: string; pic: string | null; location: string | null; notes: string | null; details?: Detail[] };
 export type Announcement = { id: number; title: string; body: string; category: string; pinned: boolean; published: boolean; updated_label: string };
 export type InfoProps = { rundown: RundownItem[]; announcements: Announcement[]; rundownPublished: boolean; infoUrl: string | null };
 export type Section = 'jadwal' | 'rundown' | 'pengumuman';
@@ -16,6 +17,13 @@ const btn = 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.
 const primary = `${btn} bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-indigo-600/25`;
 const soft = `${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200`;
 
+const SEL: React.CSSProperties = {
+    appearance: 'none', WebkitAppearance: 'none', minHeight: '2.4rem', paddingRight: '2.25rem', cursor: 'pointer',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5l5 5 5-5'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem',
+};
+
+const selSm = 'mt-0 w-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-900/70 dark:text-white';
 const KINDS: Record<string, string> = { pembukaan: 'Pembukaan', sesi: 'Sesi', lomba: 'Lomba', istirahat: 'Istirahat', penutupan: 'Penutupan', lainnya: 'Lainnya' };
 const KIND_BORDER: Record<string, string> = { pembukaan: 'border-l-blue-500', sesi: 'border-l-indigo-500', lomba: 'border-l-emerald-500', istirahat: 'border-l-amber-400', penutupan: 'border-l-violet-500', lainnya: 'border-l-slate-400' };
 const CATS: Record<string, { label: string; cls: string }> = {
@@ -52,6 +60,7 @@ export function rundownText(title: string, items: RundownItem[]) {
         if (r.date !== day) { day = r.date; out.push('', `*${longDate(r.date)}*`); }
         const t = r.end_time ? `${r.start_time.replace(':', '.')} - ${r.end_time.replace(':', '.')}` : r.start_time.replace(':', '.');
         out.push(`${t} | ${r.title}${r.location ? ` (${r.location})` : ''}${r.pic ? ` - PIC: ${r.pic}` : ''}`);
+        (r.details ?? []).forEach((d) => out.push(`     • ${d.time ? `${d.time.replace(':', '.')} ` : ''}${d.title}${d.pic ? ` (${d.pic})` : ''}`));
     });
     return out.join('\n');
 }
@@ -110,6 +119,7 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
 }) {
     const { done: copied, copy } = useCopy();
     const base = `/panel/event/${eventId}/kalender/publikasi`;
+    const [more, setMore] = useState(false);
     const makeLink = () => router.put(base, {}, { preserveScroll: true });
     const phaseDone = !!(phases.registration.start && phases.registration.end && phases.preparation.start && phases.preparation.end);
     const checks: { ok: boolean; label: string; act: () => void }[] = [
@@ -140,8 +150,8 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-4 text-white shadow-xl shadow-indigo-600/20 sm:p-6">
                 <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
                 <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3">
-                    <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full sm:h-20 sm:w-20" style={{ background: `conic-gradient(#fff ${pct * 3.6}deg, rgba(255,255,255,.22) 0deg)` }}>
-                        <span className="grid h-[46px] w-[46px] place-items-center rounded-full bg-indigo-600 text-sm font-extrabold sm:h-[60px] sm:w-[60px] sm:text-base">{pct}%</span>
+                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full sm:h-20 sm:w-20" style={{ background: `conic-gradient(#fff ${pct * 3.6}deg, rgba(255,255,255,.22) 0deg)` }}>
+                        <span className="grid h-[38px] w-[38px] place-items-center rounded-full bg-indigo-600 text-xs font-extrabold sm:h-[60px] sm:w-[60px] sm:text-base">{pct}%</span>
                     </span>
                     <div className="min-w-0 flex-1 basis-40">
                         <div className="text-base font-extrabold sm:text-xl">Kesiapan event</div>
@@ -163,7 +173,13 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
                     </div>
                 </div>
 
-                <div className="relative mt-4 flex flex-wrap gap-2">
+                {compact && (
+                    <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more} className="relative mt-3 flex w-full items-center justify-between rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold transition hover:bg-white/15">
+                        <span>{more ? 'Sembunyikan checklist' : `Lihat checklist (${ok}/${checks.length})`}</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${more ? 'rotate-180' : ''}`} />
+                    </button>
+                )}
+                <div className={`relative mt-3 flex-wrap gap-2 ${compact && !more ? 'hidden' : 'flex'} sm:mt-4`}>
                     {checks.map((c) => (
                         <button key={c.label} type="button" onClick={c.act} disabled={c.ok} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${c.ok ? 'bg-emerald-400/25 text-emerald-100' : 'bg-white/15 hover:bg-white/25'}`}>
                             {c.ok ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Circle className="h-3.5 w-3.5" />}{c.label}
@@ -172,7 +188,7 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
                 </div>
 
                 {meta && (
-                    <div className="relative -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+                    <div className={`relative mt-3 gap-2 ${compact ? (more ? 'flex flex-col' : 'hidden') : '-mx-1 flex overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0'}`}>
                         {tiles.map(([title, text, label, editable]) => (
                             <div key={title} className="flex min-w-[15rem] shrink-0 items-center gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/10 sm:min-w-0">
                                 <div className="min-w-0 flex-1">
@@ -191,7 +207,7 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
                 )}
             </div>
 
-            <div className={`${compact ? 'hidden' : ''} grid grid-cols-2 gap-1 rounded-2xl p-1.5 sm:inline-grid sm:auto-cols-fr sm:grid-flow-col ${glass}`}>
+            <div className={`${compact ? 'hidden' : ''} grid grid-cols-2 gap-1 rounded-2xl p-1.5 sm:grid sm:auto-cols-fr sm:grid-flow-col ${glass}`}>
                 {tabs.map(([k, label, n]) => (
                     <button key={k} type="button" onClick={() => pick(k)} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-bold transition sm:px-6 ${active === k ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : 'text-slate-600 dark:text-slate-300'}`}>
                         {label}{n ? <span className={`rounded-full px-1.5 text-[11px] ${active === k ? 'bg-white/25' : 'bg-slate-200 dark:bg-white/10'}`}>{n}</span> : null}
@@ -223,6 +239,9 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
         return out;
     }, [startsAt, endsAt]);
     const multi = days.length > 1;
+    const [day, setDay] = useState(startsAt);
+    const inDay = (x: RundownItem) => !multi || x.date === day;
+    const dayNo = (d: string) => days.indexOf(d) + 1;
 
     const flags = useMemo(() => {
         const clash = new Set<number>();
@@ -239,18 +258,29 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
 
     const update = (i: number, patch: Partial<RundownItem>) => setItems((a) => a.map((x, k) => (k === i ? { ...x, ...patch } : x)));
     const add = () => setItems((a) => {
-        const last = a[a.length - 1];
+        const last = [...a].filter(inDay).sort(byTime).pop();
         const s = last ? (last.end_time ? toMin(last.end_time) : toMin(last.start_time) + 30) : 8 * 60;
-        return [...a, { date: last?.date ?? startsAt, start_time: fromMin(s), end_time: fromMin(s + 30), title: '', kind: 'sesi', pic: null, location: null, notes: null }];
+        return [...a, { date: multi ? day : (last?.date ?? startsAt), start_time: fromMin(s), end_time: fromMin(s + 30), title: '', kind: 'sesi', pic: null, location: null, notes: null }];
     });
     const useTemplate = (rows: [string, number, string][]) => {
         let t = 8 * 60;
-        setItems(rows.map(([title, mins, kind]) => { const it: RundownItem = { date: startsAt, start_time: fromMin(t), end_time: fromMin(t + mins), title, kind, pic: null, location: null, notes: null }; t += mins; return it; }));
+        setItems((a) => [...a.filter((x) => !inDay(x)), ...rows.map(([title, mins, kind]) => { const it: RundownItem = { date: multi ? day : startsAt, start_time: fromMin(t), end_time: fromMin(t + mins), title, kind, pic: null, location: null, notes: null }; t += mins; return it; })]);
     };
-    const shift = (m: number) => setItems((a) => a.map((x) => ({ ...x, start_time: fromMin(toMin(x.start_time) + m), end_time: x.end_time ? fromMin(toMin(x.end_time) + m) : null })));
+    const shift = (m: number) => setItems((a) => a.map((x) => !inDay(x) ? x : ({ ...x, start_time: fromMin(toMin(x.start_time) + m), end_time: x.end_time ? fromMin(toMin(x.end_time) + m) : null })));
+
+    const copyDay = (from: string) => {
+        if (from === day) return;
+        const src = items.filter((x) => x.date === from).map((x) => ({ ...x, date: day }));
+        if (!src.length) return;
+        if (items.some((x) => x.date === day) && !confirm(`Rundown Hari ${dayNo(day)} akan diganti dengan salinan Hari ${dayNo(from)}. Lanjut?`)) return;
+        setItems((a) => [...a.filter((x) => x.date !== day), ...src]);
+    };
+
+    const OPENING = ['MC membuka acara', 'Menyanyikan lagu Indonesia Raya', 'Pembacaan doa', 'Sambutan ketua panitia', 'Sambutan tamu undangan', 'Pembukaan resmi acara'];
+    const setDet = (i: number, n: number, patch: Partial<Detail>) => setItems((a) => a.map((x, k) => (k === i ? { ...x, details: (x.details ?? []).map((d, m) => (m === n ? { ...d, ...patch } : d)) } : x)));
 
     const save = () => {
-        const data = [...items].sort(byTime).map((i) => ({ ...i, title: i.title.trim(), end_time: i.end_time || null, pic: i.pic || null, location: i.location || null, notes: i.notes || null }));
+        const data = [...items].sort(byTime).map((i) => ({ ...i, title: i.title.trim(), end_time: i.end_time || null, pic: i.pic || null, location: i.location || null, notes: i.notes || null, details: (i.details ?? []).filter((d) => d.title.trim()).map((d) => ({ time: d.time || null, title: d.title.trim(), pic: d.pic || null, notes: d.notes || null })) }));
         setSaving(true); setError('');
         router.put(`/panel/event/${eventId}/kalender/rundown`, { items: data }, {
             preserveScroll: true,
@@ -260,23 +290,28 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
         });
     };
 
-    const sorted = [...items].sort(byTime);
+    const sorted = [...items].filter(inDay).sort(byTime);
     const lastEnd = sorted.reduce((m, i) => Math.max(m, toMin(i.end_time ?? i.start_time)), 0);
 
     return (
         <div className="space-y-4">
-            <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 ${glass}`}>
-                <div>
-                    <div className="font-extrabold">Tampilkan rundown ke peserta</div>
-                    <div className="text-xs text-slate-500">{info.rundownPublished ? 'Peserta melihat rundown terbaru di tautan info.' : 'Masih privat. Hanya panitia yang melihat.'}</div>
-                    {dirty && <div className="mt-1 text-xs font-bold text-amber-600">Simpan perubahan dulu sebelum mengubah publikasi.</div>}
+            {multi && (
+                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                    {days.map((d, n) => {
+                        const c = items.filter((x) => x.date === d).length;
+                        return (
+                            <button key={d} type="button" onClick={() => setDay(d)} className={`shrink-0 rounded-xl px-4 py-2 text-left text-sm font-bold transition ${day === d ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : `${glass} text-slate-600 dark:text-slate-300`}`}>
+                                <span className="block">Hari {n + 1}</span>
+                                <span className={`block text-[11px] font-semibold ${day === d ? 'text-white/70' : 'text-slate-500'}`}>{shortDate(d)} · {c} sesi</span>
+                            </button>
+                        );
+                    })}
                 </div>
-                <Switch label="Tampilkan rundown" on={info.rundownPublished} disabled={dirty || items.length === 0} onChange={() => router.put(`/panel/event/${eventId}/kalender/publikasi`, { rundown_published: !info.rundownPublished }, { preserveScroll: true })} />
-            </div>
+            )}
 
-            {items.length === 0 ? (
+            {sorted.length === 0 ? (
                 <div className={`rounded-3xl p-6 ${glass}`}>
-                    <div className="flex items-center gap-2 text-lg font-extrabold"><ClipboardList className="h-5 w-5 text-indigo-600" />Mulai susun rundown</div>
+                    <div className="flex items-center gap-2 text-lg font-extrabold"><ClipboardList className="h-5 w-5 text-indigo-600" />{multi ? `Susun rundown Hari ${dayNo(day)} · ${shortDate(day)}` : 'Mulai susun rundown'}</div>
                     <p className="mt-1 text-sm text-slate-500">Pilih template lalu sesuaikan jam dan sesinya, atau mulai dari kosong.</p>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                         {TEMPLATES.map((t) => (
@@ -286,32 +321,50 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
                             </button>
                         ))}
                     </div>
-                    <button type="button" onClick={add} className={`${soft} mt-4`}><Plus className="h-4 w-4" />Mulai dari kosong</button>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={add} className={soft}><Plus className="h-4 w-4" />Mulai dari kosong</button>
+                        {multi && days.some((d) => d !== day && items.some((x) => x.date === d)) && (
+                            <select style={SEL} value="" onChange={(e) => e.target.value && copyDay(e.target.value)} className={selSm} aria-label="Salin dari hari lain">
+                                <option value="">Salin dari hari lain…</option>
+                                {days.filter((d) => d !== day && items.some((x) => x.date === d)).map((d) => <option key={d} value={d}>Hari {dayNo(d)} · {shortDate(d)}</option>)}
+                            </select>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <>
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="mr-auto text-sm font-bold text-slate-600 dark:text-slate-300">{items.length} sesi · {sorted[0].start_time} – {fromMin(lastEnd)}</span>
-                        <select value="" onChange={(e) => e.target.value && shift(Number(e.target.value))} className={`${inp} mt-0 w-auto`} aria-label="Geser semua jam">
+                        <span className="w-full text-sm font-bold text-slate-600 sm:mr-auto sm:w-auto dark:text-slate-300">{sorted.length} sesi · {sorted[0].start_time} – {fromMin(lastEnd)}</span>
+                        <div title={dirty ? 'Simpan perubahan dulu sebelum mengubah publikasi.' : 'Atur apakah peserta bisa melihat rundown di tautan info.'} className={`inline-flex items-center gap-2.5 rounded-xl border px-3 py-1.5 ${info.rundownPublished ? 'border-indigo-200 bg-indigo-50 dark:border-indigo-400/30 dark:bg-indigo-500/15' : 'border-slate-200 bg-white dark:border-white/10 dark:bg-white/5'}`}>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{info.rundownPublished ? 'Tampil ke peserta' : 'Privat'}</span>
+                            <Switch label="Tampilkan rundown ke peserta" on={info.rundownPublished} disabled={dirty || items.length === 0} onChange={() => router.put(`/panel/event/${eventId}/kalender/publikasi`, { rundown_published: !info.rundownPublished }, { preserveScroll: true })} />
+                        </div>
+                        <select style={SEL} value="" onChange={(e) => e.target.value && shift(Number(e.target.value))} className={selSm} aria-label="Geser semua jam">
                             <option value="">Geser semua jam…</option>
                             {[-60, -30, -15, 15, 30, 60].map((m) => <option key={m} value={m}>{m > 0 ? `+${m}` : m} menit</option>)}
                         </select>
+                        {multi && days.some((d) => d !== day && items.some((x) => x.date === d)) && (
+                            <select style={SEL} value="" onChange={(e) => e.target.value && copyDay(e.target.value)} className={selSm} aria-label="Salin dari hari lain">
+                                <option value="">Salin dari hari lain…</option>
+                                {days.filter((d) => d !== day && items.some((x) => x.date === d)).map((d) => <option key={d} value={d}>Hari {dayNo(d)} · {shortDate(d)}</option>)}
+                            </select>
+                        )}
                         <button type="button" onClick={() => setItems((a) => [...a].sort(byTime))} className={soft}>Urutkan jam</button>
                         <button type="button" onClick={() => copy('wa', rundownText(eventTitle, items))} className={soft}>{copied === 'wa' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied === 'wa' ? 'Tersalin' : 'Salin untuk WhatsApp'}</button>
                         <button type="button" onClick={add} className={primary}><Plus className="h-4 w-4" />Tambah sesi</button>
                     </div>
 
                     <div className="space-y-3">
-                        {items.map((it, i) => (
+                        {items.map((it, i) => !inDay(it) ? null : (
                             <div key={i} className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm dark:bg-slate-900/60 ${flags.clash.has(i) || flags.bad.has(i) ? 'border-l-rose-500' : KIND_BORDER[it.kind] ?? 'border-l-indigo-400'}`}>
                                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-[110px_110px_1fr_150px]">
                                     <label><span className={lbl}>Mulai</span><input type="time" value={it.start_time} onChange={(e) => update(i, { start_time: e.target.value })} className={inp} /></label>
                                     <label><span className={lbl}>Selesai</span><input type="time" value={it.end_time ?? ''} onChange={(e) => update(i, { end_time: e.target.value || null })} className={inp} /></label>
                                     <label className="col-span-2 sm:col-span-1"><span className={lbl}>Sesi</span><input value={it.title} maxLength={150} onChange={(e) => update(i, { title: e.target.value })} placeholder="Contoh: Pembukaan" className={inp} /></label>
-                                    <label className="col-span-2 sm:col-span-1"><span className={lbl}>Jenis</span><select value={it.kind} onChange={(e) => update(i, { kind: e.target.value })} className={inp}>{Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+                                    <label className="col-span-2 sm:col-span-1"><span className={lbl}>Jenis</span><select style={SEL} value={it.kind} onChange={(e) => update(i, { kind: e.target.value })} className={inp}>{Object.entries(KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
                                 </div>
                                 <div className={`mt-3 grid gap-3 ${multi ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-                                    {multi && <label><span className={lbl}>Hari</span><select value={it.date} onChange={(e) => update(i, { date: e.target.value })} className={inp}>{(days.includes(it.date) ? days : [...days, it.date]).map((d, n) => <option key={d} value={d}>Hari {n + 1} · {shortDate(d)}</option>)}</select></label>}
+                                    {multi && <label><span className={lbl}>Hari</span><select style={SEL} value={it.date} onChange={(e) => update(i, { date: e.target.value })} className={inp}>{(days.includes(it.date) ? days : [...days, it.date]).map((d, n) => <option key={d} value={d}>Hari {n + 1} · {shortDate(d)}</option>)}</select></label>}
                                     <label><span className={lbl}>Penanggung jawab</span><input value={it.pic ?? ''} maxLength={100} onChange={(e) => update(i, { pic: e.target.value })} placeholder="Nama PIC / MC" className={inp} /></label>
                                     <label><span className={lbl}>Lokasi / ruang</span><input value={it.location ?? ''} maxLength={150} onChange={(e) => update(i, { location: e.target.value })} placeholder="Aula utama" className={inp} /></label>
                                 </div>
@@ -319,6 +372,24 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
                                     <label className="flex-1"><span className={lbl}>Catatan</span><input value={it.notes ?? ''} maxLength={500} onChange={(e) => update(i, { notes: e.target.value })} placeholder="Opsional" className={inp} /></label>
                                     <button type="button" aria-label="Hapus sesi" onClick={() => setItems((a) => a.filter((_, k) => k !== i))} className="rounded-xl p-2.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-5 w-5" /></button>
                                 </div>
+                                <details className="mt-3 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3 dark:border-white/15 dark:bg-white/5" open={(it.details?.length ?? 0) > 0}>
+                                    <summary className="cursor-pointer text-sm font-bold text-indigo-700 dark:text-indigo-300">Rincian acara{(it.details?.length ?? 0) > 0 ? ` (${it.details?.length})` : ''}</summary>
+                                    <div className="mt-3 space-y-2">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Urutan acara di dalam sesi ini, misalnya MC, doa, dan sambutan. Jam boleh dikosongkan.</p>
+                                        {(it.details ?? []).map((d, n) => (
+                                            <div key={n} className="grid grid-cols-[96px_1fr] gap-2 sm:grid-cols-[100px_1fr_170px_auto]">
+                                                <input type="time" style={{ minHeight: '2.4rem' }} value={d.time ?? ''} onChange={(e) => setDet(i, n, { time: e.target.value || null })} className={`${inp} mt-0`} aria-label="Jam rincian" />
+                                                <input value={d.title} maxLength={150} onChange={(e) => setDet(i, n, { title: e.target.value })} placeholder="Contoh: Sambutan ketua panitia" className={`${inp} mt-0`} aria-label="Kegiatan rincian" />
+                                                <input value={d.pic ?? ''} maxLength={100} onChange={(e) => setDet(i, n, { pic: e.target.value })} placeholder="PIC / pengisi" className={`${inp} mt-0 col-span-2 sm:col-span-1`} aria-label="PIC rincian" />
+                                                <button type="button" aria-label="Hapus rincian" onClick={() => update(i, { details: (it.details ?? []).filter((_, m) => m !== n) })} className="col-span-2 justify-self-end rounded-xl p-2 text-rose-500 hover:bg-rose-50 sm:col-span-1 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                                            </div>
+                                        ))}
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                            <button type="button" onClick={() => update(i, { details: [...(it.details ?? []), { time: null, title: '', pic: null, notes: null }] })} className={soft}><Plus className="h-4 w-4" />Tambah rincian</button>
+                                            {(it.details?.length ?? 0) === 0 && <button type="button" onClick={() => update(i, { details: OPENING.map((t) => ({ time: null, title: t, pic: null, notes: null })) })} className={soft}>Isi contoh pembukaan</button>}
+                                        </div>
+                                    </div>
+                                </details>
                                 {flags.bad.has(i) && <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-rose-600"><AlertTriangle className="h-3.5 w-3.5" />Jam selesai harus setelah jam mulai.</p>}
                                 {!flags.bad.has(i) && flags.clash.has(i) && <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-rose-600"><AlertTriangle className="h-3.5 w-3.5" />Jam bentrok dengan sesi lain di hari yang sama.</p>}
                             </div>
@@ -359,7 +430,7 @@ function AnnouncementModal({ eventId, initial, preset, onClose }: { eventId: num
         <Modal title={initial ? 'Ubah pengumuman' : 'Buat pengumuman'} onClose={onClose}>
             <form onSubmit={submit} className="mt-5 space-y-4">
                 <label className="block"><span className={lbl}>Judul</span><input value={f.data.title} maxLength={150} onChange={(x) => f.setData('title', x.target.value)} className={inp} />{e.title && <span className="text-xs text-rose-600">{e.title}</span>}</label>
-                <label className="block"><span className={lbl}>Kategori</span><select value={f.data.category} onChange={(x) => f.setData('category', x.target.value)} className={inp}>{Object.entries(CATS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+                <label className="block"><span className={lbl}>Kategori</span><select style={SEL} value={f.data.category} onChange={(x) => f.setData('category', x.target.value)} className={inp}>{Object.entries(CATS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
                 <label className="block"><span className={lbl}>Isi pengumuman</span><textarea rows={6} value={f.data.body} maxLength={2000} onChange={(x) => f.setData('body', x.target.value)} className={inp} />{e.body && <span className="text-xs text-rose-600">{e.body}</span>}</label>
                 <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={f.data.pinned} onChange={(x) => f.setData('pinned', x.target.checked)} className="h-4 w-4" />Sematkan di paling atas</label>
                 <label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={f.data.published} onChange={(x) => f.setData('published', x.target.checked)} className="h-4 w-4" />Terbitkan sekarang (tampil di tautan info peserta)</label>
@@ -377,13 +448,14 @@ function AnnouncementsTab({ eventId, eventTitle, info }: { eventId: number; even
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-auto text-sm font-bold text-slate-600 dark:text-slate-300">{info.announcements.length} pengumuman</span>
-                <button type="button" onClick={() => setModal({ item: null, preset: null })} className={primary}><Plus className="h-4 w-4" />Buat pengumuman</button>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-                <span className={lbl}>Cepat:</span>
-                {PRESETS.map((p) => <button key={p.label} type="button" onClick={() => setModal({ item: null, preset: p })} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 hover:border-indigo-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">{p.label}</button>)}
+            {/* ANN_BAR */}
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl p-3.5 sm:px-4 ${glass}`}>
+                <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{info.announcements.length} pengumuman</span>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-4 dark:sm:border-white/10">
+                    <span className={lbl}>Cepat:</span>
+                    {PRESETS.map((p) => <button key={p.label} type="button" onClick={() => setModal({ item: null, preset: p })} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">{p.label}</button>)}
+                </div>
+                <button type="button" onClick={() => setModal({ item: null, preset: null })} className={`${primary} w-full sm:w-auto`}><Plus className="h-4 w-4" />Buat pengumuman</button>
             </div>
 
             {info.announcements.length === 0 ? (
@@ -392,27 +464,31 @@ function AnnouncementsTab({ eventId, eventTitle, info }: { eventId: number; even
                     <div className="mt-2 text-lg font-extrabold">Belum ada pengumuman</div>
                     <p className="mt-1 text-sm text-slate-500">Pengumuman yang diterbitkan tampil di tautan info peserta, lengkap dengan waktu pembaruan.</p>
                 </div>
-            ) : info.announcements.map((a) => (
-                <div key={a.id} className={`rounded-2xl p-5 ${glass} ${a.published ? '' : 'opacity-80'}`}>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${CATS[a.category]?.cls}`}>{CATS[a.category]?.label ?? a.category}</span>
-                        {a.pinned && <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600"><Pin className="h-3.5 w-3.5" />Disematkan</span>}
-                        {!a.published && <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">Draf</span>}
-                        <span className="ml-auto text-xs text-slate-500">{a.updated_label}</span>
-                    </div>
-                    <h3 className="mt-2 text-lg font-extrabold">{a.title}</h3>
-                    <p className="mt-1 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">{a.body}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => put(a, { published: !a.published })} className={soft}>{a.published ? 'Tarik dari peserta' : 'Terbitkan'}</button>
-                        <button type="button" onClick={() => put(a, { pinned: !a.pinned })} className={soft}><Pin className="h-4 w-4" />{a.pinned ? 'Lepas sematan' : 'Sematkan'}</button>
-                        <button type="button" onClick={() => copy(`a${a.id}`, `*${CATS[a.category]?.label.toUpperCase()}: ${a.title}*\n\n${a.body}\n\n${eventTitle}${info.infoUrl ? `\n${info.infoUrl}` : ''}`)} className={soft}>{copied === `a${a.id}` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied === `a${a.id}` ? 'Tersalin' : 'Salin WhatsApp'}</button>
-                        <span className="ml-auto flex gap-1">
-                            <button type="button" aria-label="Ubah" onClick={() => setModal({ item: a, preset: null })} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
-                            <button type="button" aria-label="Hapus" onClick={() => { if (confirm(`Hapus pengumuman "${a.title}"?`)) router.delete(`${base}/${a.id}`, { preserveScroll: true }); }} className="rounded-full p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
-                        </span>
-                    </div>
+            ) : (
+                <div className="grid gap-3 xl:grid-cols-2">
+                    {info.announcements.map((a) => (
+                        <div key={a.id} className={`flex flex-col rounded-2xl border-l-4 p-4 sm:p-5 ${glass} ${({ info: 'border-l-blue-500', penting: 'border-l-rose-500', perubahan: 'border-l-amber-400', pembayaran: 'border-l-emerald-500', logistik: 'border-l-violet-500' }as Record<string, string>)[a.category] ?? 'border-l-slate-400'} ${a.pinned ? 'bg-indigo-50/70 dark:bg-indigo-500/10' : ''} ${a.published ? '' : 'opacity-80'}`}>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${CATS[a.category]?.cls}`}>{CATS[a.category]?.label ?? a.category}</span>
+                                {a.pinned && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-300"><Pin className="h-3 w-3" />Disematkan</span>}
+                                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${a.published ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200' : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{a.published ? 'Tayang' : 'Draf'}</span>
+                                <span className="ml-auto text-xs text-slate-500">{a.updated_label}</span>
+                            </div>
+                            <h3 className="mt-2 text-base font-extrabold">{a.title}</h3>
+                            <p className="mt-1 flex-1 text-sm leading-relaxed whitespace-pre-line text-slate-600 dark:text-slate-300">{a.body}</p>
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-3 dark:border-white/10">
+                                <button type="button" onClick={() => put(a, { published: !a.published })} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">{a.published ? 'Tarik dari peserta' : 'Terbitkan'}</button>
+                                <button type="button" onClick={() => put(a, { pinned: !a.pinned })} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"><Pin className="h-3.5 w-3.5" />{a.pinned ? 'Lepas' : 'Sematkan'}</button>
+                                <button type="button" onClick={() => copy(`a${a.id}`, `*${CATS[a.category]?.label.toUpperCase()}: ${a.title}*\n\n${a.body}\n\n${eventTitle}${info.infoUrl ? `\n${info.infoUrl}` : ''}`)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">{copied === `a${a.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied === `a${a.id}` ? 'Tersalin' : 'Salin WA'}</button>
+                                <span className="ml-auto flex gap-0.5">
+                                    <button type="button" aria-label="Ubah" onClick={() => setModal({ item: a, preset: null })} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
+                                    <button type="button" aria-label="Hapus" onClick={() => { if (confirm(`Hapus pengumuman "${a.title}"?`)) router.delete(`${base}/${a.id}`, { preserveScroll: true }); }} className="rounded-full p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                                </span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            ))}
+            )}
             {modal && <AnnouncementModal eventId={eventId} initial={modal.item} preset={modal.preset} onClose={() => setModal(null)} />}
         </div>
     );

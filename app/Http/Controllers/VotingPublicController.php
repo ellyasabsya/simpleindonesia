@@ -25,6 +25,14 @@ class VotingPublicController extends Controller
 
     private function period(Event $event, object $s): array
     {
+        $cats = DB::table('voting_categories')->where('event_id', $event->id)->whereNotNull('opens_at')->whereNotNull('closes_at')->get(['opens_at', 'closes_at']);
+        if ($cats->isNotEmpty()) {
+            $evEnd = $event->ends_at->copy()->endOfDay();
+            $cEnd = Carbon::parse($cats->max('closes_at'));
+
+            return [Carbon::parse($cats->min('opens_at')), $cEnd->gt($evEnd) ? $evEnd : $cEnd];
+        }
+
         $start = $s->vote_start ? Carbon::parse($s->vote_start)->startOfDay() : null;
         $end = $s->vote_end ? Carbon::parse($s->vote_end)->endOfDay() : $event->ends_at->copy()->endOfDay();
 
@@ -73,6 +81,7 @@ class VotingPublicController extends Controller
             ->get(['o.id', 'o.buyer_name', 'o.votes', 'o.message', 'p.name as participant'])
             ->map(fn ($r) => [
                 'id' => (int) $r->id, 'sender' => $who($r->buyer_name), 'participant' => $r->participant,
+                'loud' => (int) $s->sound_min_votes > 0 && (int) $r->votes >= (int) $s->sound_min_votes,
                 'votes' => $s->show_votes ? (int) $r->votes : null,
                 'message' => $s->message_enabled ? $r->message : null,
             ])->all();
@@ -154,8 +163,8 @@ class VotingPublicController extends Controller
                 'message_enabled' => (bool) $s->message_enabled, 'message_max' => (int) $s->message_max,
                 'show_sender' => (bool) $s->show_sender, 'show_ranking' => (bool) $s->show_ranking, 'show_votes' => (bool) $s->show_votes,
             ],
-            'categories' => DB::table('voting_categories')->where('event_id', $event->id)->orderBy('sort')->orderBy('id')->get(['id', 'name'])
-                ->map(fn ($r) => ['id' => (int) $r->id, 'name' => $r->name])->all(),
+            'categories' => DB::table('voting_categories')->where('event_id', $event->id)->orderBy('sort')->orderBy('id')->get(['id', 'name', 'opens_at', 'closes_at'])
+                ->map(fn ($r) => ['id' => (int) $r->id, 'name' => $r->name, 'opens_at' => $r->opens_at ? Carbon::parse($r->opens_at)->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toIso8601String() : null, 'closes_at' => $r->closes_at ? $this->capEnd($event, Carbon::parse($r->closes_at))->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toIso8601String() : null])->all(),
             'gifts' => DB::table('voting_gifts')->where('event_id', $event->id)->where('active', 1)->orderBy('votes')->get(['id', 'emoji', 'name', 'votes', 'price'])
                 ->map(fn ($r) => ['id' => (int) $r->id, 'emoji' => $r->emoji, 'name' => $r->name, 'votes' => (int) $r->votes, 'price' => (int) $r->price])->all(),
             'bank' => (array) \App\Models\Setting::bank(),
@@ -173,16 +182,33 @@ class VotingPublicController extends Controller
         return response()->json($state)->header('Cache-Control', 'no-store');
     }
 
+    private function capEnd(Event $event, Carbon $d): Carbon
+    {
+        $max = $event->ends_at->copy()->endOfDay();
+
+        return $max->lt($d) ? $max : $d;
+    }
+
+    private function assertWindow(Event $event, int $participantId): void
+    {
+        $cid = $participantId ? DB::table('voting_participants')->where('id', $participantId)->where('event_id', $event->id)->value('category_id') : null;
+        $cat = $cid ? DB::table('voting_categories')->where('id', $cid)->first() : null;
+        if (! $cat || ! $cat->opens_at || ! $cat->closes_at) {
+            throw ValidationException::withMessages(['participant_id' => 'Voting untuk peserta ini belum dijadwalkan.']);
+        }
+        $now = now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'));
+        if ($now->lt(Carbon::parse($cat->opens_at)) || $now->gt($this->capEnd($event, Carbon::parse($cat->closes_at)))) {
+            throw ValidationException::withMessages(['participant_id' => 'Voting untuk kategori ini sedang tidak dibuka.']);
+        }
+    }
+
     public function buy(Request $request, Event $event): RedirectResponse
     {
         if (! \App\Models\Setting::votingOpen()) {
             throw ValidationException::withMessages(['participant_id' => 'Voting sedang dijeda sementara karena pembayaran online belum tersedia.']);
         }
         $s = $this->open($event);
-        [$start, $end] = $this->period($event, $s);
-        if (($start && now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->lt($start)) || now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->gt($end)) {
-            throw ValidationException::withMessages(['participant_id' => 'Voting sedang tidak dibuka.']);
-        }
+        $this->assertWindow($event, (int) $request->input('participant_id'));
 
         $data = $request->validate([
             'participant_id' => ['required', 'integer'],

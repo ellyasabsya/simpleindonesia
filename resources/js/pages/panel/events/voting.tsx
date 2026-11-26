@@ -9,10 +9,10 @@ type Settings = {
     enabled: boolean; price_per_vote: number; min_votes: number; message_enabled: boolean; message_max: number;
     sound_min_votes: number; show_sender: boolean; show_ranking: boolean; show_votes: boolean; vote_start: string | null; vote_end: string | null;
 };
-type Cat = { id: number; name: string };
+type Cat = { id: number; name: string; opens_at: string | null; closes_at: string | null };
 type Part = { id: number; category_id: number | null; name: string; description: string | null; active: boolean; photo: string | null; upload_url: string };
 type GiftT = { id: number; emoji: string; name: string; votes: number; price: number; active: boolean };
-type Props = { eventId: number; settings: Settings; categories: Cat[]; participants: Part[]; gifts: GiftT[] };
+type Props = { eventId: number; eventEnd: string; settings: Settings; categories: Cat[]; participants: Part[]; gifts: GiftT[] };
 
 const rp = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
@@ -105,7 +105,92 @@ function PhotoPicker({ current, file, removed, onFile, onRemove }: { current: st
     );
 }
 
-export default function Voting({ eventId, settings, categories, participants, gifts }: Props) {
+type Sched = { opens_at: string | null; closes_at: string | null };
+const nowJkt = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' }).slice(0, 16).replace(' ', 'T');
+function catStatus(c: Sched, maxEnd: string) {
+    if (!c.opens_at || !c.closes_at) return { label: 'Belum dijadwalkan', cls: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300' };
+    const n = nowJkt();
+    if (n < c.opens_at) return { label: 'Belum dibuka', cls: 'bg-amber-100 text-amber-800' };
+    if (n > (c.closes_at < maxEnd ? c.closes_at : maxEnd)) return { label: 'Ditutup', cls: 'bg-rose-100 text-rose-700' };
+    return { label: 'Dibuka', cls: 'bg-emerald-100 text-emerald-800' };
+}
+
+const inpSm = 'w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
+const ROW = 'items-center gap-2 md:grid-cols-[minmax(0,1.3fr)_8.5rem_minmax(0,1fr)_minmax(0,1fr)_2rem]';
+const tiny = 'mb-0.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 md:hidden';
+
+function CategoryTable({ categories, participants, base, unassigned, maxEnd, onDelete }: { categories: Cat[]; participants: Part[]; base: string; unassigned: number; maxEnd: string; onDelete: (c: Cat) => void }) {
+    const [rows, setRows] = useState<Record<number, { o: string; z: string }>>({});
+    const [all, setAll] = useState({ o: '', z: '' });
+    const [err, setErr] = useState('');
+    const [saving, setSaving] = useState(false);
+    const endLabel = new Date(maxEnd).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const val = (c: Cat) => rows[c.id] ?? { o: c.opens_at ?? '', z: c.closes_at ?? '' };
+    const set = (c: Cat, patch: Partial<{ o: string; z: string }>) => setRows((r) => ({ ...r, [c.id]: { ...val(c), ...patch } }));
+    const over = (c: Cat) => { const v = val(c); return (v.o !== '' && v.o > maxEnd) || (v.z !== '' && v.z > maxEnd); };
+    const isBad = (c: Cat) => { const v = val(c); return over(c) || (v.o !== '' && v.z !== '' && v.z <= v.o); };
+    const changed = categories.filter((c) => { const v = val(c); return v.o !== (c.opens_at ?? '') || v.z !== (c.closes_at ?? ''); });
+    const anyBad = categories.some(isBad);
+    const allBad = (all.o !== '' && all.z !== '' && all.z <= all.o) || (all.o !== '' && all.o > maxEnd) || (all.z !== '' && all.z > maxEnd);
+    const apply = () => setRows(Object.fromEntries(categories.map((c) => [c.id, { o: all.o, z: all.z }])));
+    const save = () => {
+        setSaving(true); setErr('');
+        router.put(`${base}/jadwal`, { items: changed.map((c) => ({ id: c.id, opens_at: val(c).o || null, closes_at: val(c).z || null })) }, {
+            preserveScroll: true,
+            onSuccess: () => setRows({}),
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan jadwal.')),
+            onFinish: () => setSaving(false),
+        });
+    };
+    return (
+        <div className="mt-4">
+            <div className="flex flex-wrap items-end gap-2 rounded-2xl bg-slate-50 p-3 dark:bg-white/5">
+                <span className="mr-auto self-center text-xs font-bold text-slate-600 dark:text-slate-300">Samakan jadwal semua kategori<span className="block font-medium text-slate-500">Paling lambat sampai {endLabel}</span></span>
+                <label className="block"><span className={lbl}>Buka</span><input type="datetime-local" max={maxEnd} style={{ minHeight: '2.25rem' }} value={all.o} onChange={(e) => setAll((a) => ({ ...a, o: e.target.value }))} className={`${inpSm} mt-1`} /></label>
+                <label className="block"><span className={lbl}>Tutup</span><input type="datetime-local" max={maxEnd} style={{ minHeight: '2.25rem' }} value={all.z} onChange={(e) => setAll((a) => ({ ...a, z: e.target.value }))} className={`${inpSm} mt-1`} /></label>
+                <button type="button" onClick={apply} disabled={!all.o || !all.z || allBad} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:bg-white/10">Terapkan</button>
+            </div>
+
+            <div className={`mt-3 hidden px-3 md:grid ${ROW}`}>
+                <span className={lbl}>Kategori</span><span className={lbl}>Status</span><span className={lbl}>Buka</span><span className={lbl}>Tutup</span><span />
+            </div>
+            <div className="mt-1 max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+                {categories.map((c) => {
+                    const v = val(c);
+                    const bad = isBad(c);
+                    const dirty = changed.includes(c);
+                    const st = catStatus(c, maxEnd);
+                    const n = participants.filter((p) => p.category_id === c.id).length;
+                    return (
+                        <div key={c.id} className={`rounded-2xl border bg-white p-3 dark:bg-white/5 ${bad ? 'border-rose-300' : dirty ? 'border-amber-300' : 'border-slate-200 dark:border-white/10'}`}>
+                            <div className={`grid ${ROW}`}>
+                                <div className="min-w-0"><div className="truncate font-extrabold">{c.name}</div><div className="text-xs text-slate-500">{n} peserta</div></div>
+                                <span className={`w-fit rounded-full px-2.5 py-0.5 text-[11px] font-bold ${st.cls}`}>{st.label}</span>
+                                <label className="block"><span className={tiny}>Buka</span><input aria-label={`Buka ${c.name}`} type="datetime-local" max={maxEnd} style={{ minHeight: '2.25rem' }} value={v.o} onChange={(e) => set(c, { o: e.target.value })} className={inpSm} /></label>
+                                <label className="block"><span className={tiny}>Tutup</span><input aria-label={`Tutup ${c.name}`} type="datetime-local" max={maxEnd} style={{ minHeight: '2.25rem' }} value={v.z} onChange={(e) => set(c, { z: e.target.value })} className={inpSm} /></label>
+                                <button type="button" aria-label={`Hapus ${c.name}`} onClick={() => onDelete(c)} className="flex h-8 w-8 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                            {bad && <p className="mt-1.5 text-xs font-bold text-rose-600">{over(c) ? `Jam buka dan tutup tidak boleh melewati akhir event (${endLabel}).` : 'Jam tutup harus setelah jam buka.'}</p>}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {(changed.length > 0 || err) && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-white">
+                    <span className="text-sm font-bold">{err || `${changed.length} kategori berubah, belum disimpan.`}</span>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => { setRows({}); setErr(''); }} className="rounded-xl px-3 py-2 text-sm font-bold text-white/80 hover:bg-white/10">Batalkan</button>
+                        <button type="button" onClick={save} disabled={saving || anyBad || changed.length === 0} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-indigo-400 disabled:opacity-40">{saving ? 'Menyimpan…' : 'Simpan jadwal'}</button>
+                    </div>
+                </div>
+            )}
+            {unassigned > 0 && <p className="mt-3 text-xs font-bold text-amber-700">{unassigned} peserta aktif belum punya kategori, jadi belum bisa divote.</p>}
+        </div>
+    );
+}
+
+export default function Voting({ eventId, eventEnd, settings, categories, participants, gifts }: Props) {
     const base = `/panel/event/${eventId}/voting`;
     const phone = usePhone();
     const [tab, setTab] = useState<'peserta' | 'harga' | 'pesan' | 'tampilan'>('peserta');
@@ -116,7 +201,7 @@ export default function Voting({ eventId, settings, categories, participants, gi
     const sf = useForm({
         price_per_vote: String(settings.price_per_vote), min_votes: String(settings.min_votes),
         message_enabled: settings.message_enabled, message_max: String(settings.message_max), sound_min_votes: String(settings.sound_min_votes),
-        show_sender: settings.show_sender, show_ranking: settings.show_ranking, show_votes: settings.show_votes, vote_start: settings.vote_start ?? '', vote_end: settings.vote_end ?? '',
+        show_sender: settings.show_sender, show_ranking: settings.show_ranking, show_votes: settings.show_votes,
     });
     const d = sf.data;
     const se = sf.errors as Record<string, string | undefined>;
@@ -125,11 +210,13 @@ export default function Voting({ eventId, settings, categories, participants, gi
 
     const activeParts = participants.filter((p) => p.active).length;
     const noPhoto = participants.filter((p) => p.active && !p.photo).length;
+    const unassigned = participants.filter((p) => p.active && p.category_id === null).length;
+    const unscheduled = categories.filter((c) => participants.some((p) => p.active && p.category_id === c.id) && !(c.opens_at && c.closes_at)).length;
+    const schedOk = categories.length > 0 && unscheduled === 0;
     const [copied, setCopied] = useState('');
     const copy = (text: string, key: string) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1600); }); };
     const copyAll = () => copy(participants.filter((p) => p.active).map((p) => `${p.name}: ${p.upload_url}`).join('\n'), 'all');
     const resetLink = (p: Part) => { if (confirm(`Buat link baru untuk "${p.name}"? Link lama tidak akan berlaku lagi.`)) router.post(`${base}/peserta/${p.id}/link`, {}, { preserveScroll: true }); };
-    const toggle = () => router.post(`${base}/aktif`, { open: !settings.enabled }, { preserveScroll: true });
 
     const addCat = () => {
         if (catDraft.trim() === '') return;
@@ -181,7 +268,8 @@ export default function Voting({ eventId, settings, categories, participants, gi
         <PanelLayout title="Voting">
             {phone && (
                 <VotingPanelMobile
-                    enabled={settings.enabled} onToggle={toggle} pricePerVote={settings.price_per_vote}
+                    enabled={settings.enabled} pricePerVote={settings.price_per_vote}
+                    eventEnd={eventEnd} base={base} unassigned={unassigned} unscheduled={unscheduled} schedOk={schedOk}
                     activeParts={activeParts} noPhoto={noPhoto}
                     categories={categories} participants={participants} gifts={gifts}
                     tab={tab} setTab={setTab} filter={filter} setFilter={setFilter} shown={shown} catName={catName}
@@ -199,17 +287,15 @@ export default function Voting({ eventId, settings, categories, participants, gi
 
                 <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
                     <div>
-                        <h2 className="text-xl font-extrabold">Voting {settings.enabled ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
-                        <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Penonton bisa memberi vote sekarang. Tutup kapan saja untuk menghentikan vote baru.' : 'Penonton belum bisa memberi vote. Lengkapi peserta dan harga, lalu buka voting.'}</p>
+                        <h2 className="text-xl font-extrabold">Voting {settings.enabled ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Aktif</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Belum aktif</span>}</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                             <span className={`rounded-full px-2.5 py-1 ${activeParts >= 2 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts >= 2 ? '✓' : '•'} Minimal 2 peserta aktif ({activeParts})</span>
                             <span className={`rounded-full px-2.5 py-1 ${activeParts > 0 && noPhoto === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{activeParts > 0 && noPhoto === 0 ? '✓ Semua peserta punya foto' : `• ${noPhoto} peserta belum punya foto`}</span>
-                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800">✓ Harga per vote {rp(settings.price_per_vote)}</span>
+                            <span className={`rounded-full px-2.5 py-1 ${unassigned === 0 && activeParts > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{unassigned === 0 && activeParts > 0 ? '✓ Semua peserta punya kategori' : activeParts === 0 ? '• Belum ada peserta' : `• ${unassigned} peserta belum punya kategori`}</span>
+                            <span className={`rounded-full px-2.5 py-1 ${schedOk ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{schedOk ? '✓ Jadwal kategori lengkap' : categories.length === 0 ? '• Buat kategori dan atur jadwalnya' : `• ${unscheduled} kategori belum dijadwalkan`}</span>
                         </div>
                     </div>
-                    <button type="button" role="switch" aria-checked={settings.enabled} onClick={toggle} className={`relative h-8 w-14 rounded-full transition ${settings.enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20'}`}>
-                        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${settings.enabled ? 'left-7' : 'left-1'}`} />
-                    </button>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-4">
@@ -229,16 +315,10 @@ export default function Voting({ eventId, settings, categories, participants, gi
                     <>
                         <div className={`${card} p-6`}>
                             <h3 className="flex items-center gap-2 text-xl font-extrabold"><Layers className="h-5 w-5 text-indigo-600" /> Kategori voting</h3>
-                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Kategori bersifat opsional.</p>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                {categories.length === 0 && <span className="text-sm text-slate-500">Belum ada kategori.</span>}
-                                {categories.map((c) => (
-                                    <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 py-1.5 pl-3.5 pr-1.5 text-sm font-bold text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-200">
-                                        {c.name}
-                                        <button type="button" aria-label={`Hapus ${c.name}`} onClick={() => delCat(c)} className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-indigo-200/70"><X className="h-3.5 w-3.5" /></button>
-                                    </span>
-                                ))}
-                            </div>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Atur jam buka dan tutup voting untuk tiap kategori. Voting aktif otomatis saat peserta dan jadwal lengkap. Majukan jam tutup untuk menghentikan voting. Jam tutup tidak bisa melewati akhir event.</p>
+                            {categories.length === 0
+                                ? <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10">Belum ada kategori. Tambahkan kategori di bawah, lalu atur jadwalnya.</div>
+                                : <CategoryTable categories={categories} participants={participants} base={base} unassigned={unassigned} maxEnd={eventEnd} onDelete={delCat} />}
                             <div className="mt-3 flex gap-2">
                                 <input value={catDraft} maxLength={60} onChange={(e) => setCatDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCat(); } }} placeholder="Nama kategori, lalu Enter" className={`${inp} !mt-0 flex-1`} />
                                 <button type="button" onClick={addCat} disabled={catDraft.trim() === ''} className="inline-flex items-center gap-1.5 rounded-2xl bg-indigo-700 px-4 text-sm font-extrabold text-white hover:bg-indigo-600 disabled:opacity-40"><Plus className="h-4 w-4" /> Tambah</button>
@@ -291,13 +371,7 @@ export default function Voting({ eventId, settings, categories, participants, gi
                 {tab === 'harga' && (
                     <>
                         <div className={`${card} p-6`}>
-                            <h3 className="text-xl font-extrabold">Periode voting</h3>
-                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kosongkan tanggal akhir agar voting berakhir saat event berakhir.</p>
-                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                                <label className="block"><span className={lbl}>Mulai</span><input type="date" value={d.vote_start} onChange={(e) => sf.setData('vote_start', e.target.value)} className={inp} /></label>
-                                <label className="block"><span className={lbl}>Berakhir</span><input type="date" value={d.vote_end} onChange={(e) => sf.setData('vote_end', e.target.value)} className={inp} />{se.vote_end && <span className="text-xs text-rose-600">{se.vote_end}</span>}</label>
-                            </div>
-                            <h3 className="mt-8 text-xl font-extrabold">Harga vote</h3>
+                            <h3 className="text-xl font-extrabold">Harga vote</h3>
                             <div className="mt-4 grid gap-4 sm:grid-cols-2">
                                 <label className="block"><span className={lbl}>Harga per 1 vote (Rp)</span>
                                     <input type="number" inputMode="numeric" min={1} value={d.price_per_vote} onChange={(e) => sf.setData('price_per_vote', e.target.value)} className={inp} />
@@ -348,7 +422,7 @@ export default function Voting({ eventId, settings, categories, participants, gi
                         <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
                             <SettingRow title="Aktifkan pesan dukungan" desc="Pembeli boleh menulis pesan singkat yang tampil di daftar dukungan langsung."><Switch on={d.message_enabled} onChange={(v) => sf.setData('message_enabled', v)} /></SettingRow>
                             <SettingRow title="Batas karakter pesan" desc="Antara 1 sampai 200 karakter."><input type="number" inputMode="numeric" min={1} max={200} disabled={!d.message_enabled} value={d.message_max} onChange={(e) => sf.setData('message_max', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
-                            <SettingRow title="Minimal vote untuk memilih efek suara" desc="Isi 0 untuk mematikan efek suara."><input type="number" inputMode="numeric" min={0} value={d.sound_min_votes} onChange={(e) => sf.setData('sound_min_votes', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
+                            <SettingRow title="Minimal vote agar pesan dibacakan suara" desc="Pesan dukungan dibacakan dengan suara hanya jika nilainya sebesar ini atau lebih. Isi 0 untuk mematikan suara."><input type="number" inputMode="numeric" min={0} value={d.sound_min_votes} onChange={(e) => sf.setData('sound_min_votes', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
                         </div>
                         {(se.message_max || se.sound_min_votes) && <p className="mt-2 text-xs text-rose-600">{se.message_max ?? se.sound_min_votes}</p>}
                     </div>

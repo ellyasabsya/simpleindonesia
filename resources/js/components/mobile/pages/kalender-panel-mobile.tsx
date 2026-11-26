@@ -53,7 +53,7 @@ export default function KalenderPanelMobile(p: Props) {
         const a = e.agenda;
         const time = a?.start_time ? a.start_time + (a.end_time ? ' – ' + a.end_time : '') : 'Seharian';
         return (
-            <div key={e.key} className={'space-y-0.5 border-l-4 px-3 py-2 ' + BAR[e.tone]}>
+            <div key={e.key} className={'space-y-1 border-l-4 px-3.5 py-3 ' + BAR[e.tone]}>
                 <div className="flex items-start gap-2">
                     <span className="min-w-0 flex-1">
                         <span className={'block text-[11px] ' + MUTED}>{time} · {a ? TYPES[a.type] ?? 'Agenda' : 'Otomatis'}</span>
@@ -74,7 +74,7 @@ export default function KalenderPanelMobile(p: Props) {
     };
 
     const marker = (
-        <div className="flex items-center gap-2 py-1">
+        <div className="flex items-center gap-2 py-2">
             <span className="h-px flex-1 bg-rose-400" />
             <span className="rounded-full bg-rose-500 px-3 py-1 text-[11px] font-semibold tracking-wider text-white uppercase">Hari ini · {p.fmt(p.todayStr)}</span>
             <span className="h-px flex-1 bg-rose-400" />
@@ -84,8 +84,8 @@ export default function KalenderPanelMobile(p: Props) {
     const dayList = p.byDate.get(sel) ?? [];
 
     return (
-        <div className="space-y-3 pb-24">
-            <section className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
+        <div className="space-y-4 pb-32">
+            <section className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {([['linimasa', 'Linimasa'], ['kalender', 'Kalender']] as const).map(([v, l]) => (
                     <button key={v} type="button" onClick={() => { p.setView(v); p.setSection('jadwal'); }} className={tabCls(p.section === 'jadwal' && p.view === v) + ' shrink-0'}>{l}</button>
                 ))}
@@ -101,10 +101,10 @@ export default function KalenderPanelMobile(p: Props) {
                     {p.groups.map(([d, list], gi) => {
                         const dt = d0(d);
                         return (
-                            <div key={d} className="space-y-2">
+                            <div key={d} className="space-y-2 pt-2">
                                 {gi === p.nowIdx && marker}
                                 <div>
-                                    <p className="mb-1 flex items-center gap-2 px-1 text-[11px] font-semibold">
+                                    <p className="mb-1.5 flex items-center gap-2 px-1 text-xs font-semibold">
                                         <span>{DAYS[dt.getDay()]}, {p.fmt(d)}</span>
                                         <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:text-indigo-300">{p.hLabel(d)}</span>
                                     </p>

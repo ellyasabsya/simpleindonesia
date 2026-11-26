@@ -641,7 +641,18 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             {!hideRegistration && (
             <>
             {ticketOnly ? (
-                <div className={`${box} p-4 text-sm`}><b className="block text-[15px] font-bold">Pendaftaran peserta: Tiket</b><span className="mt-0.5 block text-[13px] text-slate-500 md:text-sm dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
+                <div className="relative flex items-start gap-3 overflow-hidden rounded-2xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50 via-white to-white p-4 pl-5 shadow-sm md:gap-4 dark:border-indigo-400/20 dark:from-indigo-500/15 dark:via-transparent dark:to-transparent">
+                    <span className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-indigo-500 to-violet-500" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/25 dark:text-indigo-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+                        </svg>
+                    </div>
+                    <div className="min-w-0">
+                        <b className="block text-[15px] font-bold text-slate-900 dark:text-white">Pendaftaran Peserta via Tiket</b>
+                        <span className="mt-0.5 block text-[13px] leading-relaxed text-slate-600 md:text-sm dark:text-slate-300">Pendaftaran peserta dicatat otomatis melalui tiket, sehingga tidak perlu transfer manual.</span>
+                    </div>
+                </div>
             ) : (
             <div>
                 <>

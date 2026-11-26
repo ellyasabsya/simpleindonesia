@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, Clock, Crown, Home, MapPin, MessageSquare, Search,
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type P = { id: number; name: string; description: string | null; category_id: number | null; photo: string | null; votes: number | null };
-type Feed = { id: number; sender: string; participant: string; votes: number | null; message: string | null };
+type Feed = { id: number; sender: string; participant: string; votes: number | null; message: string | null; loud?: boolean };
 type Live = { participants: P[]; total: number | null; feed: Feed[]; supporters: { name: string; votes: number | null; orders: number }[] };
 type Gift = { id: number; emoji: string; name: string; votes: number; price: number };
 type Props = {
@@ -265,8 +265,6 @@ export default function VotingShow(props: Props) {
     const [q, setQ] = useState('');
     const [buy, setBuy] = useState<P | null>(null);
     const [sound, setSound] = useState(false);
-    const ctx = useRef<AudioContext | null>(null);
-    const lastFeed = useRef(initial.feed[0]?.id ?? 0);
     const cd = useCountdown(period.end);
     const started = !period.start || new Date(period.start).getTime() <= Date.now();
     const canBuy = started && !cd.over;
@@ -283,24 +281,14 @@ export default function VotingShow(props: Props) {
         return () => clearInterval(t);
     }, [event.id]);
 
-    useEffect(() => {
-        const top = live.feed[0]?.id ?? 0;
-        if (top > lastFeed.current && sound && ctx.current) {
-            const o = ctx.current.createOscillator(); const g = ctx.current.createGain();
-            o.type = 'sine'; o.frequency.value = 880; g.gain.setValueAtTime(0.15, ctx.current.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ctx.current.currentTime + 0.5);
-            o.connect(g); g.connect(ctx.current.destination); o.start(); o.stop(ctx.current.currentTime + 0.5);
-        }
-        lastFeed.current = top;
-    }, [live.feed, sound]);
-
-    const toggleSound = () => { if (!ctx.current) ctx.current = new (window.AudioContext || (window as any).webkitAudioContext)(); setSound((v) => !v); };
+    const toggleSound = () => setSound((v) => !v);
 
     // Bacakan pesan dukungan baru dengan suara perempuan (Web Speech API)
     const spokenFeed = useRef(initial.feed[0]?.id ?? 0);
     useEffect(() => {
         const top = live.feed[0]?.id ?? 0;
         if (top <= spokenFeed.current) return;
-        const fresh = live.feed.filter((f) => f.id > spokenFeed.current).reverse();
+        const fresh = live.feed.filter((f) => f.id > spokenFeed.current && f.loud).reverse();
         spokenFeed.current = top;
         if (!sound || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 

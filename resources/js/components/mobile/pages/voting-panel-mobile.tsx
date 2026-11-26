@@ -1,20 +1,26 @@
 import { Camera, Check, Link2, Plus, Trash2, X } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { CARD, FIELD, GROUP, MUTED, PRESS } from '../kit/soft';
 
-type Cat = { id: number; name: string };
+type Cat = { id: number; name: string; opens_at: string | null; closes_at: string | null };
 type Part = { id: number; category_id: number | null; name: string; description: string | null; active: boolean; photo: string | null; upload_url: string };
 type GiftT = { id: number; emoji: string; name: string; votes: number; price: number; active: boolean };
 type D = {
     price_per_vote: string; min_votes: string; message_enabled: boolean; message_max: string; sound_min_votes: string;
-    show_sender: boolean; show_ranking: boolean; show_votes: boolean; vote_start: string; vote_end: string;
+    show_sender: boolean; show_ranking: boolean; show_votes: boolean;
 };
 type Tab = 'peserta' | 'harga' | 'pesan' | 'tampilan';
 type Filter = 'all' | 'none' | number;
 
 type Props = {
     enabled: boolean;
-    onToggle: () => void;
+    eventEnd: string;
+    base: string;
+    unassigned: number;
+    unscheduled: number;
+    schedOk: boolean;
     pricePerVote: number;
     activeParts: number;
     noPhoto: number;
@@ -72,6 +78,91 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
     );
 }
 
+const nowJkt = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 16);
+const dtInp = 'mt-1 h-10 w-full min-w-0 rounded-xl px-2 text-sm outline-none ' + FIELD;
+const BAD = 'bg-rose-500/10 text-rose-700 dark:text-rose-300';
+
+function CategorySchedule({ categories, base, maxEnd, unassigned }: { categories: Cat[]; base: string; maxEnd: string; unassigned: number }) {
+    type V = { o: string; z: string };
+    const [rows, setRows] = useState<Record<number, V>>({});
+    const [all, setAll] = useState<V>({ o: '', z: '' });
+    const [err, setErr] = useState('');
+    const [saving, setSaving] = useState(false);
+    const endLabel = new Date(maxEnd).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const val = (c: Cat): V => rows[c.id] ?? { o: c.opens_at ?? '', z: c.closes_at ?? '' };
+    const set = (c: Cat, patch: Partial<V>) => setRows((r) => ({ ...r, [c.id]: { ...val(c), ...patch } }));
+    const over = (x: V) => (x.o !== '' && x.o > maxEnd) || (x.z !== '' && x.z > maxEnd);
+    const bad = (x: V) => over(x) || (x.o !== '' && x.z !== '' && x.z <= x.o);
+    const changed = categories.filter((c) => { const x = val(c); return x.o !== (c.opens_at ?? '') || x.z !== (c.closes_at ?? ''); });
+    const anyBad = categories.some((c) => bad(val(c)));
+    const status = (c: Cat): [string, string] => {
+        if (!c.opens_at || !c.closes_at) return ['Belum dijadwalkan', OFF];
+        const n = nowJkt();
+        if (n < c.opens_at) return ['Belum dibuka', WARN];
+        if (n > (c.closes_at < maxEnd ? c.closes_at : maxEnd)) return ['Ditutup', BAD];
+        return ['Dibuka', OK];
+    };
+    const apply = () => setRows(Object.fromEntries(categories.map((c) => [c.id, { o: all.o, z: all.z }])));
+    const save = () => {
+        setSaving(true); setErr('');
+        router.put(base + '/jadwal', { items: changed.map((c) => ({ id: c.id, opens_at: val(c).o || null, closes_at: val(c).z || null })) }, {
+            preserveScroll: true,
+            onSuccess: () => setRows({}),
+            onError: (e) => setErr(String(Object.values(e)[0] ?? 'Gagal menyimpan jadwal.')),
+            onFinish: () => setSaving(false),
+        });
+    };
+
+    return (
+        <section className={'space-y-2.5 rounded-2xl p-3 ' + CARD}>
+            <h2 className="text-sm font-semibold">Jadwal voting per kategori</h2>
+            <p className={'text-[11px] leading-snug ' + MUTED}>Paling lambat sampai {endLabel}. Majukan jam tutup untuk menghentikan voting.</p>
+
+            <div className="space-y-1.5 rounded-xl p-2.5 bg-slate-500/5">
+                <p className="text-[11px] font-semibold">Samakan jadwal semua kategori</p>
+                <div className="grid grid-cols-2 gap-2">
+                    <label className="block"><span className={lbl}>Buka</span><input type="datetime-local" max={maxEnd} value={all.o} onChange={(e) => setAll((a) => ({ ...a, o: e.target.value }))} className={dtInp} /></label>
+                    <label className="block"><span className={lbl}>Tutup</span><input type="datetime-local" max={maxEnd} value={all.z} onChange={(e) => setAll((a) => ({ ...a, z: e.target.value }))} className={dtInp} /></label>
+                </div>
+                <button type="button" onClick={apply} disabled={!all.o || !all.z || bad(all)} className={'h-9 w-full rounded-full text-xs font-medium disabled:opacity-40 ' + FIELD + ' ' + PRESS}>Terapkan ke semua</button>
+            </div>
+
+            <div className="space-y-2">
+                {categories.map((c) => {
+                    const x = val(c);
+                    const b = bad(x);
+                    const [label, cls] = status(c);
+                    return (
+                        <div key={c.id} className={'space-y-1.5 rounded-xl p-2.5 ' + FIELD + (b ? ' ring-1 ring-rose-400' : '')}>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="min-w-0 truncate text-sm font-semibold">{c.name}</span>
+                                {badge(label, cls)}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className="block"><span className={lbl}>Buka</span><input aria-label={'Buka ' + c.name} type="datetime-local" max={maxEnd} value={x.o} onChange={(e) => set(c, { o: e.target.value })} className={dtInp} /></label>
+                                <label className="block"><span className={lbl}>Tutup</span><input aria-label={'Tutup ' + c.name} type="datetime-local" max={maxEnd} value={x.z} onChange={(e) => set(c, { z: e.target.value })} className={dtInp} /></label>
+                            </div>
+                            {b && <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{over(x) ? 'Jam buka dan tutup tidak boleh melewati akhir event (' + endLabel + ').' : 'Jam tutup harus setelah jam buka.'}</p>}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {unassigned > 0 && <p className="text-xs font-medium text-amber-700 dark:text-amber-300">{unassigned} peserta aktif belum punya kategori, jadi belum bisa divote.</p>}
+
+            {(changed.length > 0 || err) && (
+                <div className="space-y-2 rounded-xl bg-slate-900 p-3 text-white">
+                    <p className="text-xs font-medium">{err || changed.length + ' kategori berubah, belum disimpan.'}</p>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => { setRows({}); setErr(''); }} className="h-10 flex-1 rounded-full text-sm font-medium text-white/80">Batalkan</button>
+                        <button type="button" onClick={save} disabled={saving || anyBad || changed.length === 0} className="h-10 flex-1 rounded-full bg-indigo-500 text-sm font-medium text-white disabled:opacity-40">{saving ? 'Menyimpan...' : 'Simpan jadwal'}</button>
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+}
+
 /** Voting HP (ringkas): status, ringkasan, tab Peserta, Harga & Gift, Pesan, Tampilan. */
 export default function VotingPanelMobile(p: Props) {
     const { d } = p;
@@ -85,17 +176,21 @@ export default function VotingPanelMobile(p: Props) {
         <div className="space-y-3 pb-24">
             <section className={'space-y-2.5 rounded-2xl p-3 ' + CARD}>
                 <div className="flex items-center justify-between gap-3">
-                    <h2 className="flex items-center gap-2 text-sm font-semibold">Voting {p.enabled ? badge('Dibuka', OK) : badge('Ditutup', OFF)}</h2>
-                    <Sw on={p.enabled} label="Buka voting" onChange={() => p.onToggle()} />
+                    <h2 className="flex items-center gap-2 text-sm font-semibold">Voting {p.enabled ? badge('Aktif', OK) : badge('Belum aktif', OFF)}</h2>
                 </div>
                 <details>
                     <summary className="cursor-pointer text-[11px] font-medium text-indigo-700 dark:text-indigo-300">Keterangan</summary>
-                    <p className={'mt-1 text-xs leading-snug ' + MUTED}>{p.enabled ? 'Penonton bisa memberi vote sekarang. Tutup kapan saja untuk menghentikan vote baru.' : 'Penonton belum bisa memberi vote. Lengkapi peserta dan harga, lalu buka voting.'}</p>
+                    <p className={'mt-1 text-xs leading-snug ' + MUTED}>{p.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
                 </details>
-                <div className="flex flex-wrap gap-1.5">
-                    {badge((p.activeParts >= 2 ? '✓ ' : '• ') + 'Min. 2 peserta aktif (' + p.activeParts + ')', p.activeParts >= 2 ? OK : WARN)}
-                    {badge(p.activeParts > 0 && p.noPhoto === 0 ? '✓ Semua punya foto' : '• ' + p.noPhoto + ' belum punya foto', p.activeParts > 0 && p.noPhoto === 0 ? OK : WARN)}
-                    {badge('✓ ' + rp(p.pricePerVote) + ' per vote', OK)}
+                <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                        [p.activeParts >= 2, 'Min. 2 peserta (' + p.activeParts + ')'],
+                        [p.activeParts > 0 && p.noPhoto === 0, p.activeParts === 0 ? 'Foto peserta' : p.noPhoto === 0 ? 'Semua punya foto' : p.noPhoto + ' belum ada foto'],
+                        [p.activeParts > 0 && p.unassigned === 0, p.activeParts === 0 ? 'Kategori peserta' : p.unassigned === 0 ? 'Semua berkategori' : p.unassigned + ' belum berkategori'],
+                        [p.schedOk, p.categories.length === 0 ? 'Jadwal kategori' : p.schedOk ? 'Jadwal lengkap' : p.unscheduled + ' belum dijadwalkan'],
+                    ] as [boolean, string][]).map(([ok, t]) => (
+                        <span key={t} className={'truncate rounded-full px-2.5 py-1 text-center text-[11px] font-medium ' + (ok ? OK : WARN)}>{(ok ? '✓ ' : '• ') + t}</span>
+                    ))}
                 </div>
                 <div className="grid grid-cols-4 divide-x divide-slate-900/[0.07] dark:divide-white/10">
                     {stats.map(([l, n]) => (
@@ -116,7 +211,7 @@ export default function VotingPanelMobile(p: Props) {
                         <h2 className="text-sm font-semibold">Kategori voting</h2>
                         <details>
                             <summary className="cursor-pointer text-[11px] font-medium text-indigo-700 dark:text-indigo-300">Keterangan</summary>
-                            <p className={'mt-1 text-xs leading-snug ' + MUTED}>Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Kategori bersifat opsional.</p>
+                            <p className={'mt-1 text-xs leading-snug ' + MUTED}>Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Atur jam buka dan tutup voting untuk tiap kategori. Voting aktif otomatis saat peserta dan jadwal lengkap. Jam tutup tidak bisa melewati akhir event.</p>
                         </details>
                         <div className="flex flex-wrap gap-1.5">
                             {p.categories.length === 0 && <span className={'text-xs ' + MUTED}>Belum ada kategori.</span>}
@@ -133,6 +228,8 @@ export default function VotingPanelMobile(p: Props) {
                         </div>
                         {p.catErr && <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{p.catErr}</p>}
                     </section>
+
+                    {p.categories.length > 0 && <CategorySchedule categories={p.categories} base={p.base} maxEnd={p.eventEnd} unassigned={p.unassigned} />}
 
                     <section className="space-y-2">
                         <div className="flex items-center gap-2">
@@ -175,13 +272,7 @@ export default function VotingPanelMobile(p: Props) {
             {p.tab === 'harga' && (
                 <>
                     <section className={'space-y-2.5 rounded-2xl p-3 ' + CARD}>
-                        <h2 className="text-sm font-semibold">Periode voting</h2>
-                        <p className={'text-[11px] leading-snug ' + MUTED}>Kosongkan tanggal akhir agar voting berakhir saat event berakhir.</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <label className="block"><span className={lbl}>Mulai</span><input type="date" value={d.vote_start} onChange={(e) => p.setD('vote_start', e.target.value)} className={inp} /></label>
-                            <label className="block"><span className={lbl}>Berakhir</span><input type="date" value={d.vote_end} onChange={(e) => p.setD('vote_end', e.target.value)} className={inp} />{p.se.vote_end && <span className="text-xs text-rose-600">{p.se.vote_end}</span>}</label>
-                        </div>
-                        <h2 className="pt-1 text-sm font-semibold">Harga vote</h2>
+                        <h2 className="text-sm font-semibold">Harga vote</h2>
                         <div className="grid grid-cols-2 gap-2">
                             <label className="block"><span className={lbl}>Harga per vote (Rp)</span>{num('price_per_vote', 1)}
                                 <span className={'block text-[11px] ' + MUTED}>{Number(d.price_per_vote) >= 1 ? '10 vote = ' + rp(Number(d.price_per_vote) * 10) : 'Isi minimal Rp1.'}</span>
@@ -231,7 +322,7 @@ export default function VotingPanelMobile(p: Props) {
                         <Row title="Batas karakter pesan" desc="Antara 1 sampai 200 karakter.">
                             <input type="number" inputMode="numeric" min={1} max={200} disabled={!d.message_enabled} value={d.message_max} onChange={(e) => p.setD('message_max', e.target.value)} className={'h-10 w-20 shrink-0 rounded-xl px-2 text-center text-base outline-none disabled:opacity-50 ' + FIELD} />
                         </Row>
-                        <Row title="Min. vote untuk efek suara" desc="Isi 0 untuk mematikan efek suara.">
+                        <Row title="Minimal vote agar pesan dibacakan suara" desc="Pesan dibacakan hanya jika nilainya sebesar ini atau lebih. Isi 0 untuk mematikan suara.">
                             <input type="number" inputMode="numeric" min={0} value={d.sound_min_votes} onChange={(e) => p.setD('sound_min_votes', e.target.value)} className={'h-10 w-20 shrink-0 rounded-xl px-2 text-center text-base outline-none ' + FIELD} />
                         </Row>
                     </div>

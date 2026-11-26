@@ -198,6 +198,8 @@ Route::middleware([
         Route::post('event/{event}/voting/aktif', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'toggle'])->whereNumber('event')->name('event.voting.toggle');
         Route::put('event/{event}/voting/pengaturan', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'settingsUpdate'])->whereNumber('event')->name('event.voting.settingsUpdate');
         Route::post('event/{event}/voting/kategori', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'storeCategory'])->whereNumber('event')->name('event.voting.storeCategory');
+        Route::put('event/{event}/voting/kategori/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'updateCategory'])->whereNumber(['event', 'item'])->name('event.voting.updateCategory');
+        Route::put('event/{event}/voting/jadwal', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'updateSchedules'])->whereNumber('event')->name('event.voting.updateSchedules');
         Route::delete('event/{event}/voting/kategori/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'destroyCategory'])->whereNumber(['event', 'item'])->name('event.voting.destroyCategory');
         Route::post('event/{event}/voting/peserta', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'storeParticipant'])->whereNumber('event')->name('event.voting.storeParticipant');
         Route::put('event/{event}/voting/peserta/{item}', [\App\Http\Controllers\Panel\VotingSettingsController::class, 'updateParticipant'])->whereNumber(['event', 'item'])->name('event.voting.updateParticipant');

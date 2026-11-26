@@ -75,17 +75,17 @@ function AgendaModal({ eventId, initial, date, onClose }: { eventId: number; ini
             <form onSubmit={submit} className="mt-5 space-y-4">
                 <label className="block"><span className={lbl}>Judul</span><input value={f.data.title} maxLength={120} onChange={(x) => f.setData('title', x.target.value)} placeholder="Contoh: Technical meeting" className={inp} />{err('title')}</label>
                 <div className="grid grid-cols-2 gap-3">
-                    <label className="block"><span className={lbl}>Tanggal</span><input type="date" value={f.data.date} onChange={(x) => f.setData('date', x.target.value)} className={inp} />{err('date')}</label>
-                    <label className="block"><span className={lbl}>Jenis</span><select value={f.data.type} onChange={(x) => f.setData('type', x.target.value)} className={inp}>{Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+                    <label className="block"><span className={lbl}>Tanggal</span><input type="date" style={{ minHeight: '2.5rem' }} value={f.data.date} onChange={(x) => f.setData('date', x.target.value)} className={inp} />{err('date')}</label>
+                    <label className="block"><span className={lbl}>Jenis</span><select style={{ appearance: 'none', WebkitAppearance: 'none', minHeight: '2.5rem', paddingRight: '2.25rem', cursor: 'pointer', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5l5 5 5-5'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }} value={f.data.type} onChange={(x) => f.setData('type', x.target.value)} className={inp}>{Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                    <label className="block"><span className={lbl}>Jam mulai</span><input type="time" value={f.data.start_time} onChange={(x) => f.setData('start_time', x.target.value)} className={inp} />{err('start_time')}</label>
-                    <label className="block"><span className={lbl}>Jam selesai</span><input type="time" value={f.data.end_time} onChange={(x) => f.setData('end_time', x.target.value)} className={inp} />{err('end_time')}</label>
+                    <label className="block"><span className={lbl}>Jam mulai</span><input type="time" style={{ minHeight: '2.5rem' }} value={f.data.start_time} onChange={(x) => f.setData('start_time', x.target.value)} className={inp} />{err('start_time')}</label>
+                    <label className="block"><span className={lbl}>Jam selesai</span><input type="time" style={{ minHeight: '2.5rem' }} value={f.data.end_time} onChange={(x) => f.setData('end_time', x.target.value)} className={inp} />{err('end_time')}</label>
                 </div>
                 <label className="block"><span className={lbl}>Lokasi</span><input value={f.data.location} maxLength={150} onChange={(x) => f.setData('location', x.target.value)} className={inp} /></label>
                 <label className="block"><span className={lbl}>Catatan</span><textarea rows={3} value={f.data.description} maxLength={500} onChange={(x) => f.setData('description', x.target.value)} className={inp} /></label>
                 <label className="block"><span className={lbl}>Pengingat ke peserta</span>
-                    <select value={f.data.remind_minutes} onChange={(x) => f.setData('remind_minutes', x.target.value)} className={inp}>{REMIND.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                    <select style={{ appearance: 'none', WebkitAppearance: 'none', minHeight: '2.5rem', paddingRight: '2.25rem', cursor: 'pointer', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5l5 5 5-5'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }} value={f.data.remind_minutes} onChange={(x) => f.setData('remind_minutes', x.target.value)} className={inp}>{REMIND.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
                     <span className="mt-1 block text-xs text-slate-500">Dikirim ke peserta event lewat notifikasi dan email.</span>
                 </label>
                 <button type="submit" disabled={f.processing || !f.data.title.trim() || !f.data.date} className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 py-3 text-sm font-bold text-white shadow-lg disabled:opacity-50">{f.processing ? 'Menyimpan…' : 'Simpan agenda'}</button>
@@ -104,8 +104,8 @@ function PhaseModal({ eventId, phases, onClose }: { eventId: number; phases: Pro
         <div>
             <div className="font-extrabold">{title}</div>
             <div className="mt-2 grid grid-cols-2 gap-3">
-                <label className="block"><span className={lbl}>Mulai</span><input type="date" value={f.data[a]} onChange={(x) => f.setData(a, x.target.value)} className={inp} /></label>
-                <label className="block"><span className={lbl}>Selesai</span><input type="date" value={f.data[b]} onChange={(x) => f.setData(b, x.target.value)} className={inp} />{e[b] && <span className="text-xs text-rose-600">{e[b]}</span>}</label>
+                <label className="block"><span className={lbl}>Mulai</span><input type="date" style={{ minHeight: '2.5rem' }} value={f.data[a]} onChange={(x) => f.setData(a, x.target.value)} className={inp} /></label>
+                <label className="block"><span className={lbl}>Selesai</span><input type="date" style={{ minHeight: '2.5rem' }} value={f.data[b]} onChange={(x) => f.setData(b, x.target.value)} className={inp} />{e[b] && <span className="text-xs text-rose-600">{e[b]}</span>}</label>
             </div>
         </div>
     );
@@ -162,10 +162,10 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas, 
     const del = (a: Agenda) => { if (confirm(`Hapus agenda "${a.title}"?`)) router.delete(`/panel/event/${eventId}/kalender/agenda/${a.id}`, { preserveScroll: true }); };
 
     const marker = (
-        <div className="my-6 flex items-center gap-4">
-            <span className="h-px flex-1 bg-rose-400" />
-            <span className="rounded-full bg-rose-500 px-5 py-2 text-xs font-extrabold tracking-widest text-white uppercase">Hari ini · {fmt(todayStr)}</span>
-            <span className="h-px flex-1 bg-rose-400" />
+        <div className="my-3 flex items-center gap-3">
+            <span className="h-px flex-1 bg-rose-300" />
+            <span className="rounded-full bg-rose-500 px-3 py-1 text-[10px] font-extrabold tracking-widest text-white uppercase">Hari ini · {fmt(todayStr)}</span>
+            <span className="h-px flex-1 bg-rose-300" />
         </div>
     );
 
@@ -217,49 +217,68 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas, 
                 </KalenderPanelMobile>
             ) : (
             <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <span />
-                <button type="button" onClick={() => setAgendaModal({ item: null, date: todayStr })} className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/25"><Plus className="h-4 w-4" /> Tambah agenda</button>
+            {/* LINIMASA2 */}
+            <div className={`flex flex-wrap items-center gap-3 rounded-2xl p-3.5 sm:px-4 ${glass}`}>
+                <div className="mr-auto flex flex-wrap items-baseline gap-x-3">
+                    <span className="text-sm font-extrabold">{view === 'linimasa' ? 'Linimasa' : 'Kalender'}</span>
+                    <span className="text-xs text-slate-500">{agendas.length + (subAgendas?.length ?? 0)} agenda · {groups.length} tanggal</span>
+                </div>
+                <button type="button" onClick={() => setAgendaModal({ item: null, date: todayStr })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-600/25"><Plus className="h-4 w-4" />Tambah agenda</button>
             </div>
 
             {view === 'linimasa' ? (
-                <div>
+                <div className="space-y-3 pt-1">{/* LINIMASA3 */}
                     {groups.map(([d, list], gi) => {
                         const dt = D(d);
+                        const isToday = d === todayStr;
+                        const past = d < todayStr;
                         return (
                             <Fragment key={d}>
                                 {gi === nowIdx && marker}
-                                <div className="grid grid-cols-[84px_24px_1fr] gap-3 py-2 sm:grid-cols-[96px_28px_1fr]">
-                                    <div className="flex flex-col items-center gap-1.5">
-                                        <div className={`w-full rounded-2xl py-2.5 text-center ${glass}`}>
-                                            <div className="text-xs font-extrabold text-slate-500">{DAYS[dt.getDay()]}</div>
-                                            <div className="text-3xl font-extrabold">{dt.getDate()}</div>
-                                            <div className="text-xs font-extrabold text-slate-500">{MONS[dt.getMonth()]}</div>
-                                        </div>
-                                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">{hLabel(d)}</span>
+                                <section className={`flex overflow-hidden rounded-2xl ${glass} ${past ? 'opacity-70' : ''}`}>
+                                    <div className={`flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-4 text-white sm:w-28 ${isToday ? 'bg-gradient-to-b from-rose-500 to-rose-600' : 'bg-gradient-to-b from-indigo-600 to-violet-600'}`}>
+                                        <span className="text-[11px] font-extrabold tracking-widest opacity-80">{DAYS[dt.getDay()]}</span>
+                                        <span className="text-3xl leading-none font-extrabold">{dt.getDate()}</span>
+                                        <span className="text-[11px] font-extrabold tracking-widest opacity-80">{MONS[dt.getMonth()]}</span>
+                                        <span className="mt-2 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">{hLabel(d)}</span>
                                     </div>
-                                    <div className="flex flex-col items-center pt-6"><span className="h-4 w-4 rounded-full border-4 border-blue-500 bg-white" /><span className="mt-1 w-px flex-1 bg-blue-200 dark:bg-white/15" /></div>
-                                    <div className="space-y-3">
-                                        {list.map((e) => (
-                                            <div key={e.key} className={`rounded-2xl border-l-4 px-5 py-4 shadow-sm ${TONE[e.tone].box}`}>
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                                                    <span className="font-extrabold">{e.agenda ? (e.agenda.start_time ? `${e.agenda.start_time}${e.agenda.end_time ? ` – ${e.agenda.end_time}` : ''}` : 'Seharian') : e.time ?? 'Seharian'}</span>
-                                                    <span className={`text-lg font-extrabold ${TONE[e.tone].text}`}>{e.title}</span>
-                                                    <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{e.agenda ? TYPES[e.agenda.type] ?? 'Agenda' : /^s\d/.test(e.key) ? 'Lomba' : 'Otomatis'}</span>
-                                                    {e.agenda?.remind_minutes && <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600"><Bell className="h-3.5 w-3.5" />{REMIND.find(([k]) => k === String(e.agenda!.remind_minutes))?.[1]}</span>}
+                                    <div className="min-w-0 flex-1 divide-y divide-slate-200/70 dark:divide-white/10">
+                                        {list.map((e) => {
+                                            const isSub = /^s\d/.test(e.key);
+                                            const dot = ({ start: 'bg-blue-600', end: 'bg-violet-600', phase: 'bg-emerald-500', agenda: 'bg-indigo-400' } as Record<string, string>)[e.tone];
+                                            if (!e.agenda && !isSub) {
+                                                return (
+                                                    <div key={e.key} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                                                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
+                                                        <span className={`text-sm font-bold ${TONE[e.tone].text}`}>{e.title}</span>
+                                                        <span className="ml-auto text-[11px] font-semibold text-slate-400">Otomatis</span>
+                                                    </div>
+                                                );
+                                            }
+                                            const time = e.agenda ? (e.agenda.start_time ? `${e.agenda.start_time}${e.agenda.end_time ? ` – ${e.agenda.end_time}` : ''}` : 'Seharian') : (e.time ?? 'Seharian');
+                                            return (
+                                                <div key={e.key} className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
+                                                    <span className="w-28 shrink-0 pt-0.5 text-sm font-extrabold tabular-nums text-indigo-700 dark:text-indigo-300">{time}</span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                            <span className="text-base font-bold">{e.title}</span>
+                                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">{e.agenda ? TYPES[e.agenda.type] ?? 'Agenda' : 'Lomba'}</span>
+                                                            {e.agenda?.remind_minutes && <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600"><Bell className="h-3.5 w-3.5" />{REMIND.find(([k]) => k === String(e.agenda!.remind_minutes))?.[1]}</span>}
+                                                        </div>
+                                                        {e.agenda?.location && <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><MapPin className="h-3.5 w-3.5" />{e.agenda.location}</p>}
+                                                        {e.agenda?.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{e.agenda.description}</p>}
+                                                    </div>
                                                     {e.agenda && (
-                                                        <span className="ml-auto flex gap-1">
-                                                            <button type="button" aria-label="Ubah" onClick={() => setAgendaModal({ item: e.agenda!, date: e.date })} className="rounded-full p-2 text-slate-500 hover:bg-white/70 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
+                                                        <span className="flex shrink-0 gap-0.5">
+                                                            <button type="button" aria-label="Ubah" onClick={() => setAgendaModal({ item: e.agenda!, date: e.date })} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
                                                             <button type="button" aria-label="Hapus" onClick={() => del(e.agenda!)} className="rounded-full p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
                                                         </span>
                                                     )}
                                                 </div>
-                                                {e.agenda?.location && <p className="mt-1.5 flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300"><MapPin className="h-3.5 w-3.5" />{e.agenda.location}</p>}
-                                                {e.agenda?.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{e.agenda.description}</p>}
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
-                                </div>
+                                </section>
                             </Fragment>
                         );
                     })}
