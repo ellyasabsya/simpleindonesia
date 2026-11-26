@@ -50,7 +50,7 @@ class TransactionController extends Controller
                 fputcsv($out, [$r['at'], $r['code'], $r['type'], $r['dir'], $r['title'], $r['subtitle'], $r['method'], $r['status'], $r['amount'], $r['fee']]);
             }
             fclose($out);
-        }, 'transaksi-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'transaksi-'.now(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /** @return array{0: Collection, 1: array, 2: array} */
@@ -100,7 +100,7 @@ class TransactionController extends Controller
         if ($wantTiket) {
             $tickets = $inRange(
                 DB::table('ticket_orders')->select(['id', 'event_id', 'code', 'buyer_name', 'status', 'payment_method', 'paid_at', 'created_at', 'total', 'fee']),
-                'DATE(COALESCE(paid_at, created_at))'
+                "DATE(CONVERT_TZ(COALESCE(paid_at, created_at), '+00:00', '+07:00'))"
             );
             foreach ($tickets->cursor() as $o) {
                 $ev = $events[$o->event_id] ?? null;
@@ -160,7 +160,7 @@ class TransactionController extends Controller
         if ($wantVote) {
             $votes = $inRange(
                 DB::table('voting_orders')->select(['id', 'event_id', 'code', 'buyer_name', 'votes', 'amount', 'service_fee', 'status', 'payment_proof', 'midtrans_order_id', 'paid_at', 'created_at']),
-                'DATE(COALESCE(paid_at, created_at))'
+                "DATE(CONVERT_TZ(COALESCE(paid_at, created_at), '+00:00', '+07:00'))"
             );
             foreach ($votes->cursor() as $o) {
                 $ev = $events[$o->event_id] ?? null;
@@ -187,7 +187,7 @@ class TransactionController extends Controller
         if ($wantTarik) {
             $withdrawals = $inRange(
                 DB::table('withdrawals')->select(['id', 'event_id', 'amount', 'bank_name', 'status', 'transferred_at', 'created_at']),
-                'DATE(COALESCE(transferred_at, created_at))'
+                "DATE(CONVERT_TZ(COALESCE(transferred_at, created_at), '+00:00', '+07:00'))"
             );
             foreach ($withdrawals->cursor() as $w) {
                 $ev = $events[$w->event_id] ?? null;

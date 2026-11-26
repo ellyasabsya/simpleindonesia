@@ -43,7 +43,7 @@ class EventEditLinkController extends Controller
             'series' => $event->children()->exists(),
             'categories' => PanelEventController::CATEGORIES,
             'institution' => $event->institution?->name,
-            'expires_at' => $link->expires_at->format('d M Y H:i'),
+            'expires_at' => $link->expires_at->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d M Y H:i'),
         ]);
     }
 

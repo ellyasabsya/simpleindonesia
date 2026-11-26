@@ -17,7 +17,7 @@ class RefundEventPackage extends Command
             $this->error('Event utama tidak ditemukan.');
             return self::FAILURE;
         }
-        $note = trim(($e->payment_note ? $e->payment_note."\n" : '').'[Refund '.now()->format('Y-m-d H:i').'] '.($this->option('reason') ?: '-'));
+        $note = trim(($e->payment_note ? $e->payment_note."\n" : '').'[Refund '.now(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i').'] '.($this->option('reason') ?: '-'));
         $n = DB::table('events')->where('id', $e->id)->where('payment_status', 'lunas')
             ->update(['payment_status' => 'dikembalikan', 'payment_note' => $note, 'updated_at' => now()]);
         if (! $n) {

@@ -759,7 +759,7 @@ class JudgingController extends EventScopedController
                 'participant' => $a->participant_name,
                 'reason' => $a->reason,
                 'status' => $a->status,
-                'created_at' => \Illuminate\Support\Carbon::parse($a->created_at)->format('d/m/Y, H.i'),
+                'created_at' => \Illuminate\Support\Carbon::parse($a->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y, H.i'),
             ])->values()->all(),
         ];
     }
@@ -1073,7 +1073,7 @@ class JudgingController extends EventScopedController
                 'order' => $order ? array_map(fn ($rid) => $codes[$rid], $order) : null,
                 'note' => $kind ? ($d->note ?? null) : null,
                 'decided_by' => $kind ? ($d->decided_by ?? null) : null,
-                'decided_at' => $kind ? \Illuminate\Support\Carbon::parse($d->created_at)->format('d/m/Y, H.i') : null,
+                'decided_at' => $kind ? \Illuminate\Support\Carbon::parse($d->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y, H.i') : null,
                 'resolved' => in_array($kind, ['bersama', 'urut'], true),
             ];
             $councils[] = $co;
@@ -1143,7 +1143,7 @@ class JudgingController extends EventScopedController
                 'order' => array_map(fn ($i) => $codes[$i] ?? 'REG-'.$i, $ord),
                 'note' => $d->note,
                 'by' => $d->decided_by,
-                'at' => \Illuminate\Support\Carbon::parse($d->created_at)->format('d/m/Y, H.i'),
+                'at' => \Illuminate\Support\Carbon::parse($d->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y, H.i'),
             ];
         })->all();
 
@@ -1173,7 +1173,7 @@ class JudgingController extends EventScopedController
                 'points' => (float) $x->points,
                 'reason' => $x->reason,
                 'status' => $x->status,
-                'created_at' => \Illuminate\Support\Carbon::parse($x->created_at)->format('d/m/Y, H.i'),
+                'created_at' => \Illuminate\Support\Carbon::parse($x->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y, H.i'),
             ])->values()->all(),
         ];
     }
@@ -1290,7 +1290,7 @@ class JudgingController extends EventScopedController
         return '<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Lembar penilaian</title><style>'.$css.'</style></head><body>'
             .'<h1>LEMBAR PENILAIAN JURI</h1>'
             .'<table class="meta"><tr><td class="k">Lomba</td><td>: '.e($event->title).'</td><td class="k">Juri</td><td>: ..........................................</td></tr>'
-            .'<tr><td class="k">Kategori</td><td>: '.e($catName !== '' ? $catName : 'Semua peserta').'</td><td class="k">Tanggal</td><td>: ....................... (dicetak '.now()->format('d/m/Y').')</td></tr>'
+            .'<tr><td class="k">Kategori</td><td>: '.e($catName !== '' ? $catName : 'Semua peserta').'</td><td class="k">Tanggal</td><td>: ....................... (dicetak '.now(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y').')</td></tr>'
             .'<tr><td class="k">Skala</td><td colspan="3">: 0 sampai '.(int) $s->scale.' (nilai tiap kriteria dibagi 5 level, tiap level 3 pilihan)</td></tr></table>'
             .'<div class="note"><b>Cara mengisi:</b> lingkari satu angka pada setiap baris. Jangan menulis angka lain dan jangan melingkari dua angka. Tulis nilai akhir pada kotak NILAI AKHIR di tiap tim.'.($blank !== null ? ' Tulis kode tim pada kolom Kode tim.' : '').' Angka resmi tetap dihitung dari nilai yang diinput.</div>'
             .$blocks
@@ -2530,7 +2530,7 @@ class JudgingController extends EventScopedController
             ->map(fn ($h) => [
                 'id' => (int) $h->id, 'version' => (int) $h->version, 'action' => (string) $h->action,
                 'reason' => $h->reason, 'actor' => $h->actor,
-                'at' => \Illuminate\Support\Carbon::parse($h->created_at)->format('d/m/Y, H.i'),
+                'at' => \Illuminate\Support\Carbon::parse($h->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y, H.i'),
             ])->values()->all();
     }
 

@@ -44,8 +44,8 @@ class EventEditLink extends Model
         return static::where('event_id', $eventId)->latest('id')->limit(10)->get()->map(fn (self $l) => [
             'id' => $l->id,
             'status' => $l->status(),
-            'expires_at' => $l->expires_at->format($f),
-            'created_at' => $l->created_at->format($f),
+            'expires_at' => $l->expires_at->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format($f),
+            'created_at' => $l->created_at->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format($f),
             'last_opened_at' => $l->last_opened_at?->format($f),
             'edited_at' => $l->edited_at?->format($f),
         ])->values()->all();

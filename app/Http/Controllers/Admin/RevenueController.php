@@ -70,7 +70,7 @@ class RevenueController extends Controller
             fputcsv($o, ['Tanggal', 'Lembaga', 'Event', 'Bank', 'No. Rekening', 'Atas Nama', 'Nominal', 'Status', 'Alasan', 'Tgl Transfer']);
             foreach ($rows as $w) {
                 fputcsv($o, [
-                    $w->created_at?->format('Y-m-d H:i'),
+                    $w->created_at?->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                     $safe($w->institution?->name ?? '-'),
                     $safe($w->event?->title ?? '-'),
                     $safe($w->bank_name),
@@ -79,11 +79,11 @@ class RevenueController extends Controller
                     $w->amount,
                     $w->status,
                     $safe((string) $w->reject_reason),
-                    $w->transferred_at?->format('Y-m-d H:i'),
+                    $w->transferred_at?->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i'),
                 ]);
             }
             fclose($o);
-        }, 'penarikan-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'penarikan-'.now(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function print(): Response

@@ -59,7 +59,7 @@ class PackagePaymentController extends Controller
                     'url' => route('admin.verifikasi-paket.bukti', $e->id),
                     'is_pdf' => str_ends_with(strtolower($proof), '.pdf'),
                 ] : null,
-                'created_at' => $e->created_at?->format('d/m/Y H:i'),
+                'created_at' => $e->created_at?->copy()->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->format('d/m/Y H:i'),
             ];
         })->values();
 
@@ -154,7 +154,7 @@ class PackagePaymentController extends Controller
             'reason.required' => 'Alasan refund wajib diisi.',
         ]);
 
-        $note = trim(($event->payment_note ? $event->payment_note."\n" : '').'[Refund '.now()->format('Y-m-d H:i').'] '.$data['reason']);
+        $note = trim(($event->payment_note ? $event->payment_note."\n" : '').'[Refund '.now(config('app.agenda_timezone', 'Asia/Jakarta'))->format('Y-m-d H:i').'] '.$data['reason']);
 
         $n = Event::where('id', $event->id)->where('payment_status', 'lunas')->update([
             'payment_status' => 'dikembalikan',

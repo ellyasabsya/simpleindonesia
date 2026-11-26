@@ -253,7 +253,7 @@ class MyActivityController extends Controller
                 'total' => (int) $g->sum('total'),
                 'status' => $o->status === 'batal' ? 'ditolak' : 'menunggu_verifikasi',
                 'reason' => $o->reject_reason,
-                'created_at' => Carbon::parse($o->created_at)->locale('id')->translatedFormat('j M Y, H:i'),
+                'created_at' => Carbon::parse($o->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->locale('id')->translatedFormat('j M Y, H:i'),
             ];
         })->values()->all();
 
