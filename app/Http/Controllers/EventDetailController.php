@@ -100,6 +100,9 @@ class EventDetailController extends Controller
                 'parent' => $parent ? ['title' => $parent->title, 'slug' => $parent->slug] : null,
                 'siblings' => $parent ? $parent->children()->orderBy('sub_order')->orderBy('id')->get()
                     ->map(fn (Event $x) => ['id' => $x->id, 'title' => $x->title, 'slug' => $x->slug])->values() : [],
+                'registration_state' => $event->registrationState(),
+                'registration_opens' => optional($event->registrationWindow()[0])->toDateString(),
+                'registration_closes' => optional($event->registrationWindow()[1])->toDateString(),
                 'registration_fee_min' => (int) ($feeList->min() ?? 0),
                 'registration_fee_max' => (int) ($feeList->max() ?? 0),
                 'registration_fee' => (int) ($event->registration_fee ?: ($event->children->flatMap(fn ($c) => $c->registration_method === 'ticket' && $c->ticketTypes->isNotEmpty() ? $c->ticketTypes->pluck('price') : collect([$c->registration_fee]))->filter()->min() ?? 0)),

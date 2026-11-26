@@ -16,6 +16,7 @@ class TicketPurchaseController extends Controller
 
     private function guard(Event $event): void
     {
+        abort_if($event->registrationState() !== 'buka', 403, 'Penjualan tiket sudah ditutup atau belum dibuka.');
         abort_unless(
             $event->status === Event::PUBLISHED
             && in_array($event->registration_method, ['ticket', 'transfer_manual'], true)

@@ -184,6 +184,10 @@ class HomeController extends Controller
             $status = ['key' => 'berlangsung', 'label' => 'Berlangsung'];
         }
 
+        if ($status['key'] !== 'selesai' && $e->registrationState() === 'ditutup') {
+            $status['label'] .= ' · Pendaftaran ditutup';
+        }
+
         $child = $e->children->first();
         $category = $e->category ?: $child?->category;
 
@@ -198,6 +202,7 @@ class HomeController extends Controller
             'organizer' => $e->institution?->name,
             'starts_at' => $start?->toDateString(),
             'ends_at' => $end?->toDateString(),
+            'registration_state' => $e->registrationState(),
             'status' => $status,
             'is_series' => $e->children->count() > 0,
             'sub_count' => $e->children->count(),

@@ -27,7 +27,7 @@ type Pkg = {
     features: string[];
 };
 type Detail = {
-    title: string; category: string; location: string; starts_at: string; ends_at: string;
+    title: string; category: string; location: string; starts_at: string; ends_at: string; registration_start: string; registration_end: string;
     description: string; poster: File | null; juknis: File | null;
     participant_quota: string; participant_categories: { name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: { rank: string; prize: string }[] }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string; ticket_types: TicketType[]; ticket_audience: string;
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
@@ -52,7 +52,7 @@ const todayStr = () => { const n = new Date(); return `${n.getFullYear()}-${Stri
 const saleStart = (end: string) => (end && todayStr() > end ? end : todayStr());
 
 const blank = (): Detail => ({
-    title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
+    title: '', category: '', location: '', starts_at: '', ends_at: '', registration_start: '', registration_end: '', description: '', poster: null, juknis: null,
     participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '', ticket_types: [], ticket_audience: '',
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
@@ -295,7 +295,7 @@ function JuknisInput({ file, onChange, error }: { file: File | null; onChange: (
 function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bounds; withJuknis?: boolean }) {
     return (
         <>
-            <FormSect n={2} title="Waktu & deskripsi" hint="Kapan event berlangsung dan apa yang akan dilakukan.">
+            <FormSect n={2} title="Waktu & deskripsi" hint="Isi tanggal, jam, dan penjelasan singkat tentang event Anda.">
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                         <div>
@@ -309,6 +309,23 @@ function Schedule({ d, set, pre, err, bounds, withJuknis }: Sec & { bounds?: Bou
                             <Err m={err(pre + 'ends_at')} />
                         </div>
                     </div>
+                    {!pre && (
+                        <div>
+                            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+                                <div>
+                                    <label className={label}>Pendaftaran dibuka</label>
+                                    <input type="date" className={input} max={d.ends_at || undefined} value={(d as any).registration_start ?? ''} onChange={(e) => set({ registration_start: e.target.value } as any)} />
+                                    <Err m={err('registration_start')} />
+                                </div>
+                                <div>
+                                    <label className={label}>Pendaftaran ditutup</label>
+                                    <input type="date" className={input} min={(d as any).registration_start || undefined} max={d.ends_at || undefined} value={(d as any).registration_end ?? ''} onChange={(e) => set({ registration_end: e.target.value } as any)} />
+                                    <Err m={err('registration_end')} />
+                                </div>
+                            </div>
+                            <p className={help}>Boleh dikosongkan. Otomatis dibuka hari ini dan ditutup sehari sebelum event mulai. Bisa diubah nanti di menu Kalender.</p>
+                        </div>
+                    )}
                     <div>
                         <label className={label}>Deskripsi</label>
                         <textarea rows={4} maxLength={2000} value={d.description} onChange={(e) => capInput(e, (v) => set({ description: v }), true)}
@@ -550,8 +567,8 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             <div className={`${box} space-y-4 p-3 md:p-5`}>
                 <div>
                     <b className="block text-[15px]">Kategori peserta *</b>
-                    <p className={help}>
-                        {max <= 10 ? `Paket ini maksimal ${max} kategori (${list.length} dipilih).` : 'Pilih kategori yang sesuai. Setiap kategori punya kuota sendiri dan jumlahnya tidak dibatasi.'}
+                    <p className="mt-0.5 text-[13px] text-slate-500 md:text-sm dark:text-slate-400">
+                        {max <= 10 ? `Paket ini maksimal ${max} kategori (${list.length} dipilih).` : 'Pilih siapa saja yang boleh ikut. Setiap kategori punya kuota sendiri.'}
                     </p>
                 </div>
 
@@ -624,11 +641,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             {!hideRegistration && (
             <>
             {ticketOnly ? (
-                <div className={`${box} p-4 text-sm`}><b className="block">Pendaftaran peserta: Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
+                <div className={`${box} p-4 text-sm`}><b className="block text-[15px] font-bold">Pendaftaran peserta: Tiket</b><span className="mt-0.5 block text-[13px] text-slate-500 md:text-sm dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket, tanpa transfer manual.</span></div>
             ) : (
             <div>
                 <>
-                {fixedMethod ? (<div className={`${box} mb-3 p-4 text-sm`}><b className="block">Pendaftaran peserta: {fixedMethod === 'ticket' ? 'Tiket' : 'Transfer Manual'}</b><span className="text-xs text-slate-500 dark:text-slate-400">Mengikuti event utama. Satu rangkaian memakai satu metode pendaftaran.</span></div>) : (<label className={label}>Pendaftaran peserta *</label>)}</>
+                {fixedMethod ? (<div className={`${box} mb-3 p-4 text-sm`}><b className="block text-[15px] font-bold">Pendaftaran peserta: {fixedMethod === 'ticket' ? 'Tiket' : 'Transfer Manual'}</b><span className="mt-0.5 block text-[13px] text-slate-500 md:text-sm dark:text-slate-400">Mengikuti event utama. Satu rangkaian memakai satu metode pendaftaran.</span></div>) : (<label className={label}>Pendaftaran peserta *</label>)}</>
                 <div className={fixedMethod ? 'hidden' : 'grid gap-3 sm:grid-cols-2'}>
                     {[['transfer_manual', 'Transfer Manual', 'Peserta transfer, panitia memverifikasi pembayaran.'], ...(canTicket ? [['ticket', 'Tiket', 'Peserta membeli tiket lewat platform.']] : [])].map(([v, t, sub]) => (
                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.registration_method === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
@@ -653,11 +670,11 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
             {d.registration_method === 'ticket' && (
                 <div className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3 md:p-5 dark:border-white/10 dark:bg-indigo-500/10">
                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300">Wajib diisi. Tanpa jenis tiket, pembeli tidak bisa mendaftar.</p>
+                        <h4 className="text-[15px] font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
+                        <p className="text-[13px] text-slate-600 md:text-sm dark:text-slate-300">Wajib diisi. Pilih jenis tiket agar pembeli bisa mendaftar.</p>
                         {!fixedMethod && !((d as any).subs?.length > 0) && (
                             <div className="mt-3 space-y-2">
-                                <p className="text-xs font-bold text-slate-900 dark:text-white">Jenis pendaftaran tiket <span className="text-red-500">*</span></p>
+                                <p className="text-[15px] font-bold text-slate-900 dark:text-white">Jenis pendaftaran tiket <span className="text-red-500">*</span></p>
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {[['peserta', 'Peserta', '1 akun = 1 tiket', 'Untuk lomba, seminar, workshop, pelatihan. Setiap orang mendaftar sendiri dengan akunnya, satu akun hanya bisa punya satu tiket di event ini. Kuota dihitung per orang.'], ['umum', 'Pengunjung / Penonton', '1 akun bisa beli banyak tiket', 'Untuk festival, konser, pameran, hiburan. Pembeli bisa membeli beberapa tiket sekaligus, misalnya untuk keluarga atau teman. Kuota dihitung per tiket.']].map(([v, t, s2, sub]) => (
                                         <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.ticket_audience === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
@@ -670,7 +687,7 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                                         : [],
                                                 });
                                             }} />
-                                            <span><b className="block text-sm">{t}</b><span className="block text-[11px] font-bold text-indigo-700 dark:text-indigo-300">{s2}</span><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
+                                            <span><b className="block text-sm">{t}</b><span className="block text-xs font-bold text-indigo-700 dark:text-indigo-300">{s2}</span><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
                                         </label>
                                     ))}
                                 </div>
@@ -686,61 +703,61 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                         return (
                             <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-500">Jenis tiket #{i + 1}{(t as any).category && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800">Kategori: {(t as any).category}</span>}</span>
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Jenis tiket #{i + 1}{(t as any).category && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800">Kategori: {(t as any).category}</span>}</span>
                                     {d.ticket_types.length > 1 && (
                                         <button type="button" onClick={() => set({ ticket_types: d.ticket_types.filter((_, j) => j !== i) })} className="text-xs font-bold text-red-600">Hapus</button>
                                     )}
                                 </div>
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Nama tiket *</label>
                                         <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" readOnly={!!(t as any).category} onChange={(e) => up({ name: e.target.value })} />
                                         <Err m={err(k + 'name')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Harga (Rp) *</label>
                                         <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
                                             value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
                                             onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9), price_manual: true } as any)} />
                                         <Err m={err(k + 'price')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Kuota tiket *</label>
                                         <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
                                         <Err m={err(k + 'quota')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Maksimal tiket per pesanan{t.audience === 'umum' ? ' *' : ''}</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Maksimal tiket per pesanan{t.audience === 'umum' ? ' *' : ''}</label>
                                         {t.audience === 'umum' ? (
                                             <>
                                                 <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
-                                                <p className="mt-1 text-[11px] text-slate-500">Satu akun bisa membeli sampai jumlah ini sekali beli (maksimal 10).</p>
+                                                <p className="mt-1 text-[11px] text-slate-500 md:text-xs dark:text-slate-400">Satu akun bisa membeli sampai jumlah ini sekali beli (maksimal 10).</p>
                                                 <Err m={err(k + 'max_per_order')} />
                                             </>
                                         ) : (
                                             <>
                                                 <input className={inp + ' opacity-60'} value="1" readOnly disabled />
-                                                <p className="mt-1 text-[11px] text-slate-500">Tetap 1: mode peserta, satu akun satu tiket.</p>
+                                                <p className="mt-1 text-[11px] text-slate-500 md:text-xs dark:text-slate-400">Tetap 1: mode peserta, satu akun satu tiket.</p>
                                             </>
                                         )}
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Mulai penjualan *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Mulai penjualan *</label>
                                         <input type="date" className={inp} value={t.valid_from} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_from: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_from')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Akhir penjualan *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Akhir penjualan *</label>
                                         <input type="date" className={inp} value={t.valid_until} min={t.valid_from || undefined} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_until: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_until')} />
                                     </div>
                                     <div className="sm:col-span-2">
-                                        <label className="mb-1 block text-xs font-bold">Masa berlaku tiket (hari) *</label>
+                                        <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Masa berlaku tiket (hari) *</label>
                                         <div className="flex gap-2">
                                             <input className={inp} inputMode="numeric" value={t.valid_days ?? String(span)} onChange={(e) => up({ valid_days: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
                                             <button type="button" onClick={() => up({ valid_days: String(span) })} className="shrink-0 rounded-xl border border-indigo-300 px-3 text-xs font-bold text-indigo-700 dark:text-indigo-200">Selama kegiatan ({span} hari)</button>
                                         </div>
-                                        <p className="mt-1 text-[11px] text-slate-500">Dihitung sejak tanggal mulai event. Contoh: isi 1 untuk tiket yang hanya berlaku di hari pertama. Mulai/akhir penjualan di atas hanya mengatur kapan tiket boleh dibeli.</p>
+                                        <p className="mt-1 text-[11px] text-slate-500 md:text-xs dark:text-slate-400">Dihitung sejak tanggal mulai event. Contoh: isi 1 untuk tiket yang hanya berlaku di hari pertama. Mulai/akhir penjualan di atas hanya mengatur kapan tiket boleh dibeli.</p>
                                         <Err m={err(k + 'valid_days')} />
                                         {t.audience === 'umum' && !(d as any).subs?.length && (() => {
                                             const a = String((d as any).starts_at ?? '').slice(0, 10), b = String((d as any).ends_at ?? '').slice(0, 10);
@@ -749,12 +766,12 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                             if (days.length < 2) return null;
                                             return (
                                                 <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/10">
-                                                    <label className="mb-1 block text-xs font-bold">Berlaku pada hari</label>
+                                                    <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Berlaku pada hari</label>
                                                     <select className={inp} value={t.valid_date ?? ''} onChange={(e) => { const v = e.target.value; up(v ? { valid_date: v, valid_days: '1', ...(t.valid_until && t.valid_until > v ? { valid_until: v } : {}) } : { valid_date: '', valid_days: String(span) }); }}>
                                                         <option value="">Semua hari kegiatan</option>
                                                         {days.map((x, n) => <option key={x} value={x}>{`Hari ${n + 1}: ${new Date(x + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}`}</option>)}
                                                     </select>
-                                                    <p className="mt-1 text-[11px] text-slate-500">{t.valid_date ? 'Tiket hanya sah di hari ini, masa berlaku otomatis 1 hari.' : 'Event beberapa hari? Buat satu jenis tiket per hari, misalnya "Reguler - Hari 1".'}</p>
+                                                    <p className="mt-1 text-[11px] text-slate-500 md:text-xs dark:text-slate-400">{t.valid_date ? 'Tiket hanya sah di hari ini, masa berlaku otomatis 1 hari.' : 'Event beberapa hari? Buat satu jenis tiket per hari, misalnya "Reguler - Hari 1".'}</p>
                                                 </div>
                                             );
                                         })()}
@@ -807,19 +824,19 @@ function RegistrasiBlocks({ d, set, pre, err }: Sec) {
                     return (
                         <div key={i} className="grid gap-3 rounded-xl border border-slate-200 bg-white/80 p-4 sm:grid-cols-2 dark:border-white/10 dark:bg-white/5">
                             <div>
-                                <label className="mb-1 block text-xs font-bold">Nama tiket *</label>
+                                <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Nama tiket *</label>
                                 <input className={inp} value={t.name} maxLength={60} placeholder="Contoh: Reguler, VIP" readOnly={!!(t as any).category} onChange={(e) => up({ name: e.target.value })} />
                                 <Err m={err(k + 'name')} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-xs font-bold">Harga (Rp) *</label>
+                                <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Harga (Rp) *</label>
                                 <input className={inp} inputMode="numeric" placeholder="0 jika gratis"
                                     value={t.price ? new Intl.NumberFormat('id-ID').format(Number(t.price)) : t.price}
                                     onChange={(e) => up({ price: e.target.value.replace(/\D/g, '').slice(0, 9), price_manual: true } as any)} />
                                 <Err m={err(k + 'price')} />
                             </div>
                             <div>
-                                <label className="mb-1 block text-xs font-bold">Kuota tiket *</label>
+                                <label className="mb-1 block text-[13px] font-semibold text-slate-700 md:text-sm dark:text-slate-200">Kuota tiket *</label>
                                 <input className={inp} inputMode="numeric" value={t.quota} onChange={(e) => up({ quota: e.target.value.replace(/\D/g, '').slice(0, 7) })} />
                                 <Err m={err(k + 'quota')} />
                             </div>
@@ -1221,11 +1238,11 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                     <div className="space-y-4 md:space-y-5">
                         <div>
                             <h2 className={h2}>Pilih paket</h2>
-                            <p className="mt-1 text-[13px] leading-snug text-slate-500 md:text-sm dark:text-slate-400">Paket menentukan fitur dan biaya event Anda. Fitur dan bagi hasil dikunci saat event diajukan.</p>
+                            <p className="mt-1 text-[13px] leading-snug text-slate-500 md:text-sm dark:text-slate-400">Pilih satu paket di bawah. Paket menentukan fitur dan biaya event Anda.</p>
                         </div>
                         {packages.length === 0 && <p className="text-sm text-slate-500">Belum ada paket tersedia. Hubungi admin.</p>}
                         {/* pkg-card-v2 */}
-                        <div className="grid gap-2.5 md:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-5">
                             {packages.map((p, pi) => {
                                 const on = data.package_id === p.id;
                                 const th = PKG_THEMES[pi % PKG_THEMES.length];
@@ -1234,20 +1251,20 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 const small = m ? m[1] : '';
                                 const kind = isSeriesPkg(p) ? 'Rangkaian event' : p.extra_sub_event_price !== null ? 'Tunggal / rangkaian' : 'Event tunggal';
                                 return (
-                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 p-3 transition md:p-4 ${on ? th.on + ' max-md:!border-indigo-600 max-md:!bg-indigo-50' : th.off + ' max-md:!border-slate-200 max-md:!bg-white'} max-md:!bg-none max-md:!shadow-none`}>
+                                    <label key={p.id} className={`relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border-2 p-3 transition ${on ? th.on + ' max-md:!border-indigo-600 max-md:!bg-indigo-50' : th.off + ' max-md:!border-slate-200 max-md:!bg-white'} max-md:!bg-none max-md:!shadow-none`}>
                                         <input type="radio" name="package" checked={on} onChange={() => choosePackage(p)} className="sr-only" />
-                                        <span className={`absolute inset-x-0 top-0 h-1.5 max-md:hidden ${th.bar}`} />
-                                        <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
-                                            <Check className="h-4 w-4" />
+                                        <span className={`absolute inset-x-0 top-0 h-1 max-md:hidden ${th.bar}`} />
+                                        <span className={`absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full border-2 transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 text-transparent dark:border-white/20'}`}>
+                                            <Check className="h-3 w-3" />
                                         </span>
-                                        <span className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[11px] font-bold md:px-3 md:py-1 max-md:!bg-slate-100 max-md:!text-slate-600 ${th.chip}`}>{kind}</span>
-                                        <span className="mt-1.5 text-[15px] font-semibold md:mt-2 md:text-base md:font-bold">{p.name}</span>
-                                        <span className="mt-1 block md:mt-2 md:min-h-[3rem]">
-                                            {small && <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">{small}</span>}
-                                            <span className={`block text-xl font-extrabold leading-tight md:text-2xl max-md:!text-indigo-700 ${th.price}`}>{big}</span>
+                                        <span className={`mt-0.5 w-fit rounded-full px-2 py-0.5 text-[10px] font-bold max-md:!bg-slate-100 max-md:!text-slate-600 ${th.chip}`}>{kind}</span>
+                                        <span className="mt-1.5 text-sm font-bold">{p.name}</span>
+                                        <span className="mt-1 block">
+                                            {small && <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">{small}</span>}
+                                            <span className={`block text-lg font-extrabold leading-tight max-md:!text-indigo-700 ${th.price}`}>{big}</span>
                                         </span>
-                                        {p.description && <span className="mt-1 line-clamp-1 block text-xs text-slate-500 md:line-clamp-2 dark:text-slate-400">{p.description}</span>}
-                                        <span className="mt-auto pt-1.5 text-xs font-semibold text-indigo-600 md:pt-3 dark:text-indigo-300">{p.features.length} fitur</span>
+                                        {p.description && <span className="mt-1 line-clamp-1 block text-[11px] text-slate-500 dark:text-slate-400">{p.description}</span>}
+                                        <span className="mt-auto pt-1.5 text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">{p.features.length} fitur</span>
                                     </label>
                                 );
                             })}
@@ -1399,7 +1416,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Semua event sudah terisi. Pilih cara peserta mendaftar. Pilihan ini berlaku untuk seluruh rangkaian dan tidak bisa dicampur.</p>
                             </div>
                             {forced ? (
-                                <div className={`${box} p-4 text-sm`}><b className="block">Tiket</b><span className="text-xs text-slate-500 dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket.</span></div>
+                                <div className={`${box} p-4 text-sm`}><b className="block">Tiket</b><span className="mt-0.5 block text-[13px] text-slate-500 md:text-sm dark:text-slate-400">Paket ini otomatis mencatat pendaftaran lewat tiket.</span></div>
                             ) : (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {opts.map(([v, t, sub]) => (

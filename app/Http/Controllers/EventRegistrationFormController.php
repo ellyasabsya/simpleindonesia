@@ -435,17 +435,12 @@ class EventRegistrationFormController extends Controller
 
     private function closedReason(Event $event, bool $isTeam): ?string
     {
-        if ($event->registration_start && now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->lt(Carbon::parse($event->registration_start))) {
+        $state = $event->registrationState();
+        if ($state === 'belum_dibuka') {
             return 'Pendaftaran belum dibuka.';
         }
-        if ($event->registration_end) {
-            $end = Carbon::parse($event->registration_end);
-            if ($end->format('H:i:s') === '00:00:00') {
-                $end = $end->endOfDay();
-            }
-            if (now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->gt($end)) {
-                return 'Pendaftaran sudah ditutup.';
-            }
+        if ($state === 'ditutup') {
+            return 'Pendaftaran sudah ditutup.';
         }
         $quota = (int) $event->participant_quota;
         if ($quota > 0 && $this->used($event, $isTeam) >= $quota) {

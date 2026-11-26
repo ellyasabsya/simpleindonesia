@@ -101,4 +101,40 @@ class Event extends Model
     {
         return $query->whereNull('parent_id');
     }
+
+    /** Jendela pendaftaran [mulai, tutup]. Sub-event mewarisi kalender event utama. */
+    public function registrationWindow(): array
+    {
+        $tz = config('app.agenda_timezone', 'Asia/Jakarta');
+        $src = $this;
+        if (! $this->registration_start && ! $this->registration_end && $this->parent_id) {
+            $src = static::find($this->parent_id) ?? $this;
+        }
+        $start = $src->registration_start ? \Illuminate\Support\Carbon::parse($src->registration_start, $tz)->startOfDay() : null;
+        if ($src->registration_end) {
+            $end = \Illuminate\Support\Carbon::parse($src->registration_end, $tz)->endOfDay();
+        } elseif ($this->starts_at) {
+            $floor = \Illuminate\Support\Carbon::parse($this->created_at ?? now(), $tz)->startOfDay();
+            $end = \Illuminate\Support\Carbon::parse($this->starts_at, $tz)->startOfDay()->subDay()->max($floor)->endOfDay();
+        } else {
+            $end = null;
+        }
+
+        return [$start, $end];
+    }
+
+    /** belum_dibuka | buka | ditutup */
+    public function registrationState(): string
+    {
+        [$start, $end] = $this->registrationWindow();
+        $now = now(config('app.agenda_timezone', 'Asia/Jakarta'));
+        if ($start && $now->lt($start)) {
+            return 'belum_dibuka';
+        }
+        if ($end && $now->gt($end)) {
+            return 'ditutup';
+        }
+
+        return 'buka';
+    }
 }

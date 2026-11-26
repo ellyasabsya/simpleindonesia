@@ -68,6 +68,9 @@ type Detail = {
     starts_at: string | null;
     ends_at: string | null;
     status: { key: StatusKey; label: string };
+    registration_state?: 'belum_dibuka' | 'buka' | 'ditutup';
+    registration_opens?: string | null;
+    registration_closes?: string | null;
     description: string | null;
     registration_fee: number; registration_fee_min?: number; registration_fee_max?: number;
     registration_method: 'ticket' | 'transfer_manual' | null;
@@ -120,10 +123,10 @@ const mapUrl = (loc: string) => `https://www.google.com/maps/search/?api=1&query
 function SectionTitle({ icon: Icon, children }: { icon: Icon; children: string }) {
     return (
         <div className="flex items-center gap-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-800 dark:bg-white/10 dark:text-white">
-                <Icon className="h-5 w-5" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-800 dark:bg-white/10 dark:text-white">
+                <Icon className="h-4 w-4" />
             </span>
-            <h2 className="text-xl font-bold">{children}</h2>
+            <h2 className="text-base font-bold">{children}</h2>
         </div>
     );
 }
@@ -162,7 +165,7 @@ function Comments({ event }: { event: Detail }) {
 
     return (
         <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm md:p-8 dark:border-white/10 dark:bg-slate-900">
-            <h2 className="text-xl font-bold">Komentar</h2>
+            <h2 className="text-base font-bold">Komentar</h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Ada pertanyaan soal event ini? Tanyakan di sini.</p>
 
             {user ? (
@@ -462,8 +465,8 @@ function ContactBlock({ contact }: { contact: NonNullable<Detail['contact']> }) 
         <div className="space-y-4">
             {(contact.name || contact.position) && (
                 <div>
-                    {contact.name && <p className="text-lg font-bold">{contact.name}</p>}
-                    {contact.position && <p className="text-sm text-slate-500 dark:text-slate-400">{contact.position}</p>}
+                    {contact.name && <p className="text-sm font-bold">{contact.name}</p>}
+                    {contact.position && <p className="text-xs text-slate-500 dark:text-slate-400">{contact.position}</p>}
                 </div>
             )}
             <div className="flex flex-wrap gap-3">
@@ -492,7 +495,7 @@ function ContactBlock({ contact }: { contact: NonNullable<Detail['contact']> }) 
 
 function EventDetailSingle() {
     const { event } = usePage<{ event: Detail }>().props;
-    const [tabRaw, setTab] = useState<'kegiatan' | 'info' | 'hadiah' | 'peserta' | 'kontak'>(event.children.length > 0 ? 'kegiatan' : 'info');
+    const [tabRaw, setTab] = useState<'kegiatan' | 'info' | 'hadiah' | 'peserta'>(event.children.length > 0 ? 'kegiatan' : 'info');
     const [copied, setCopied] = useState(false);
     const st = STATUS[event.status.key];
     const single = !event.ends_at || event.ends_at === event.starts_at;
@@ -539,7 +542,7 @@ function EventDetailSingle() {
         return (
             <>
                 <Head title={`${event.title} - SIMPLE`} />
-                <EventDetailMobile event={event} parts={parts} hasHadiah={hasHadiah} cta={cta} statusText={st.text(event.status.label)} statusDot={st.dot} share={share} copied={copied} />
+                <EventDetailMobile event={event} parts={parts} hasHadiah={hasHadiah} cta={cta} statusText={st.text(event.status.label) + (event.status.key !== 'selesai' && event.registration_state === 'ditutup' ? ' · Pendaftaran ditutup' : '')} statusDot={st.dot} share={share} copied={copied} />
             </>
         );
     }
@@ -596,6 +599,11 @@ function EventDetailSingle() {
                                             <span className={`h-2 w-2 rounded-full ${st.dot}`} />
                                             {st.text(event.status.label)}
                                         </span>
+                                        {event.status.key !== 'selesai' && event.registration_state && event.registration_state !== 'buka' && (
+                                            <span className="inline-flex items-center rounded-full bg-slate-200 px-4 py-1.5 text-sm font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                                                {event.registration_state === 'ditutup' ? 'Pendaftaran ditutup' : `Dibuka ${event.registration_opens ? shortDate(event.registration_opens) : 'segera'}`}
+                                            </span>
+                                        )}
                                         {event.category && (
                                             <span className="rounded-full bg-blue-100 px-4 py-1.5 text-sm font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
                                                 {event.category}
@@ -624,6 +632,9 @@ function EventDetailSingle() {
                                             <div className={infoBox}>
                                                 <p className={eyebrow}><MapPin className="h-4 w-4 text-indigo-700" />Lokasi</p>
                                                 <p className="mt-3 text-lg font-bold">{event.location}</p>
+                                                <a href={mapUrl(event.location)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:underline dark:text-indigo-300">
+                                                    <Navigation className="h-4 w-4" /> Buka di Peta
+                                                </a>
                                             </div>
                                         )}
                                         {event.organizer && (
@@ -641,7 +652,12 @@ function EventDetailSingle() {
                                     </div>
 
                                     <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-white/70 p-4 sm:flex-row dark:bg-white/5">
-                                        {event.status.key === 'selesai' ? (
+                                        {event.status.key !== 'selesai' && event.registration_state && event.registration_state !== 'buka' ? (
+                                            <span className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-200 py-4 text-sm font-bold text-slate-500 dark:bg-white/10 dark:text-slate-400">
+                                                <cta.Icon className="h-5 w-5" />
+                                                {event.registration_state === 'ditutup' ? `${cta.label === 'Daftar' ? 'Pendaftaran' : 'Penjualan tiket'} ditutup` : `Dibuka ${event.registration_opens ? shortDate(event.registration_opens) : 'segera'}`}
+                                            </span>
+                                        ) : event.status.key === 'selesai' ? (
                                             <span className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-200 py-4 text-sm font-bold text-slate-500 dark:bg-white/10 dark:text-slate-400">
                                                 <Ticket className="h-5 w-5" />
                                                 Event Sudah Selesai
@@ -705,7 +721,6 @@ function EventDetailSingle() {
                             <button onClick={() => setTab('info')} className={tabBtn(tab === 'info')}>Informasi</button>
                             {hasHadiah && <button onClick={() => setTab('hadiah')} className={tabBtn(tab === 'hadiah')}>Hadiah</button>}
                             <button onClick={() => setTab('peserta')} className={tabBtn(tab === 'peserta')}>Peserta</button>
-                            <button onClick={() => setTab('kontak')} className={tabBtn(tab === 'kontak')}>Kontak Panitia</button>
                         </div>
 
                         <div className="mt-6 space-y-6">
@@ -715,12 +730,12 @@ function EventDetailSingle() {
                                 <HadiahTab data={parts} />
                             ) : tab === 'peserta' ? (
                                 <PesertaTab data={(event as unknown as { participants?: Participants }).participants} />
-                            ) : tab === 'info' ? (
+                            ) : (
                                 <>
                                     <section className={card}>
                                         <SectionTitle icon={Info}>Tentang Event</SectionTitle>
                                         {event.description ? (
-                                            <p className="mt-6 whitespace-pre-line break-words text-base leading-8 text-slate-700 dark:text-slate-200">{event.description}</p>
+                                            <p className="mt-6 whitespace-pre-line break-words text-sm leading-7 text-slate-700 dark:text-slate-200">{event.description}</p>
                                         ) : (
                                             <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Deskripsi belum tersedia.</p>
                                         )}
@@ -750,41 +765,6 @@ function EventDetailSingle() {
 
 
 
-                                    <section className={card}>
-                                        <SectionTitle icon={CalendarDays}>Waktu & Tempat</SectionTitle>
-                                        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            {event.starts_at && (
-                                                <Fact icon={CalendarDays} label="Mulai" value={longDate(event.starts_at)} tone="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200" />
-                                            )}
-                                            {event.ends_at && (
-                                                <Fact icon={CalendarCheck} label="Selesai" value={longDate(event.ends_at)} tone="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200" />
-                                            )}
-                                            {days && (
-                                                <Fact icon={Clock} label="Durasi" value={days === 1 ? '1 hari' : `${days} hari`} tone="bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200" />
-                                            )}
-                                            {event.location && (
-                                                <Fact
-                                                    icon={MapPin}
-                                                    label="Lokasi"
-                                                    value={event.location}
-                                                    tone="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200"
-                                                    action={
-                                                        <a href={mapUrl(event.location)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:underline dark:text-indigo-300">
-                                                            <Navigation className="h-4 w-4" /> Buka di Peta
-                                                        </a>
-                                                    }
-                                                />
-                                            )}
-                                            {event.organizer && (
-                                                <Fact icon={Building2} label="Penyelenggara" value={event.organizer} tone="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200" />
-                                            )}
-                                            {event.category && (
-                                                <Fact icon={Tag} label="Kategori" value={event.category} tone="bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200" />
-                                            )}
-                                        </div>
-                                    </section>
-                                </>
-                            ) : (
                                 <section className={card}>
                                     <SectionTitle icon={Phone}>Kontak Panitia</SectionTitle>
                                     {event.children.some((c) => c.contact) ? (
@@ -803,8 +783,8 @@ function EventDetailSingle() {
                                         <div className="mt-6 space-y-5">
                                             {(event.contact.name || event.contact.position) && (
                                                 <div>
-                                                    {event.contact.name && <p className="text-lg font-bold">{event.contact.name}</p>}
-                                                    {event.contact.position && <p className="text-sm text-slate-500 dark:text-slate-400">{event.contact.position}</p>}
+                                                    {event.contact.name && <p className="text-sm font-bold">{event.contact.name}</p>}
+                                                    {event.contact.position && <p className="text-xs text-slate-500 dark:text-slate-400">{event.contact.position}</p>}
                                                 </div>
                                             )}
                                             <div className="flex flex-wrap gap-3">
@@ -832,6 +812,7 @@ function EventDetailSingle() {
                                         <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Kontak panitia belum tersedia.</p>
                                     )}
                                 </section>
+                                </>
                             )}
 
                             <Comments event={event} />

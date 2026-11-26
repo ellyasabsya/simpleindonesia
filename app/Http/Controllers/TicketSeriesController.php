@@ -36,6 +36,7 @@ class TicketSeriesController extends Controller
     private function guard(Event $parent)
     {
         abort_unless($parent->status === Event::PUBLISHED && ! $parent->parent_id, 404);
+        abort_if($parent->registrationState() !== 'buka', 403, 'Penjualan tiket sudah ditutup atau belum dibuka.');
         $children = $this->openChildren($parent);
         abort_if($children->isEmpty(), 404);
 

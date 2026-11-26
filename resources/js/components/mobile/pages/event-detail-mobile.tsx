@@ -566,7 +566,14 @@ export default function EventDetailMobile({ event, parts, hasHadiah, cta, status
                         <p className="truncate text-[17px] leading-tight font-semibold">{fee}</p>
                     </div>
                     <div className="flex shrink-0 justify-end">
-                        {event.status.key === 'selesai' ? (
+                        {event.status.key !== 'selesai' && event.registration_state && event.registration_state !== 'buka' ? (
+                            <div className={'flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold ' + MUTED + ' ' + FIELD}>
+                                <cta.Icon className="size-[18px]" />
+                                {event.registration_state === 'ditutup'
+                                    ? `${cta.label === 'Daftar' ? 'Pendaftaran' : 'Penjualan tiket'} ditutup`
+                                    : `Dibuka ${event.registration_opens ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${event.registration_opens}T00:00:00`)) : 'segera'}`}
+                            </div>
+                        ) : event.status.key === 'selesai' ? (
                             <div className={'flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold ' + MUTED + ' ' + FIELD}>
                                 <Ticket className="size-[18px]" />
                                 Event Sudah Selesai
