@@ -2,7 +2,7 @@ import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CARD, FIELD, MUTED, PRESS } from '../kit/soft';
 
 type T = {
-    id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number;
+    id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number; valid_date?: string | null;
     custom_sale: boolean; require_holder_details: boolean; max_per_order: number;
     support_enabled: boolean; support_options: string[]; support_ranking: { name: string; votes: number }[];
     sold: number; remaining: number; revenue: number; locked: boolean;
@@ -145,7 +145,7 @@ export default function TiketPanelMobile(p: Props) {
                                 <summary className="cursor-pointer text-[11px] font-medium text-indigo-700 dark:text-indigo-300">Detail tiket</summary>
                                 <dl className="mt-1 space-y-0.5 text-[11px]">
                                     {([
-                                        ['Masa berlaku', t.valid_days + ' hari sejak tanggal event'],
+                                        ['Masa berlaku', t.valid_date ? 'Hanya ' + new Date(t.valid_date + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) : t.valid_days + ' hari sejak tanggal event'],
                                         ['Jadwal jual', t.custom_sale ? t.valid_from + ' s/d ' + t.valid_until : 'Mengikuti penjualan event'],
                                         ['Data pemegang', t.require_holder_details ? 'Nama, email, telepon' : 'Nama saja'],
                                         ...((t as any).audience === 'peserta' ? [] : [['Maks. per pesanan', t.max_per_order + ' tiket'] as [string, string]]),

@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Award, Building2, LayoutDashboard } from 'lucide-react';
+import { Award, Building2, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import Avatar from '@/components/user/avatar';
 import NotificationBell from '@/components/user/notification-bell';
@@ -27,11 +27,15 @@ type Props = {
 export default function UserScreen({ title, name, email, avatar, panel, dark, toggleTheme, children }: Props) {
     const path = usePage().url.split('?')[0];
     const menu = useMenuState();
+    const isAdmin = (usePage().props as { auth?: { user?: { role?: string } } }).auth?.user?.role === 'admin';
 
     const groups: MenuGroup[] = [
         {
             title: 'Akun',
             items: [
+                ...(isAdmin
+                    ? [{ label: 'Kembali ke admin', href: '/kembali-admin', Icon: ShieldCheck, active: false, badge: null, external: true }]
+                    : []),
                 { label: 'Dashboard', href: '/dashboard', Icon: LayoutDashboard, active: path === '/dashboard', badge: null },
                 { label: 'Sertifikat Saya', href: '/sertifikat-saya', Icon: Award, active: false, badge: null, external: true },
                 {

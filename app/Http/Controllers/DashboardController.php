@@ -15,7 +15,11 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isAdmin()) {
+        if ($request->query('source') === 'pwa') {
+            session()->forget('admin_view_user');
+        }
+
+        if ($user->isAdmin() && ! session('admin_view_user')) {
             return redirect('/admin');
         }
 
@@ -33,7 +37,7 @@ class DashboardController extends Controller
 
         $nearest = (clone $events)
             ->where('status', Event::PUBLISHED)
-            ->whereDate('ends_at', '>=', now()->toDateString())
+            ->whereDate('ends_at', '>=', now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString())
             ->orderBy('starts_at')
             ->first();
 

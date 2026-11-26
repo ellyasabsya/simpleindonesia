@@ -142,7 +142,7 @@ class TicketSeriesController extends Controller
                     'price' => (int) $t->price,
                     'remaining' => max(0, $t->quota - TicketSettingsController::sold($t->id)),
                     'valid_from' => $this->id($c->starts_at),
-                    'valid_until' => $this->id($c->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
+                    'valid_until' => $this->id((($vdx = json_decode((string) ($t->valid_dates ?? ''), true)) && count($vdx) === 1) ? \Carbon\Carbon::parse($vdx[0]) : $c->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
                     'require_holder_details' => (bool) $t->require_holder_details,
                     'support_enabled' => (bool) $t->support_enabled,
                     'max_per_order' => $this->maxPerOrder($t),
@@ -263,6 +263,10 @@ class TicketSeriesController extends Controller
                 if ($dup = \App\Support\RegistrationCode::duplicateTicketHolder((int) $type->event_id, (string) $data['buyer_email'], $data['holders'], $type->audience ?? null)) {
                     $fail('holders', 'Peserta '.$dup.' sudah terdaftar di kegiatan ini. Satu peserta hanya boleh punya satu tiket per kegiatan.');
                 }
+                $vdc = json_decode((string) ($type->valid_dates ?? ''), true) ?: [];
+                if (($type->audience ?? 'peserta') === 'umum' && $vdc && (string) $vdc[0] < now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString()) {
+                    $fail('items', 'Tiket untuk tanggal ini sudah lewat: '.$type->name.' (salah satu tiket sudah lewat).');
+                }
                 $locked[] = $type;
             }
 
@@ -293,6 +297,7 @@ class TicketSeriesController extends Controller
                     'paid_at' => $free ? now() : null,
                     'payment_method' => $free ? 'gratis' : $data['payment_method'],
                     'payment_proof' => $proof,
+                    'visit_date' => (($type->audience ?? 'peserta') === 'umum') ? (json_decode((string) ($type->valid_dates ?? ''), true) ?: [null])[0] : null,
                     'support_choice' => null,
                     'holder_details' => ($req && $type->require_holder_details)
                         ? json_encode(array_map(fn ($e, $p) => ['email' => $e, 'phone' => $p], array_values($data['holder_emails']), array_values($data['holder_phones'])), JSON_UNESCAPED_UNICODE)

@@ -37,6 +37,7 @@ class TicketIssuer
                 'ticket_type_id' => $o->ticket_type_id,
                 'code' => strtoupper(Str::random(24)),
                 'holder_name' => (string) $name,
+                'visit_date' => $o->visit_date ?? null,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -86,7 +87,7 @@ class TicketIssuer
         $title = (string) DB::table('events')->where('id', $o->event_id)->value('title');
         $tickets = DB::table('ticket_holders')->where('ticket_order_id', $o->id)->get(['code', 'holder_name']);
 
-        $body = "Halo {$o->buyer_name},\n\nPembayaran Anda untuk \"{$title}\" sudah kami verifikasi. Tiket Anda siap.\n\n";
+        $body = "Halo {$o->buyer_name},\n\nPembayaran Anda untuk \"{$title}\" sudah kami verifikasi. Tiket Anda siap.\n\n".(($o->visit_date ?? null) ? 'Berlaku pada: '.\Carbon\Carbon::parse($o->visit_date)->locale('id')->translatedFormat('l, j F Y')."\n\n" : '');
         foreach ($tickets as $t) {
             $body .= "{$t->holder_name}: ".url('/tiket/'.$t->code)."\n";
         }

@@ -60,6 +60,11 @@ Route::post('/edit-event/{token}', [\App\Http\Controllers\EventEditLinkControlle
 
 
 Route::middleware('auth')->group(function () {
+    Route::get('/kembali-admin', function () {
+        session()->forget('admin_view_user');
+
+        return redirect('/admin');
+    })->name('admin.kembali');
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     Route::middleware(\App\Http\Middleware\EnsureUserIsAdmin::class)

@@ -8,8 +8,15 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(\Illuminate\Http\Request $request): Response|\Illuminate\Http\RedirectResponse
     {
+        if ($request->query('lihat') === 'pengguna') {
+            session(['admin_view_user' => true]);
+        }
+        if ($request->user()?->isAdmin() && ! session('admin_view_user')) {
+            return redirect('/admin');
+        }
+
         return Inertia::render('welcome', [
             'latestNews' => \App\Models\News::latestForHome(),
             'packages' => $this->cards(),
@@ -102,7 +109,7 @@ class HomeController extends Controller
             return collect();
         }
 
-        $today = now()->startOfDay();
+        $today = now(config('app.agenda_timezone', 'Asia/Jakarta'))->startOfDay()->shiftTimezone(config('app.timezone'));
 
         return \App\Models\Event::where('status', \App\Models\Event::PUBLISHED)
             ->whereIn('id', $settings->keys())
@@ -162,7 +169,7 @@ class HomeController extends Controller
     /** Data satu kartu event (dipakai beranda, carousel, dan halaman Semua Event). */
     public function card(\App\Models\Event $e): array
     {
-        $today = now()->startOfDay();
+        $today = now(config('app.agenda_timezone', 'Asia/Jakarta'))->startOfDay()->shiftTimezone(config('app.timezone'));
         $labelsConst = '\App\Http\Controllers\Panel\EventController::CATEGORIES';
         $labels = defined($labelsConst) ? constant($labelsConst) : [];
 

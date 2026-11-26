@@ -7,7 +7,7 @@ import TiketPanelMobile from '@/components/mobile/pages/tiket-panel-mobile';
 import { usePhone } from '@/components/mobile/use-phone';
 
 type T = {
-    id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number;
+    id: number; name: string; price: number; quota: number; valid_from: string; valid_until: string; valid_days: number; valid_date?: string | null;
     custom_sale: boolean; require_holder_details: boolean; max_per_order: number;
     support_enabled: boolean; support_options: string[]; support_ranking: { name: string; votes: number }[];
     sold: number; remaining: number; revenue: number; locked: boolean;
@@ -128,8 +128,10 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
     const evEnd: string = pg.event?.ends_at ?? '';
     const today = new Date().toISOString().slice(0, 10);
     const span = evStart && evEnd ? Math.max(1, Math.round((Date.parse(evEnd) - Date.parse(evStart)) / 86400000) + 1) : 1;
+    const dayList = (() => { const a = evStart.slice(0, 10); const b = evEnd.slice(0, 10); const out: string[] = []; if (!a || !b || b < a) return out; for (let x = new Date(a + 'T00:00:00Z'); out.length < 31 && x.toISOString().slice(0, 10) <= b; x = new Date(x.getTime() + 86400000)) out.push(x.toISOString().slice(0, 10)); return out; })();
+    const dayName = (v: string) => new Date(v + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
-    const blank = { audience: 'peserta' as 'peserta' | 'umum', name: '', price: '', quota: '', valid_days: String(span), custom_sale: false, valid_from: today, valid_until: evEnd || today, require_holder_details: true, max_per_order: '1', support_enabled: false, support_options: '' };
+    const blank = { audience: 'peserta' as 'peserta' | 'umum', name: '', price: '', quota: '', valid_days: String(span), valid_date: '', custom_sale: false, valid_from: today, valid_until: evEnd || today, require_holder_details: true, max_per_order: '1', support_enabled: false, support_options: '' };
     const [editing, setEditing] = useState<T | 'new' | null>(null);
     const form = useForm<typeof blank>(blank);
     const phone = usePhone();
@@ -154,14 +156,14 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
     const openNew = () => { form.clearErrors(); form.setData(blank); setTargetSub(filter || subs[0]?.id || eventId); setEditing('new'); };
     const openEdit = (t: T) => {
         form.clearErrors();
-        form.setData({ audience: t.audience ?? 'peserta', name: t.name, price: String(t.price), quota: String(t.quota), valid_days: String(t.valid_days), custom_sale: t.custom_sale, valid_from: t.valid_from, valid_until: t.valid_until, require_holder_details: t.require_holder_details, max_per_order: String(t.max_per_order), support_enabled: t.support_enabled, support_options: t.support_options.join('\n') });
+        form.setData({ audience: t.audience ?? 'peserta', name: t.name, price: String(t.price), quota: String(t.quota), valid_days: String(t.valid_days), valid_date: t.valid_date ?? '', custom_sale: t.custom_sale, valid_from: t.valid_from, valid_until: t.valid_until, require_holder_details: t.require_holder_details, max_per_order: String(t.max_per_order), support_enabled: t.support_enabled, support_options: t.support_options.join('\n') });
         setTargetSub(t.sub_id ?? eventId); setEditing(t);
     };
     const close = () => { setEditing(null); form.clearErrors(); };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        form.transform((x) => ({ ...x, valid_from: x.custom_sale ? x.valid_from : null, valid_until: x.custom_sale ? x.valid_until : null, support_options: x.support_enabled ? x.support_options.split('\n').map((o) => o.trim()).filter(Boolean) : [] }) as any);
+        form.transform((x) => ({ ...x, valid_date: (audienceChoice === false || x.audience === 'umum') && x.valid_date ? x.valid_date : null, valid_days: !(audienceChoice === false || x.audience === 'umum') && x.valid_date ? String(span) : x.valid_days, valid_from: x.custom_sale ? x.valid_from : null, valid_until: x.custom_sale ? x.valid_until : null, support_options: x.support_enabled ? x.support_options.split('\n').map((o) => o.trim()).filter(Boolean) : [] }) as any);
         const opts = { preserveScroll: true, onSuccess: close };
         if (editing === 'new') form.post(`${base}/jenis`, opts);
         else if (editing) form.put(`${base}/jenis/${editing.id}`, opts);
@@ -268,7 +270,7 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} /></div>
                                     <div className="mt-2 flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>Terpakai {t.sold} dari {t.quota}</span><span>Sisa {t.remaining}</span></div>
                                     <dl className="mt-3 space-y-1 text-xs text-slate-500">
-                                        <div className="flex justify-between"><dt>Masa berlaku</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.valid_days} hari sejak tanggal event</dd></div>
+                                        <div className="flex justify-between"><dt>Masa berlaku</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.valid_date ? 'Hanya ' + dayName(t.valid_date) : t.valid_days + ' hari sejak tanggal event'}</dd></div>
                                         <div className="flex justify-between"><dt>Jadwal jual</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.custom_sale ? `${t.valid_from} s/d ${t.valid_until}` : 'Mengikuti penjualan event'}</dd></div>
                                         <div className="flex justify-between"><dt>Data pemegang</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.require_holder_details ? 'Nama, email, telepon' : 'Nama saja'}</dd></div>
                                         {t.audience !== 'peserta' && <div className="flex justify-between"><dt>Maks. per pesanan</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{t.max_per_order} tiket</dd></div>}
@@ -358,10 +360,20 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                                     <div className="rounded-2xl border border-slate-200 p-3 sm:p-4 dark:border-white/10">
                                         <div className="text-sm font-semibold md:text-base md:font-extrabold">Masa berlaku tiket</div>
                                         <div className="relative mt-2">
-                                            <input type="number" inputMode="numeric" min={1} max={365} value={d.valid_days} onChange={(e) => form.setData('valid_days', e.target.value)} className={`${inp} !mt-0 pr-14 max-md:!h-10 max-md:!text-base`} />
+                                            <input type="number" inputMode="numeric" min={1} max={365} disabled={!!d.valid_date} value={d.valid_days} onChange={(e) => form.setData('valid_days', e.target.value)} className={`${inp} !mt-0 pr-14 max-md:!h-10 max-md:!text-base`} />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">hari</span>
                                         </div>
-                                        <p className="mt-1 text-xs text-slate-500">Dihitung sejak tanggal event.</p>{err('valid_days')}
+                                        <p className="mt-1 text-xs text-slate-500">{d.valid_date ? 'Otomatis 1 hari, sesuai hari yang dipilih.' : 'Dihitung sejak tanggal event.'}</p>{err('valid_days')}
+                                        {!parentMode && dayList.length > 1 && (audienceChoice === false || d.audience === 'umum') && (
+                                            <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/10">
+                                                <span className={lbl}>Berlaku pada hari</span>
+                                                <select value={d.valid_date} disabled={locked} onChange={(e) => { const v = e.target.value; form.setData((p: any) => ({ ...p, valid_date: v, valid_days: v ? '1' : String(span), ...(v && p.custom_sale && p.valid_until > v ? { valid_until: v } : {}) })); }} className={`${inp} max-md:!h-10 max-md:!text-base`}>
+                                                    <option value="">Semua hari kegiatan</option>
+                                                    {dayList.map((x, n) => <option key={x} value={x}>{`Hari ${n + 1}: ${dayName(x)}`}</option>)}
+                                                </select>
+                                                <p className="mt-1 text-xs text-slate-500">{d.valid_date ? 'Tiket hanya sah di hari ini. Kuota dihitung per jenis tiket.' : 'Event beberapa hari? Buat satu jenis tiket per hari, misalnya "Reguler - Hari 1".'}</p>{err('valid_date')}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="rounded-2xl border border-slate-200 p-3 sm:p-4 dark:border-white/10">
                                         <div className="flex items-start justify-between gap-3">

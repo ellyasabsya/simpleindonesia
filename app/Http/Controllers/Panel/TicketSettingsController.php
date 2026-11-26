@@ -31,12 +31,14 @@ class TicketSettingsController extends Controller
     private function validated(Request $request, Event $event, ?TicketType $type = null): array
     {
         $end = $event->ends_at->toDateString();
+        $start = $event->starts_at->toDateString();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'audience' => ['sometimes', 'in:peserta,umum'],
             'price' => ['required', 'integer', 'min:0', 'max:100000000'],
             'quota' => ['required', 'integer', 'min:1', 'max:1000000'],
             'valid_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'valid_date' => ['nullable', 'date_format:Y-m-d', "after_or_equal:{$start}", "before_or_equal:{$end}"],
             'custom_sale' => ['required', 'boolean'],
             'valid_from' => ['required_if:custom_sale,true', 'nullable', 'date'],
             'valid_until' => ['required_if:custom_sale,true', 'nullable', 'date', 'after_or_equal:valid_from', "before_or_equal:{$end}"],
@@ -54,6 +56,9 @@ class TicketSettingsController extends Controller
             'quota.min' => 'Kuota minimal 1.',
             'valid_days.required' => 'Isi masa berlaku tiket.',
             'valid_days.min' => 'Masa berlaku minimal 1 hari.',
+            'valid_date.date_format' => 'Format hari berlaku tidak valid.',
+            'valid_date.after_or_equal' => 'Hari berlaku tidak boleh sebelum event dimulai.',
+            'valid_date.before_or_equal' => 'Hari berlaku tidak boleh setelah event berakhir.',
             'valid_from.required_if' => 'Isi tanggal mulai jual.',
             'valid_until.required_if' => 'Isi tanggal akhir jual.',
             'valid_until.after_or_equal' => 'Tanggal akhir jual tidak boleh sebelum tanggal mulai.',
@@ -65,6 +70,17 @@ class TicketSettingsController extends Controller
         $data['audience'] = $event->registration_method !== 'ticket'
             ? 'umum'
             : ($data['audience'] ?? ($type->audience ?? 'peserta'));
+
+        // Hari berlaku (satu hari kegiatan) hanya untuk tiket pengunjung. Peserta selalu selama kegiatan.
+        $vd = ($data['audience'] === 'umum' && ! empty($data['valid_date'])) ? substr((string) $data['valid_date'], 0, 10) : null;
+        unset($data['valid_date']);
+        if ($vd) {
+            $data['valid_days'] = 1; // satu aturan saja: tiket sehari
+            if ($data['custom_sale'] && substr((string) $data['valid_until'], 0, 10) > $vd) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['valid_until' => 'Akhir penjualan tidak boleh melewati hari berlaku tiket.']);
+            }
+        }
+        $data['valid_dates'] = $vd ? json_encode([$vd]) : null;
 
         // Tiket pendaftaran peserta dikunci sistem: 1 tiket per pesanan.
         $data['max_per_order'] = ($event->registration_method === 'ticket' && $data['audience'] === 'peserta')
@@ -129,6 +145,11 @@ class TicketSettingsController extends Controller
         }
         if ($hasOrders && $event->registration_method === 'ticket' && $data['audience'] !== ($type->audience ?? 'peserta')) {
             return back()->withErrors(['audience' => 'Tidak bisa diubah karena sudah ada pesanan untuk jenis ini.']);
+        }
+        $oldVd = is_array($type->valid_dates ?? null) ? $type->valid_dates : (json_decode((string) ($type->valid_dates ?? ''), true) ?: []);
+        $newVd = json_decode((string) ($data['valid_dates'] ?? ''), true) ?: [];
+        if ($hasOrders && $oldVd !== $newVd) {
+            return back()->withErrors(['valid_date' => 'Hari berlaku tidak bisa diubah karena sudah ada pesanan untuk jenis ini.']);
         }
         $sold = self::sold($type->id);
         if ((int) $data['quota'] < $sold) {

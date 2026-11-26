@@ -78,11 +78,12 @@ class TicketPurchaseController extends Controller
             ->get()
             ->map(fn ($t) => [
                 'id' => $t->id,
-                'name' => $t->name,
+                'name' => $t->name.((($vdn = json_decode((string) ($t->valid_dates ?? ''), true)) && count($vdn) === 1) ? ' · '.$this->id(\Carbon\Carbon::parse($vdn[0])) : ''),
                 'price' => (int) $t->price,
                 'remaining' => max(0, $t->quota - $this->sold($t->id)),
                 'valid_from' => $this->id($event->starts_at),
-                'valid_until' => $this->id($event->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
+                'valid_until' => $this->id((($vdx = json_decode((string) ($t->valid_dates ?? ''), true)) && count($vdx) === 1) ? \Carbon\Carbon::parse($vdx[0]) : $event->starts_at->copy()->addDays(max(1, (int) $t->valid_days) - 1)),
+                'visit_dates' => collect(json_decode((string) ($t->valid_dates ?? ''), true) ?: [])->map(fn ($d) => ['value' => (string) $d, 'label' => $this->id(\Carbon\Carbon::parse($d))])->values()->all(),
                 'require_holder_details' => (bool) $t->require_holder_details,
                 'support_enabled' => (bool) $t->support_enabled,
                 'support_options' => json_decode((string) $t->support_options, true) ?: [],
@@ -130,6 +131,7 @@ class TicketPurchaseController extends Controller
             'holder_phones' => [$req ? 'required' : 'nullable', 'array', 'max:10'],
             'holder_phones.*' => [$req ? 'required' : 'nullable', 'string', 'max:30'],
             'quantity' => ['required', 'integer', 'min:1', 'max:10'],
+            'visit_date' => ['nullable', 'date_format:Y-m-d'],
             'buyer_name' => ['required', 'string', 'max:100'],
             'buyer_email' => ['required', 'email', 'max:120'],
             'buyer_phone' => ['required', 'string', 'max:30'],
@@ -158,6 +160,15 @@ class TicketPurchaseController extends Controller
                 $fail('ticket_type_id', 'Jenis tiket tidak tersedia.');
             }
             $max = $this->maxPerOrder($event, $type);
+            // Tiket pengunjung dengan hari terpilih: pembeli wajib memilih tanggal kunjungan yang diizinkan.
+            $visit = null;
+            $vd = json_decode((string) ($type->valid_dates ?? ''), true) ?: [];
+            if (($type->audience ?? 'peserta') === 'umum' && $vd) {
+                $visit = (string) $vd[0];
+                if ($visit < now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString()) {
+                    $fail('visit_date', 'Tiket untuk tanggal ini sudah lewat.');
+                }
+            }
             if ($data['quantity'] > $max) {
                 $fail('quantity', $max === 1 ? 'Pendaftaran peserta hanya untuk satu orang per pesanan.' : "Maksimal {$max} tiket per pesanan.");
             }
@@ -203,6 +214,7 @@ class TicketPurchaseController extends Controller
                 'payment_proof' => $proof,
                 'support_choice' => $sup ? $data['support_choice'] : null,
                 'holder_details' => $req ? json_encode(array_map(fn ($e, $p) => ['email' => $e, 'phone' => $p], array_values($data['holder_emails']), array_values($data['holder_phones'])), JSON_UNESCAPED_UNICODE) : null,
+                'visit_date' => $visit,
                 'expires_at' => $online ? now()->addMinutes(self::HOLD_MINUTES) : null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);

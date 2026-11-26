@@ -153,7 +153,7 @@ class EventController extends Controller
             'participant_categories.*.prizes.*.rank' => 'Juara', 'participant_categories.*.prizes.*.prize' => 'Hadiah',
             'registration_fee' => 'Biaya pendaftaran', 'ticket_types' => 'Jenis tiket', 'ticket_types.*.name' => 'Nama tiket',
             'ticket_types.*.price' => 'Harga tiket', 'ticket_types.*.quota' => 'Kuota tiket',
-            'ticket_types.*.valid_from' => 'Tanggal mulai berlaku', 'ticket_types.*.valid_until' => 'Tanggal akhir berlaku',
+            'ticket_types.*.valid_from' => 'Mulai penjualan', 'ticket_types.*.valid_until' => 'Akhir penjualan',
             'ticket_types.*.max_per_order' => 'Maksimal tiket per pesanan', 'competition_type' => 'Jenis perlombaan',
             'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua',
             'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening',
@@ -441,7 +441,7 @@ class EventController extends Controller
                 'quota' => (int) $t['quota'],
                 'valid_from' => $t['valid_from'],
                 'valid_until' => $t['valid_until'],
-                'max_per_order' => 1, // tiket pendaftaran peserta: 1 per pesanan
+                'max_per_order' => (($ex = $existing->get((int) ($t['id'] ?? 0))) && ($ex->audience ?? 'peserta') === 'umum') ? max(1, min(10, (int) ($t['max_per_order'] ?? $ex->max_per_order ?? 5))) : 1,
                 'updated_at' => $now,
             ];
 

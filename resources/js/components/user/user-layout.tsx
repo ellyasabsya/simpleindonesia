@@ -14,7 +14,7 @@ import UserScreen from '@/components/mobile/user/user-screen';
 export default function UserLayout({ title, hasPanel, children }: { title: string; hasPanel?: boolean; children: ReactNode }) {
     const { dark, toggle } = useTheme();
     const [open, setOpen] = useState(false);
-    const page = usePage<{ auth?: { user?: { name?: string; email?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null; userHasPanel?: boolean }>().props;
+    const page = usePage<{ auth?: { user?: { name?: string; email?: string; role?: string; avatar?: string | null } }; profile?: { avatar?: string | null } | null; userHasPanel?: boolean }>().props;
     const user = page.auth?.user;
     const panel = Boolean(hasPanel) || Boolean(page.userHasPanel);
     useIdleLogout(30, !!user);
@@ -67,7 +67,12 @@ export default function UserLayout({ title, hasPanel, children }: { title: strin
                                                 <p className="truncate text-xs text-slate-500">{user?.email}</p>
                                             </div>
                                         </div>
-                                        <Link href="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
+                                        {user?.role === 'admin' && (
+                                        <a href="/kembali-admin" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
+                                            Kembali ke admin
+                                        </a>
+                                    )}
+                                    <Link href="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">
                                             <LayoutDashboard className="h-4 w-4" /> Dashboard
                                         </Link>
                                         <a href="/sertifikat-saya" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/10">

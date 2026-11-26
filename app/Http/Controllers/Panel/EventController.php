@@ -151,7 +151,7 @@ class EventController extends Controller
             'participant_categories.*.requirements' => 'Syarat tambahan',
             'participant_categories.*.prizes.*.rank' => 'Juara',
             'participant_categories.*.prizes.*.prize' => 'Hadiah',
-            'registration_method' => 'Metode pendaftaran', 'registration_fee' => 'Biaya pendaftaran', 'ticket_types' => 'Jenis tiket', 'ticket_types.*.name' => 'Nama tiket', 'ticket_types.*.price' => 'Harga tiket', 'ticket_types.*.quota' => 'Kuota tiket', 'ticket_types.*.valid_from' => 'Tanggal mulai berlaku', 'ticket_types.*.valid_until' => 'Tanggal akhir berlaku', 'ticket_types.*.max_per_order' => 'Maksimal tiket per pesanan', 'competition_type' => 'Jenis perlombaan', 'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua', 'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening', 'contact_name' => 'Nama penanggung jawab',
+            'registration_method' => 'Metode pendaftaran', 'registration_fee' => 'Biaya pendaftaran', 'ticket_types' => 'Jenis tiket', 'ticket_types.*.name' => 'Nama tiket', 'ticket_types.*.price' => 'Harga tiket', 'ticket_types.*.quota' => 'Kuota tiket', 'ticket_types.*.valid_from' => 'Mulai penjualan', 'ticket_types.*.valid_until' => 'Akhir penjualan', 'ticket_types.*.valid_days' => 'Masa berlaku tiket', 'ticket_types.*.max_per_order' => 'Maksimal tiket per pesanan', 'competition_type' => 'Jenis perlombaan', 'team_size' => 'Jumlah peserta per tim', 'team_per_row' => 'Peserta per baris', 'team_leaders' => 'Kotak ketua', 'bank_name' => 'Nama bank', 'bank_account_number' => 'Nomor rekening', 'bank_account_name' => 'Nama pemilik rekening', 'contact_name' => 'Nama penanggung jawab',
             'contact_phone' => 'Nomor kontak', 'contact_email' => 'Email', 'contact_position' => 'Jabatan',
         ];
         $attributes = [];
@@ -388,11 +388,17 @@ class EventController extends Controller
                     'quota' => (int) $t['quota'],
                     'valid_from' => $t['valid_from'],
                     'valid_until' => $t['valid_until'],
-                    'max_per_order' => 1, // tiket pendaftaran peserta: 1 per pesanan
+                    'audience' => (($t['audience'] ?? 'peserta') === 'umum') ? 'umum' : 'peserta',
+                    'valid_dates' => (($t['audience'] ?? 'peserta') === 'umum' && ! empty($t['valid_date'])
+                        && substr((string) $t['valid_date'], 0, 10) >= substr((string) $d['starts_at'], 0, 10)
+                        && substr((string) $t['valid_date'], 0, 10) <= substr((string) $d['ends_at'], 0, 10))
+                        ? json_encode([substr((string) $t['valid_date'], 0, 10)])
+                        : null,
+                    'max_per_order' => (($t['audience'] ?? 'peserta') === 'umum') ? max(1, min(10, (int) ($t['max_per_order'] ?? 5))) : 1,
                     'participant_category_id' => ! empty($t['category'])
                         ? (\Illuminate\Support\Facades\DB::table('event_participant_categories')->where('event_id', $eventId)->where('name', trim((string) $t['category']))->value('id') ?: null)
                         : null,
-                    'valid_days' => max(1, (int) abs(\Carbon\Carbon::parse($d['starts_at'])->diffInDays(\Carbon\Carbon::parse($d['ends_at']))) + 1),
+                    'valid_days' => (($t['audience'] ?? 'peserta') === 'umum' && ! empty($t['valid_date']) && substr((string) $t['valid_date'], 0, 10) >= substr((string) $d['starts_at'], 0, 10) && substr((string) $t['valid_date'], 0, 10) <= substr((string) $d['ends_at'], 0, 10)) ? 1 : (((int) ($t['valid_days'] ?? 0) >= 1) ? min(365, (int) $t['valid_days']) : max(1, (int) abs(\Carbon\Carbon::parse($d['starts_at'])->diffInDays(\Carbon\Carbon::parse($d['ends_at']))) + 1)),
                     'created_at' => $now, 'updated_at' => $now,
                 ], array_values($d['ticket_types'] ?? []))
             );
@@ -498,6 +504,9 @@ class EventController extends Controller
             "{$p}ticket_types.*.valid_until" => ["required_if:{$p}registration_method,ticket", 'nullable', 'date', "after_or_equal:{$p}ticket_types.*.valid_from"],
             "{$p}ticket_types.*.max_per_order" => ['nullable', 'integer', 'min:1', 'max:10'],
             "{$p}ticket_types.*.category" => ['nullable', 'string', 'max:60'],
+            "{$p}ticket_types.*.audience" => ['nullable', 'in:peserta,umum'],
+            "{$p}ticket_types.*.valid_date" => ['nullable', 'date_format:Y-m-d'],
+            "{$p}ticket_types.*.valid_days" => ['nullable', 'integer', 'min:1', 'max:365'],
             "{$p}competition_type" => ['nullable', Rule::in(['individual', 'team'])],
             "{$p}team_size" => ['nullable', 'integer', 'min:2', 'max:100'],
             "{$p}team_slots" => ['nullable', 'array', 'max:100'],

@@ -38,7 +38,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     return (
         <div className="flex h-full flex-col">
             <Link
-                href="/"
+                href="/admin"
                 onClick={onNavigate}
                 className="flex items-center gap-3 px-6 pt-6 pb-5"
             >
@@ -105,7 +105,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
             <div className="border-t border-slate-200/70 p-4 dark:border-white/10">
                 <Link
-                    href="/"
+                    href="/?lihat=pengguna"
                     onClick={onNavigate}
                     className="flex items-center justify-center gap-2 rounded-xl bg-white/80 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-indigo-700 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/20"
                 >

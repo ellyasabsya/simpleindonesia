@@ -39,7 +39,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
     const phone = usePhone();
 
     const mark = useCallback((code: string, at: string) => {
-        setRows((l) => l.map((r) => (r.code === code ? { ...r, at } : r)));
+        setRows((l) => l.map((r) => (r.code === code ? ({ ...r, at, today: true } as typeof r) : r)));
     }, []);
     const onIn = useCallback((r: Result) => {
         const codes = (r as Result & { codes?: string[] }).codes;
@@ -87,6 +87,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
     const scoped = useMemo(() => (kind ? inSub.filter((r) => (r.kind ?? 'peserta') === kind) : inSub), [inSub, kind]);
     const total = scoped.length;
     const hadir = useMemo(() => scoped.filter((r) => r.at).length, [scoped]);
+    const hadirHariIni = useMemo(() => scoped.filter((r) => (r as { today?: boolean }).today).length, [scoped]);
     const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
     const types = useMemo(() => Array.from(new Set(rows.map((r) => r.type).filter(Boolean) as string[])), [rows]);
 
@@ -135,7 +136,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
             {phone && (
                 <CheckinMobile
                     scanner={<TicketScanner eventId={eventId} inline onCheckedIn={onIn} />}
-                    hadir={hadir} total={total} pct={pct}
+                    hadir={hadir} hadirHariIni={hadirHariIni} total={total} pct={pct}
                     tab={tab} setTab={(t) => { setTab(t); setPage(1); }}
                     q={q} setQ={(v) => { setQ(v); setPage(1); }}
                     type={type} setType={(v) => { setType(v); setPage(1); }} types={types}
@@ -150,6 +151,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
 
                 <div className="grid gap-4 sm:grid-cols-3">
                     {stat('Sudah hadir', hadir, `(${pct}%)`)}
+                    {stat('Hadir hari ini', hadirHariIni)}
                     {stat('Belum hadir', total - hadir)}
                     {stat('Total terdaftar', total)}
                 </div>

@@ -8,6 +8,7 @@ type Tab = 'semua' | 'hadir' | 'belum';
 type Props = {
     scanner: ReactNode;
     hadir: number;
+    hadirHariIni?: number;
     total: number;
     pct: number;
     tab: Tab;
@@ -58,7 +59,7 @@ export default function CheckinMobile(p: Props) {
                         <p className="text-[15px] font-semibold">
                             {p.hadir}<span className={'text-xs font-normal ' + MUTED}> / {p.total} hadir ({p.pct}%)</span>
                         </p>
-                        <p className={'text-[11px] ' + MUTED}>Belum {p.total - p.hadir}</p>
+                        <p className={'text-[11px] ' + MUTED}>Belum {p.total - p.hadir}{p.hadirHariIni !== undefined ? ' · Hari ini ' + p.hadirHariIni : ''}</p>
                     </div>
                     <span className="mt-1 block h-1 overflow-hidden rounded-full bg-slate-900/[0.07] dark:bg-white/10">
                         <span className="block h-full rounded-full bg-indigo-600 dark:bg-indigo-400" style={{ width: p.pct + '%' }} />

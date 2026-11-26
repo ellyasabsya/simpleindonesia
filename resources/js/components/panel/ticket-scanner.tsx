@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, Keyboard, ScanLine, UserCheck, X, XCircle 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type Result = {
-    status: 'ok' | 'duplikat' | 'tidak_ditemukan' | 'belum_lunas' | 'belum_disetujui' | 'bukan_peserta' | 'konfirmasi' | 'error';
+    status: 'ok' | 'duplikat' | 'tidak_ditemukan' | 'belum_lunas' | 'salah_tanggal' | 'belum_disetujui' | 'bukan_peserta' | 'konfirmasi' | 'error';
     kind?: 'peserta' | 'pengunjung';
     also_participant?: boolean;
     code?: string; reg_id?: string | null; name?: string; type?: string | null; buyer?: string | null; school?: string | null; at?: string; order_status?: string | null;
@@ -14,6 +14,7 @@ const VIEW: Record<Result['status'], { title: string; box: string; Icon: typeof 
     duplikat: { title: 'Sudah pernah check-in', box: 'border-amber-400 bg-amber-50 text-amber-900', Icon: AlertTriangle },
     tidak_ditemukan: { title: 'Kode, ID, atau akun tidak ditemukan', box: 'border-rose-400 bg-rose-50 text-rose-900', Icon: XCircle },
     belum_lunas: { title: 'Pesanan belum lunas', box: 'border-rose-400 bg-rose-50 text-rose-900', Icon: XCircle },
+    salah_tanggal: { title: 'Tiket tidak berlaku hari ini', box: 'border-amber-400 bg-amber-50 text-amber-900', Icon: XCircle },
     belum_disetujui: { title: 'Pendaftaran belum disetujui', box: 'border-rose-400 bg-rose-50 text-rose-900', Icon: XCircle },
     bukan_peserta: { title: 'Akun ini tidak terdaftar di event ini', box: 'border-rose-400 bg-rose-50 text-rose-900', Icon: XCircle },
     konfirmasi: { title: 'Cocokkan data, lalu tandai hadir', box: 'border-sky-400 bg-sky-50 text-sky-900', Icon: UserCheck },
@@ -53,6 +54,7 @@ function ResultBox({ r, count, busy, onConfirm }: { r: Result; count: number; bu
                     {r.reg_id && <div className="text-xs"><span className={lbl}>{r.kind === 'pengunjung' ? 'ID pengunjung: ' : 'ID peserta: '}</span><span className="font-mono font-bold">{r.reg_id}</span></div>}
                 </dl>
             )}
+            {r.status === 'salah_tanggal' && (r as { visit_date?: string }).visit_date && <div className="mt-1 text-sm font-semibold">{(() => { const x = r as { visit_date?: string; valid_to?: string }; const f = (v?: string) => new Date(v + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); return x.valid_to && x.valid_to !== x.visit_date ? 'Tiket ini berlaku ' + f(x.visit_date) + ' sampai ' + f(x.valid_to) + '.' : 'Tiket ini hanya berlaku untuk tanggal ' + f(x.visit_date) + '.'; })()}</div>}
             {r.status === 'tidak_ditemukan' && r.code && <div className="mt-1 font-mono text-xs opacity-70">{r.code}</div>}
             {r.status === 'konfirmasi' && (
                 <button type="button" disabled={busy} onClick={onConfirm} className="mt-3 w-full rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-sky-800 disabled:opacity-60">

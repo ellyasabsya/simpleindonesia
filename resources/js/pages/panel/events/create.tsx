@@ -29,7 +29,7 @@ type Pkg = {
 type Detail = {
     title: string; category: string; location: string; starts_at: string; ends_at: string;
     description: string; poster: File | null; juknis: File | null;
-    participant_quota: string; participant_categories: { name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: { rank: string; prize: string }[] }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string; ticket_types: TicketType[];
+    participant_quota: string; participant_categories: { name: string; quota: string; competition_name: string; min_age: string; max_age: string; requirements: string; prizes: { rank: string; prize: string }[] }[]; competition_type: string; team_size: string; team_slots: string[]; team_per_row: string; team_leaders: string; registration_method: string; registration_fee: string; bank_name: string; bank_account_number: string; bank_account_name: string; ticket_types: TicketType[]; ticket_audience: string;
     contact_name: string; contact_phone: string; contact_email: string; contact_position: string;
 };
 type Props = { institution: { name: string }; packages: Pkg[]; categories: Record<string, string>; selected_package_id: number | null };
@@ -45,7 +45,7 @@ const help = 'mt-1 text-[11px] leading-snug text-slate-500 md:mt-1.5 md:text-xs 
 const fmt = (d: string) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
 const rp = (n: number) => 'Rp' + n.toLocaleString('id-ID');
 
-type TicketType = { name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string };
+type TicketType = { name: string; price: string; quota: string; valid_from: string; valid_until: string; max_per_order: string; audience?: string; valid_days?: string; valid_date?: string };
 const newTicket = (): TicketType => ({ name: 'Reguler', price: '', quota: '', valid_from: '', valid_until: '', max_per_order: '1' });
 
 const todayStr = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; };
@@ -53,7 +53,7 @@ const saleStart = (end: string) => (end && todayStr() > end ? end : todayStr());
 
 const blank = (): Detail => ({
     title: '', category: '', location: '', starts_at: '', ends_at: '', description: '', poster: null, juknis: null,
-    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '', ticket_types: [],
+    participant_quota: '', participant_categories: [], competition_type: '', team_size: '', team_slots: [], team_per_row: '3', team_leaders: '1', registration_method: '', registration_fee: '', bank_name: '', bank_account_number: '', bank_account_name: '', ticket_types: [], ticket_audience: '',
     contact_name: '', contact_phone: '', contact_email: '', contact_position: '',
 });
 const blanks = (n: number) => Array.from({ length: n }, blank);
@@ -123,16 +123,20 @@ const vPeserta = (d: Detail, pre: string): Errs => {
     }
     if (!d.registration_method) e[pre + 'registration_method'] = 'Pilih metode pendaftaran.';
     if (d.registration_method === 'ticket') {
+        if (!d.ticket_audience && !((d as any).subs?.length > 0)) e[pre + 'ticket_audience'] = 'Pilih jenis pendaftaran tiket: peserta atau pengunjung.';
         if (d.ticket_types.length === 0) e[pre + 'ticket_types'] = 'Aktifkan pendaftaran tiket: tambahkan minimal satu jenis tiket.';
         d.ticket_types.forEach((t, i) => {
             const k = pre + `ticket_types.${i}.`;
             if (!t.name.trim()) e[k + 'name'] = 'Nama tiket wajib diisi.';
+            if (t.audience === 'umum' && /^pendaftaran/i.test(t.name.trim())) e[k + 'name'] = 'Untuk tiket pengunjung, nama tidak boleh diawali "Pendaftaran".';
+            if (t.audience === 'umum' && (Number(t.max_per_order) < 1 || Number(t.max_per_order) > 10)) e[k + 'max_per_order'] = 'Isi 1 sampai 10.';
+            if (t.valid_days !== undefined && t.valid_days !== '' && (Number(t.valid_days) < 1 || Number(t.valid_days) > 365)) e[k + 'valid_days'] = 'Masa berlaku 1 sampai 365 hari.';
             if (t.price === '') e[k + 'price'] = 'Harga tiket wajib diisi (isi 0 jika gratis).';
-            if (t.valid_from && t.valid_until && t.valid_from > t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku tidak boleh lebih awal dari tanggal mulai.';
-            if (t.valid_until && d.ends_at && t.valid_until > d.ends_at.slice(0, 10)) e[k + 'valid_until'] = 'Tanggal akhir berlaku tidak boleh melewati tanggal selesai event.';
+            if (t.valid_from && t.valid_until && t.valid_from > t.valid_until) e[k + 'valid_until'] = 'Akhir penjualan tidak boleh lebih awal dari mulai penjualan.';
+            if (t.valid_until && d.ends_at && t.valid_until > d.ends_at.slice(0, 10)) e[k + 'valid_until'] = 'Akhir penjualan tidak boleh melewati tanggal selesai event.';
             if (!t.quota || Number(t.quota) < 1) e[k + 'quota'] = 'Kuota tiket minimal 1.';
-            if (!t.valid_from) e[k + 'valid_from'] = 'Tanggal mulai berlaku wajib diisi.';
-            if (!t.valid_until) e[k + 'valid_until'] = 'Tanggal akhir berlaku wajib diisi.';
+            if (!t.valid_from) e[k + 'valid_from'] = 'Mulai penjualan wajib diisi.';
+            if (!t.valid_until) e[k + 'valid_until'] = 'Akhir penjualan wajib diisi.';
             else if (t.valid_from && t.valid_until < t.valid_from) e[k + 'valid_until'] = 'Tanggal akhir tidak boleh sebelum tanggal mulai.';
             if (!t.max_per_order || Number(t.max_per_order) < 1 || Number(t.max_per_order) > 10) e[k + 'max_per_order'] = 'Maksimal per pesanan 1 sampai 10.';
         });
@@ -145,7 +149,7 @@ const vPeserta = (d: Detail, pre: string): Errs => {
     }
     return e;
 };
-const regKey = /(registration_method|registration_fee|ticket_types|bank_)/;
+const regKey = /(registration_method|registration_fee|ticket_types|ticket_audience|bank_)/;
 const vDaftar = (d: Detail & { subs: Detail[] }): Errs => {
     const e: Errs = {};
     if (!d.registration_method) { e.registration_method = 'Pilih cara pendaftaran peserta untuk rangkaian ini.'; return e; }
@@ -651,10 +655,33 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                     <div>
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white">Aktifkan Pendaftaran Tiket <span className="text-red-500">*</span></h4>
                         <p className="text-xs text-slate-600 dark:text-slate-300">Wajib diisi. Tanpa jenis tiket, pembeli tidak bisa mendaftar.</p>
+                        {!fixedMethod && !((d as any).subs?.length > 0) && (
+                            <div className="mt-3 space-y-2">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white">Jenis pendaftaran tiket <span className="text-red-500">*</span></p>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {[['peserta', 'Peserta', '1 akun = 1 tiket', 'Untuk lomba, seminar, workshop, pelatihan. Setiap orang mendaftar sendiri dengan akunnya, satu akun hanya bisa punya satu tiket di event ini. Kuota dihitung per orang.'], ['umum', 'Pengunjung / Penonton', '1 akun bisa beli banyak tiket', 'Untuk festival, konser, pameran, hiburan. Pembeli bisa membeli beberapa tiket sekaligus, misalnya untuk keluarga atau teman. Kuota dihitung per tiket.']].map(([v, t, s2, sub]) => (
+                                        <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${d.ticket_audience === v ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/20' : 'border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5'}`}>
+                                            <input type="radio" className="mt-1 accent-indigo-700" checked={d.ticket_audience === v} onChange={() => {
+                                                if (d.ticket_audience === v) return;
+                                                set({
+                                                    ticket_audience: v,
+                                                    ticket_types: v === 'umum'
+                                                        ? [{ ...newTicket(), name: 'Reguler', max_per_order: '5', audience: 'umum', valid_from: saleStart((d as any).ends_at), valid_until: (d as any).ends_at ?? '' }]
+                                                        : [],
+                                                });
+                                            }} />
+                                            <span><b className="block text-sm">{t}</b><span className="block text-[11px] font-bold text-indigo-700 dark:text-indigo-300">{s2}</span><span className="text-xs text-slate-500 dark:text-slate-400">{sub}</span></span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <Err m={err(pre + 'ticket_audience')} />
+                            </div>
+                        )}
                     </div>
-                    {d.ticket_types.map((t, i) => {
+                    {(d.ticket_audience || (d as any).subs?.length > 0) && d.ticket_types.map((t, i) => {
                         const up = (patch: Partial<TicketType>) => set({ ticket_types: d.ticket_types.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
                         const k = pre + `ticket_types.${i}.`;
+                        const span = (() => { const a = Date.parse(String((d as any).starts_at ?? '').slice(0, 10)); const b = Date.parse(String((d as any).ends_at ?? '').slice(0, 10)); return a && b && b >= a ? Math.round((b - a) / 86400000) + 1 : 1; })();
                         const inp = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base md:text-sm dark:border-white/10 dark:bg-white/5';
                         return (
                             <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
@@ -683,22 +710,62 @@ function PesertaSection({ d, set, pre, err, max, canTicket = true, canTeam = tru
                                         <Err m={err(k + 'quota')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Berlaku mulai *</label>
+                                        <label className="mb-1 block text-xs font-bold">Maksimal tiket per pesanan{t.audience === 'umum' ? ' *' : ''}</label>
+                                        {t.audience === 'umum' ? (
+                                            <>
+                                                <input className={inp} inputMode="numeric" value={t.max_per_order} onChange={(e) => up({ max_per_order: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
+                                                <p className="mt-1 text-[11px] text-slate-500">Satu akun bisa membeli sampai jumlah ini sekali beli (maksimal 10).</p>
+                                                <Err m={err(k + 'max_per_order')} />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <input className={inp + ' opacity-60'} value="1" readOnly disabled />
+                                                <p className="mt-1 text-[11px] text-slate-500">Tetap 1: mode peserta, satu akun satu tiket.</p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-bold">Mulai penjualan *</label>
                                         <input type="date" className={inp} value={t.valid_from} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_from: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_from')} />
                                     </div>
                                     <div>
-                                        <label className="mb-1 block text-xs font-bold">Berlaku sampai *</label>
+                                        <label className="mb-1 block text-xs font-bold">Akhir penjualan *</label>
                                         <input type="date" className={inp} value={t.valid_until} min={t.valid_from || undefined} max={endOf(d) || undefined} onChange={(e) => { const v = e.target.value; up({ valid_until: endOf(d) && v > endOf(d) ? endOf(d) : v }); }} />
                                         <Err m={err(k + 'valid_until')} />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <label className="mb-1 block text-xs font-bold">Masa berlaku tiket (hari) *</label>
+                                        <div className="flex gap-2">
+                                            <input className={inp} inputMode="numeric" value={t.valid_days ?? String(span)} onChange={(e) => up({ valid_days: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
+                                            <button type="button" onClick={() => up({ valid_days: String(span) })} className="shrink-0 rounded-xl border border-indigo-300 px-3 text-xs font-bold text-indigo-700 dark:text-indigo-200">Selama kegiatan ({span} hari)</button>
+                                        </div>
+                                        <p className="mt-1 text-[11px] text-slate-500">Dihitung sejak tanggal mulai event. Contoh: isi 1 untuk tiket yang hanya berlaku di hari pertama. Mulai/akhir penjualan di atas hanya mengatur kapan tiket boleh dibeli.</p>
+                                        <Err m={err(k + 'valid_days')} />
+                                        {t.audience === 'umum' && !(d as any).subs?.length && (() => {
+                                            const a = String((d as any).starts_at ?? '').slice(0, 10), b = String((d as any).ends_at ?? '').slice(0, 10);
+                                            const days: string[] = [];
+                                            if (a && b && b >= a) for (let x = new Date(a + 'T00:00:00Z'); days.length < 31 && x.toISOString().slice(0, 10) <= b; x = new Date(x.getTime() + 86400000)) days.push(x.toISOString().slice(0, 10));
+                                            if (days.length < 2) return null;
+                                            return (
+                                                <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/10">
+                                                    <label className="mb-1 block text-xs font-bold">Berlaku pada hari</label>
+                                                    <select className={inp} value={t.valid_date ?? ''} onChange={(e) => { const v = e.target.value; up(v ? { valid_date: v, valid_days: '1', ...(t.valid_until && t.valid_until > v ? { valid_until: v } : {}) } : { valid_date: '', valid_days: String(span) }); }}>
+                                                        <option value="">Semua hari kegiatan</option>
+                                                        {days.map((x, n) => <option key={x} value={x}>{`Hari ${n + 1}: ${new Date(x + 'T00:00:00Z').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}`}</option>)}
+                                                    </select>
+                                                    <p className="mt-1 text-[11px] text-slate-500">{t.valid_date ? 'Tiket hanya sah di hari ini, masa berlaku otomatis 1 hari.' : 'Event beberapa hari? Buat satu jenis tiket per hari, misalnya "Reguler - Hari 1".'}</p>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>
                         );
                     })}
                     <Err m={err(pre + 'ticket_types')} />
-                    {d.ticket_types.length < 10 && (
-                        <button type="button" onClick={() => set({ ticket_types: [...d.ticket_types, newTicket()] })} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-200">+ Tambah jenis tiket</button>
+                    {(d.ticket_audience || (d as any).subs?.length > 0) && d.ticket_types.length < 10 && (
+                        <button type="button" onClick={() => set({ ticket_types: [...d.ticket_types, d.ticket_audience === 'umum' ? { ...newTicket(), name: 'Reguler', max_per_order: '5', audience: 'umum' } : newTicket()] })} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-200">+ Tambah jenis tiket</button>
                     )}
                 </div>
             )}
@@ -862,6 +929,7 @@ function ReviewCard({ d, categories, badge, main, onEdit }: { d: Detail; categor
                         {!main && <Fact icon={Users} title="Kuota peserta">{totalQuota(d) || '-'} orang</Fact>}
                         {main && <Fact icon={Ticket} title="Pendaftaran peserta (semua event)">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
                         {!main && <Fact icon={Ticket} title="Pendaftaran">{d.registration_method === 'ticket' ? 'Tiket' : 'Transfer Manual'}</Fact>}
+                        {!main && d.registration_method === 'ticket' && d.ticket_audience && <Fact icon={Ticket} title="Jenis pendaftaran tiket">{d.ticket_audience === 'umum' ? 'Pengunjung / Penonton (1 akun bisa beli beberapa tiket)' : 'Peserta (1 akun = 1 tiket)'}</Fact>}
                         {!main && d.registration_method === 'ticket' && <Fact icon={Ticket} title="Tiket">{d.ticket_types.map((t) => `${t.name}: ${Number(t.price) > 0 ? rp(Number(t.price)) : 'Gratis'}`).join(' · ') || '-'}</Fact>}
                         {!main && d.registration_method !== 'ticket' && <Fact icon={Ticket} title="Biaya pendaftaran">{Number(d.registration_fee) > 0 ? `Rp${new Intl.NumberFormat('id-ID').format(Number(d.registration_fee))}` : 'Gratis'}</Fact>}
                         {!main && (
@@ -974,13 +1042,13 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                 return { ...base, ...(prev ?? {}), price: prev?.price_manual ? prev.price : (fee || prev?.price || ''), name: `Pendaftaran Peserta - ${nm}`.slice(0, 60), category: nm, quota: String(c.quota ?? ''), max_per_order: '1', valid_from: saleStart(x.ends_at), valid_until: x.ends_at };
             });
         };
-        const next = data.subs.map((x: any) => ({ ...x, registration_method: m, ticket_types: build(x) }));
+        const next = data.subs.map((x: any) => ({ ...x, registration_method: m, ticket_types: build(x), ticket_audience: 'peserta' }));
         if (JSON.stringify(next) === JSON.stringify(data.subs)) return;
         setData((d) => ({ ...d, subs: next as any }));
     }, [series, data.registration_method, data.subs.length, JSON.stringify(data.subs.map((x: any) => [x.participant_categories, x.ends_at, x.registration_fee]))]);
     // AUTO-TIKET-TUNGGAL: event tunggal ikut pola rangkaian (tiket per kategori, tanggal jual otomatis)
     useEffect(() => {
-        if (series || data.registration_method !== 'ticket') return;
+        if (series || data.registration_method !== 'ticket' || data.ticket_audience !== 'peserta') return;
         const x: any = data;
         const cats = (x.participant_categories ?? []).filter((c: any) => String(c.name ?? '').trim() !== '');
         const old: any[] = x.ticket_types ?? [];
@@ -1010,7 +1078,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
         }
         if (JSON.stringify(next) === JSON.stringify(old)) return;
         setData((d) => ({ ...d, ticket_types: next as any }));
-    }, [series, data.registration_method, data.ends_at, data.registration_fee, JSON.stringify(data.participant_categories)]);
+    }, [series, data.registration_method, data.ticket_audience, data.ends_at, data.registration_fee, JSON.stringify(data.participant_categories)]);
     const c = pkg ? cost(pkg, data.subs.length, data.assessment_addon, data.judge_addon, data.certificate_addon) : null;
     const cap = maxCats(pkg);
     const bounds: Bounds = { min: data.starts_at, max: data.ends_at };

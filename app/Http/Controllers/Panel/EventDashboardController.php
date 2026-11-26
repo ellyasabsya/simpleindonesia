@@ -280,7 +280,7 @@ class EventDashboardController extends EventScopedController
                 'quota' => (int) $t->quota,
                 'valid_from' => $t->valid_from->toDateString(),
                 'valid_until' => $t->valid_until->toDateString(),
-                'valid_days' => (int) $t->valid_days,
+                'valid_days' => (int) $t->valid_days, 'valid_date' => (json_decode((string) ($t->valid_dates ?? ''), true) ?: [null])[0],
                 'custom_sale' => (bool) $t->custom_sale,
                 'require_holder_details' => (bool) $t->require_holder_details,
                 'support_enabled' => (bool) $t->support_enabled,
@@ -374,13 +374,14 @@ class EventDashboardController extends EventScopedController
             ->where('h.event_id', $event->id)
             ->where('o.status', 'lunas')
             ->orderBy('h.reg_code')->orderBy('h.id')
-            ->get(['h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
+            ->get(['h.id as holder_pk', 'h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
             ->map(fn ($r) => [
                 'code' => $r->code,
                 'reg_id' => ($r->participant_code ?? $r->reg_code),
                 'name' => $r->holder_name,
                 'type' => $typeName[$r->ticket_type_id] ?? null,
                 'kind' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') ? 'pengunjung' : 'peserta',
+                'today' => \App\Support\DailyUse::doneToday('ticket', (int) $r->holder_pk, $r->checked_in_at),
                 'also' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') && in_array(mb_strtolower(trim((string) $r->holder_name)), $regUsers, true),
                 'buyer' => $r->buyer_name,
                 'at' => $r->checked_in_at
@@ -418,7 +419,7 @@ class EventDashboardController extends EventScopedController
                 'quota' => (int) $t->quota,
                 'valid_from' => $t->valid_from->toDateString(),
                 'valid_until' => $t->valid_until->toDateString(),
-                'valid_days' => (int) $t->valid_days,
+                'valid_days' => (int) $t->valid_days, 'valid_date' => (json_decode((string) ($t->valid_dates ?? ''), true) ?: [null])[0],
                 'custom_sale' => (bool) $t->custom_sale,
                 'require_holder_details' => (bool) $t->require_holder_details,
                 'support_enabled' => (bool) $t->support_enabled,
@@ -714,13 +715,14 @@ class EventDashboardController extends EventScopedController
             ->whereIn('h.event_id', $ids)
             ->where('o.status', 'lunas')
             ->orderBy('h.reg_code')->orderBy('h.id')
-            ->get(['h.event_id', 'h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
+            ->get(['h.id as holder_pk', 'h.event_id', 'h.code', 'h.reg_code', 'h.participant_code', 'h.holder_name', 'h.checked_in_at', 'h.ticket_type_id', 'o.buyer_name', ...$this->checkinOrderUser()])
             ->map(fn ($r) => [
                 'code' => $r->code,
                 'reg_id' => ($r->participant_code ?? $r->reg_code),
                 'name' => $r->holder_name,
                 'type' => $typeName[$r->ticket_type_id] ?? null,
                 'kind' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') ? 'pengunjung' : 'peserta',
+                'today' => \App\Support\DailyUse::doneToday('ticket', (int) $r->holder_pk, $r->checked_in_at),
                 'also' => (($audience[$r->ticket_type_id] ?? 'peserta') === 'umum') && in_array(mb_strtolower(trim((string) $r->holder_name)), $regUsers, true),
                 'buyer' => $r->buyer_name,
                 'sub' => $titles[$r->event_id] ?? null,
@@ -792,6 +794,7 @@ class EventDashboardController extends EventScopedController
                         'also' => false,
                         'buyer' => $r->school ?: ($r->contact_name ?: ($r->user_name ?? null)),
                         'sub' => $sub,
+                        'today' => \App\Support\DailyUse::doneToday('team', (int) $t->id, $t->checked_in_at),
                         'at' => $fmt($t->checked_in_at),
                     ]);
                 }
@@ -806,6 +809,7 @@ class EventDashboardController extends EventScopedController
                 'also' => false,
                 'buyer' => $r->school,
                 'sub' => $sub,
+                'today' => \App\Support\DailyUse::doneToday('registration', (int) $r->id, $r->checked_in_at),
                 'at' => $fmt($r->checked_in_at),
             ]);
         }

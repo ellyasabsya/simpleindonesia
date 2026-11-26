@@ -73,8 +73,8 @@ class TicketScanController extends Controller
             if ($regs->isEmpty()) {
                 return response()->json(['status' => 'bukan_peserta', 'code' => $code, 'name' => $user->name]);
             }
-            $reg = $regs->first(fn ($r) => in_array($r->status, self::APPROVED, true) && ! $r->checked_in_at) ?? $regs->first();
-            $ready = in_array($reg->status, self::APPROVED, true) && ! $reg->checked_in_at;
+            $reg = $regs->first(fn ($r) => in_array($r->status, self::APPROVED, true) && ! $this->regDoneToday($r)) ?? $regs->first();
+            $ready = in_array($reg->status, self::APPROVED, true) && ! $this->regDoneToday($reg);
             if ($ready && ! $confirm) {
                 return response()->json($this->infoReg($reg) + ['status' => 'konfirmasi']);
             }
@@ -87,7 +87,7 @@ class TicketScanController extends Controller
     private function byTicket(object $h, array $scope, ?int $by): JsonResponse
     {
         $order = DB::table('ticket_orders')->where('id', $h->ticket_order_id)->first();
-        $type = $h->ticket_type_id ? DB::table('ticket_types')->where('id', $h->ticket_type_id)->first(['name', 'audience']) : null;
+        $type = $h->ticket_type_id ? DB::table('ticket_types')->where('id', $h->ticket_type_id)->first(['name', 'audience', 'valid_days']) : null;
         $kind = ($type->audience ?? 'peserta') === 'umum' ? 'pengunjung' : 'peserta';
         $userId = data_get($order, 'user_id');
         $also = $kind === 'pengunjung' && $userId
@@ -107,17 +107,25 @@ class TicketScanController extends Controller
             return response()->json($info + ['status' => 'belum_lunas', 'order_status' => $order->status ?? null]);
         }
 
-        $claimed = DB::table('ticket_holders')
-            ->where('id', $h->id)->whereNull('checked_in_at')
-            ->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
-
-        if ($claimed) {
-            $this->log($h->event_id, $kind, 'ticket_holder', $h->id, 'tiket', $by);
-            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt(now())]);
+        // Tiket dengan tanggal kunjungan hanya sah di tanggal itu.
+        $vdate = $h->visit_date ?? DB::table('ticket_holders')->where('id', $h->id)->value('visit_date');
+        if ($vdate && substr((string) $vdate, 0, 10) !== now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString()) {
+            return response()->json($info + ['status' => 'salah_tanggal', 'visit_date' => substr((string) $vdate, 0, 10)]);
         }
 
-        $prev = DB::table('ticket_holders')->where('id', $h->id)->value('checked_in_at');
-        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($prev)]);
+        // Check-in harian: sekali per hari. Tiket tanpa tanggal kunjungan hanya sah di dalam masa berlakunya.
+        if (! $vdate && ($bad = $this->outOfSpan($this->ticketSpan((int) $h->event_id, $kind, $type->valid_days ?? null)))) {
+            return response()->json($info + $bad);
+        }
+
+        [$st, $at] = $this->claimDaily('ticket', 'ticket_holders', (int) $h->id, $by);
+
+        if ($st === 'ok') {
+            $this->logSafe($h->event_id, $kind, 'ticket_holder', $h->id, 'tiket', $by);
+            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt($at)]);
+        }
+
+        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($at)]);
     }
 
     private function byRegistration(object $r, string $method, ?int $by, bool $confirm = false): JsonResponse
@@ -132,17 +140,18 @@ class TicketScanController extends Controller
             return $this->byTeams($r, $teams, $method, $by, $confirm, $info);
         }
 
-        $claimed = DB::table('event_registrations')
-            ->where('id', $r->id)->whereNull('checked_in_at')
-            ->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
-
-        if ($claimed) {
-            $this->log($r->event_id, 'peserta', 'registration', $r->id, $method, $by);
-            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt(now())]);
+        if ($bad = $this->outOfSpan($this->eventSpan((int) $r->event_id))) {
+            return response()->json($info + $bad);
         }
 
-        $prev = DB::table('event_registrations')->where('id', $r->id)->value('checked_in_at');
-        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($prev)]);
+        [$st, $at] = $this->claimDaily('registration', 'event_registrations', (int) $r->id, $by);
+
+        if ($st === 'ok') {
+            $this->logSafe($r->event_id, 'peserta', 'registration', $r->id, $method, $by);
+            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt($at)]);
+        }
+
+        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($at)]);
     }
 
     private function teamsOf(object $r): ?\Illuminate\Support\Collection
@@ -156,17 +165,22 @@ class TicketScanController extends Controller
         return $rows->isEmpty() ? null : $rows;
     }
 
-    /** Pendaftar membawa satu atau beberapa tim: satu tim langsung, beberapa tim minta konfirmasi lalu semuanya masuk. */
+    /** Pendaftar membawa satu atau beberapa tim: satu tim langsung, beberapa tim minta konfirmasi lalu semuanya masuk. Check-in harian. */
     private function byTeams(object $r, $teams, string $method, ?int $by, bool $confirm, array $info): JsonResponse
     {
         if ($teams->count() === 1) {
             return $this->byTeam($teams->first(), $method, $by);
         }
+        if ($bad = $this->outOfSpan($this->eventSpan((int) $r->event_id))) {
+            return response()->json(array_merge($info, ['type' => $teams->count().' tim'], $bad));
+        }
         $label = $teams->count().' tim: '.$teams->pluck('name')->implode(', ');
-        $pending = $teams->filter(fn ($t) => ! $t->checked_in_at);
+        $done = DB::table('daily_checkins')->where('holder_type', 'team')->where('visit_date', $this->today())
+            ->whereIn('holder_id', $teams->pluck('id')->all())->pluck('checked_in_at', 'holder_id');
+        $pending = $teams->filter(fn ($t) => ! isset($done[$t->id]) && ! $this->isToday($t->checked_in_at));
 
         if ($pending->isEmpty()) {
-            $prev = $teams->pluck('checked_in_at')->filter()->sort()->first();
+            $prev = $done->filter()->sort()->first() ?? $teams->pluck('checked_in_at')->filter()->sort()->first();
 
             return response()->json(array_merge($info, ['type' => $label, 'status' => 'duplikat', 'at' => $this->fmt($prev)]));
         }
@@ -176,10 +190,9 @@ class TicketScanController extends Controller
 
         $codes = [];
         foreach ($pending as $t) {
-            $claimed = DB::table('registration_teams')->where('id', $t->id)->whereNull('checked_in_at')
-                ->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
-            if ($claimed) {
-                $this->log($r->event_id, 'peserta', 'team', $t->id, $method, $by);
+            [$st] = $this->claimDaily('team', 'registration_teams', (int) $t->id, $by);
+            if ($st === 'ok') {
+                $this->logSafe($r->event_id, 'peserta', 'team', $t->id, $method, $by);
                 $codes[] = $t->team_code;
             }
         }
@@ -198,20 +211,132 @@ class TicketScanController extends Controller
         if (! in_array($r->status, self::APPROVED, true)) {
             return response()->json($info + ['status' => 'belum_disetujui', 'order_status' => $r->status]);
         }
-
-        $claimed = DB::table('registration_teams')->where('id', $t->id)->whereNull('checked_in_at')
-            ->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
-        DB::table('event_registrations')->where('id', $r->id)->whereNull('checked_in_at')->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
-
-        if ($claimed) {
-            $this->log($r->event_id, 'peserta', 'team', $t->id, $method, $by);
-
-            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt(now())]);
+        if ($bad = $this->outOfSpan($this->eventSpan((int) $r->event_id))) {
+            return response()->json($info + $bad);
         }
 
-        $prev = DB::table('registration_teams')->where('id', $t->id)->value('checked_in_at');
+        [$st, $at] = $this->claimDaily('team', 'registration_teams', (int) $t->id, $by);
+        DB::table('event_registrations')->where('id', $r->id)->whereNull('checked_in_at')->update(['checked_in_at' => now(), 'checked_in_by' => $by]);
 
-        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($prev)]);
+        if ($st === 'ok') {
+            $this->logSafe($r->event_id, 'peserta', 'team', $t->id, $method, $by);
+
+            return response()->json($info + ['status' => 'ok', 'at' => $this->fmt($at)]);
+        }
+
+        return response()->json($info + ['status' => 'duplikat', 'at' => $this->fmt($at)]);
+    }
+
+    // ---- Check-in harian (dipakai semua jalur) ----
+
+    private function today(): string
+    {
+        return now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString();
+    }
+
+    private function isToday($ts): bool
+    {
+        if (! $ts) {
+            return false;
+        }
+
+        return \Illuminate\Support\Carbon::parse($ts)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString() === $this->today();
+    }
+
+    /** Pendaftar (atau salah satu timnya) sudah check-in hari ini? Data lama (sebelum daftar harian) ikut dihitung. */
+    private function regDoneToday(object $r): bool
+    {
+        if ($this->isToday($r->checked_in_at ?? null)) {
+            return true;
+        }
+        $today = $this->today();
+        if (DB::table('daily_checkins')->where('holder_type', 'registration')->where('holder_id', $r->id)->where('visit_date', $today)->exists()) {
+            return true;
+        }
+        if (! \Illuminate\Support\Facades\Schema::hasTable('registration_teams')) {
+            return false;
+        }
+
+        return DB::table('daily_checkins')->where('holder_type', 'team')->where('visit_date', $today)
+            ->whereIn('holder_id', DB::table('registration_teams')->where('event_registration_id', $r->id)->pluck('id')->all())
+            ->exists();
+    }
+
+    /** Satu baris per (jenis, id, tanggal). 'ok' hanya untuk scan pertama hari ini. Mengembalikan [status, waktu]. */
+    private function claimDaily(string $kind, string $table, int $id, ?int $by): array
+    {
+        $today = $this->today();
+        $now = now();
+        $made = DB::table('daily_checkins')->insertOrIgnore([
+            'holder_type' => $kind, 'holder_id' => $id, 'visit_date' => $today,
+            'checked_in_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $row = fn () => DB::table('daily_checkins')->where('holder_type', $kind)->where('holder_id', $id)->where('visit_date', $today);
+
+        if (! $made) {
+            return ['duplikat', $row()->value('checked_in_at')];
+        }
+
+        $first = DB::table($table)->where('id', $id)->value('checked_in_at');
+        if ($first && $this->isToday($first)) {
+            // Sudah check-in hari ini sebelum check-in harian ada.
+            $row()->update(['checked_in_at' => $first]);
+
+            return ['duplikat', $first];
+        }
+
+        DB::table($table)->where('id', $id)->whereNull('checked_in_at')->update(['checked_in_at' => $now, 'checked_in_by' => $by]);
+
+        return ['ok', $now];
+    }
+
+    /** Pencatatan log tidak boleh menggagalkan check-in. */
+    private function logSafe(...$args): void
+    {
+        try {
+            $this->log(...$args);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /** Rentang tanggal event [mulai, selesai] (Y-m-d). Null kalau tanggal event tidak ada. */
+    private function eventSpan(int $eventId): ?array
+    {
+        $e = DB::table('events')->where('id', $eventId)->first(['starts_at', 'ends_at']);
+        if (! $e || ! $e->starts_at) {
+            return null;
+        }
+        $a = substr((string) $e->starts_at, 0, 10);
+
+        return [$a, $e->ends_at ? substr((string) $e->ends_at, 0, 10) : $a];
+    }
+
+    /** Tiket pengunjung terusan: mulai event + valid_days. Selain itu: selama kegiatan. */
+    private function ticketSpan(int $eventId, string $kind, $validDays): ?array
+    {
+        $span = $this->eventSpan($eventId);
+        if (! $span) {
+            return null;
+        }
+        if ($kind === 'pengunjung' && (int) $validDays >= 1) {
+            return [$span[0], \Illuminate\Support\Carbon::parse($span[0])->addDays((int) $validDays - 1)->toDateString()];
+        }
+
+        return $span;
+    }
+
+    private function outOfSpan(?array $span): ?array
+    {
+        if (! $span) {
+            return null;
+        }
+        $t = $this->today();
+        if ($t >= $span[0] && $t <= $span[1]) {
+            return null;
+        }
+
+        return ['status' => 'salah_tanggal', 'visit_date' => $span[0], 'valid_to' => $span[1]];
     }
 
     private function infoReg(object $r): array
@@ -247,7 +372,7 @@ class TicketScanController extends Controller
     {
         DB::table('checkins')->insertOrIgnore([
             'event_id' => $eventId, 'kind' => $kind, 'source' => $source, 'source_id' => $sourceId,
-            'method' => $method, 'scanned_by' => $by, 'created_at' => now(), 'updated_at' => now(),
+            'visit_date' => $this->today(), 'method' => $method, 'scanned_by' => $by, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
 

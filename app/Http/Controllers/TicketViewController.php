@@ -24,16 +24,16 @@ class TicketViewController extends Controller
             ->join('ticket_types as tt', 'tt.id', '=', 'h.ticket_type_id')
             ->where('h.code', $code)
             ->where('o.status', 'lunas')
-            ->first(['h.code', 'h.holder_name', 'h.checked_in_at', 'e.title', 'e.location', 'e.starts_at', 'tt.name as type_name']);
+            ->first(['h.code', 'h.holder_name', 'h.checked_in_at', 'e.title', 'e.location', 'e.starts_at', 'tt.name as type_name', 'h.visit_date', 'h.id', 'e.ends_at']);
         abort_unless($t, 404);
 
         return Inertia::render('tiket-detail', ['ticket' => [
             'code' => $t->code,
             'holder_name' => $t->holder_name,
-            'checked_in' => (bool) $t->checked_in_at,
+            'checked_in' => \App\Support\DailyUse::used($t, $t->ends_at),
             'event_title' => $t->title,
             'location' => $t->location,
-            'date' => $this->date($t->starts_at),
+            'date' => $this->date(($t->visit_date ?? null) ?: $t->starts_at),
             'type_name' => $t->type_name,
         ]]);
     }
@@ -52,18 +52,19 @@ class TicketViewController extends Controller
                 }
             })
             ->orderByDesc('o.id')
-            ->get(['o.id', 'o.code', 'e.title', 'e.location', 'e.starts_at']);
+            ->get(['o.id', 'o.code', 'e.title', 'e.location', 'e.starts_at', 'o.visit_date', 'e.ends_at']);
 
         $holders = DB::table('ticket_holders')->whereIn('ticket_order_id', $orders->pluck('id'))
-            ->get(['ticket_order_id', 'code', 'holder_name', 'checked_in_at'])->groupBy('ticket_order_id');
+            ->get(['id', 'ticket_order_id', 'code', 'holder_name', 'checked_in_at', 'visit_date'])->groupBy('ticket_order_id');
+        $usedToday = \App\Support\DailyUse::todayIds($holders->flatten()->pluck('id')->all());
 
         return Inertia::render('tiket-saya', ['orders' => $orders->map(fn ($o) => [
             'code' => $o->code,
             'event_title' => $o->title,
             'location' => $o->location,
-            'date' => $this->date($o->starts_at),
+            'date' => $this->date(($o->visit_date ?? null) ?: $o->starts_at),
             'tickets' => ($holders[$o->id] ?? collect())->map(fn ($h) => [
-                'code' => $h->code, 'holder_name' => $h->holder_name, 'checked_in' => (bool) $h->checked_in_at,
+                'code' => $h->code, 'holder_name' => $h->holder_name, 'checked_in' => \App\Support\DailyUse::used($h, $o->ends_at, $usedToday),
             ])->values(),
         ])->values()]);
     }

@@ -226,7 +226,7 @@ class MyActivityController extends Controller
             'tickets' => $holders->get($o->id, collect())->map(fn ($h) => [
                 'code' => $h->code,
                 'holder_name' => $h->holder_name,
-                'checked_in' => $h->checked_in_at !== null,
+                'checked_in' => \App\Support\DailyUse::used($h, optional($events->get($o->event_id))->ends_at),
             ])->values()->all(),
         ] + \App\Support\StatusPeserta::tiket($o->status, $o->rejected_at ?? null, $o->expires_at ?? null)
           + $this->eventData($events->get($o->event_id)))->values()->all();
