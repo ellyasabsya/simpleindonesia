@@ -435,7 +435,7 @@ class EventRegistrationFormController extends Controller
 
     private function closedReason(Event $event, bool $isTeam): ?string
     {
-        if ($event->registration_start && now()->lt(Carbon::parse($event->registration_start))) {
+        if ($event->registration_start && now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->lt(Carbon::parse($event->registration_start))) {
             return 'Pendaftaran belum dibuka.';
         }
         if ($event->registration_end) {
@@ -443,7 +443,7 @@ class EventRegistrationFormController extends Controller
             if ($end->format('H:i:s') === '00:00:00') {
                 $end = $end->endOfDay();
             }
-            if (now()->gt($end)) {
+            if (now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->gt($end)) {
                 return 'Pendaftaran sudah ditutup.';
             }
         }

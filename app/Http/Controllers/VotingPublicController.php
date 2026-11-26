@@ -102,7 +102,7 @@ class VotingPublicController extends Controller
 
         $labelsConst = '\\App\\Http\\Controllers\\Panel\\EventController::CATEGORIES';
         $labels = defined($labelsConst) ? constant($labelsConst) : [];
-        $now = now();
+        $now = now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'));
 
         $items = $events->map(function (Event $e) use ($settings, $parts, $votes, $labels, $now) {
             $s = $settings[$e->id];
@@ -148,7 +148,7 @@ class VotingPublicController extends Controller
                 'location' => $event->location, 'date' => $event->starts_at->toIso8601String(),
                 'organizer' => $inst, 'poster' => $this->poster($event),
             ],
-            'period' => ['start' => $start?->toIso8601String(), 'end' => $end->toIso8601String()],
+            'period' => ['start' => $start?->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toIso8601String(), 'end' => $end->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toIso8601String()],
             'settings' => [
                 'price' => (int) $s->price_per_vote, 'min_votes' => (int) $s->min_votes,
                 'message_enabled' => (bool) $s->message_enabled, 'message_max' => (int) $s->message_max,
@@ -180,7 +180,7 @@ class VotingPublicController extends Controller
         }
         $s = $this->open($event);
         [$start, $end] = $this->period($event, $s);
-        if (($start && now()->lt($start)) || now()->gt($end)) {
+        if (($start && now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->lt($start)) || now(config('app.agenda_timezone', 'Asia/Jakarta'))->shiftTimezone(config('app.timezone'))->gt($end)) {
             throw ValidationException::withMessages(['participant_id' => 'Voting sedang tidak dibuka.']);
         }
 
