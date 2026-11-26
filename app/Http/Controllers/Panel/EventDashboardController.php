@@ -318,7 +318,6 @@ class EventDashboardController extends EventScopedController
         $db = \Illuminate\Support\Facades\DB::class;
         $typeName = $db::table('ticket_types')->where('event_id', $event->id)->pluck('name', 'id');
         $orders = $db::table('ticket_orders')->where('event_id', $event->id)
-            ->whereIn('ticket_type_id', fn ($q) => $q->select('id')->from('ticket_types')->where('event_id', $event->id)->where(fn ($w) => $w->where('audience', 'peserta')->orWhereNull('audience')))
             ->orderByDesc('id')
             ->get(['id', 'code', 'buyer_name', 'buyer_email', 'ticket_type_id', 'quantity', 'status', 'holders', 'holder_details', 'support_choice']);
         $holders = $db::table('ticket_holders')->where('event_id', $event->id)
