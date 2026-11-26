@@ -98,7 +98,7 @@ class TicketSeriesController extends Controller
                 'price' => (int) $cheapest->price,
                 'valid_until' => $cheapest->valid_until->translatedFormat('j M Y'),
                 'available' => $e->ticketTypes->sum('quota') > 0
-                    && $e->ticketTypes->max('valid_until')->endOfDay()->isFuture(),
+                    && $e->ticketTypes->max('valid_until')->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->endOfDay()->isFuture(),
             ]);
         }
 
@@ -120,7 +120,7 @@ class TicketSeriesController extends Controller
                 'ticket_name' => $kids->count().' kegiatan',
                 'price' => (int) $cheapest->price,
                 'valid_until' => $types->max('valid_until')->translatedFormat('j M Y'),
-                'available' => $types->sum('quota') > 0 && $types->max('valid_until')->endOfDay()->isFuture(),
+                'available' => $types->sum('quota') > 0 && $types->max('valid_until')->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->endOfDay()->isFuture(),
             ]);
         }
 
@@ -251,7 +251,7 @@ class TicketSeriesController extends Controller
             $locked = [];
             foreach ($items as $it) {
                 $type = TicketType::lockForUpdate()->find((int) $it['ticket_type_id']);
-                if (! $type || $type->valid_until->copy()->endOfDay()->isPast() || $type->valid_from->copy()->startOfDay()->isFuture()) {
+                if (! $type || $type->valid_until->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->endOfDay()->isPast() || $type->valid_from->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->startOfDay()->isFuture()) {
                     $fail('items', 'Ada jenis tiket yang tidak tersedia.');
                 }
                 if ($qty > $this->maxPerOrder($type)) {

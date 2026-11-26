@@ -19,7 +19,7 @@ class JudgeInvites
                     'kind' => 'juri',
                     'from' => $title ?: 'Lomba',
                     'title' => 'Diundang menjadi juri',
-                    'date' => substr((string) $i->created_at, 0, 10),
+                    'date' => \Illuminate\Support\Carbon::parse($i->created_at)->setTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString(),
                 ];
             })->values()->all();
     }

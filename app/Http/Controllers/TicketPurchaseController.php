@@ -73,8 +73,8 @@ class TicketPurchaseController extends Controller
         $this->guard($event);
 
         $types = $event->ticketTypes()
-            ->whereDate('valid_from', '<=', now()->toDateString())
-            ->whereDate('valid_until', '>=', now()->toDateString())
+            ->whereDate('valid_from', '<=', now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString())
+            ->whereDate('valid_until', '>=', now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString())
             ->get()
             ->map(fn ($t) => [
                 'id' => $t->id,
@@ -154,7 +154,7 @@ class TicketPurchaseController extends Controller
 
         [$code, $orderId] = DB::transaction(function () use ($event, $data, $fail, $request, $free, $req, $sup) {
             $type = $event->ticketTypes()->lockForUpdate()->find($data['ticket_type_id']);
-            if (! $type || $type->valid_until->copy()->endOfDay()->isPast() || $type->valid_from->copy()->startOfDay()->isFuture()) {
+            if (! $type || $type->valid_until->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->endOfDay()->isPast() || $type->valid_from->copy()->shiftTimezone(config('app.agenda_timezone', 'Asia/Jakarta'))->startOfDay()->isFuture()) {
                 $fail('ticket_type_id', 'Jenis tiket tidak tersedia.');
             }
             $max = $this->maxPerOrder($event, $type);

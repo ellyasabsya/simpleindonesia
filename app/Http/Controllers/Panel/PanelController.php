@@ -41,7 +41,7 @@ class PanelController extends Controller
 
         $next = Event::where('institution_id', $i->id)
             ->where('status', Event::PUBLISHED)
-            ->whereDate('ends_at', '>=', today())
+            ->whereDate('ends_at', '>=', now(config('app.agenda_timezone', 'Asia/Jakarta'))->toDateString())
             ->orderBy('starts_at')
             ->first(['id', 'title', 'starts_at']);
 
