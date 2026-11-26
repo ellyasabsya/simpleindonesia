@@ -149,7 +149,7 @@ class EventDashboardController extends EventScopedController
             ->get(['event_id', 'buyer_name', 'quantity', 'total', 'status', 'created_at']);
         foreach ($latestOrders as $o) {
             $recent[] = [
-                'at' => \Illuminate\Support\Carbon::parse($o->created_at, 'UTC')->toIso8601ZString(),
+                'at' => \Illuminate\Support\Carbon::parse($o->created_at, 'UTC')->toIso8601ZuluString(),
                 'name' => $o->buyer_name ?: 'Pembeli',
                 'sub' => $titles[$o->event_id] ?? '-',
                 'kind' => 'tiket',
@@ -161,7 +161,7 @@ class EventDashboardController extends EventScopedController
             ->get(['event_id', 'contact_name', 'total_fee', 'status', 'created_at']);
         foreach ($latestRegs as $r) {
             $recent[] = [
-                'at' => \Illuminate\Support\Carbon::parse($r->created_at, 'UTC')->toIso8601ZString(),
+                'at' => \Illuminate\Support\Carbon::parse($r->created_at, 'UTC')->toIso8601ZuluString(),
                 'name' => $r->contact_name ?: 'Pendaftar',
                 'sub' => $titles[$r->event_id] ?? '-',
                 'kind' => 'formulir',
