@@ -64,7 +64,7 @@ function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
     );
 }
 function Step({ n, t }: { n: number; t: string }) {
-    return <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-xs font-extrabold text-white sm:h-8 sm:w-8 sm:text-sm">{n}</span><h4 className="text-sm font-extrabold sm:text-base">{t}</h4></div>;
+    return <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-xs font-extrabold text-white sm:h-8 sm:w-8 sm:text-sm">{n}</span><h4 className="text-sm font-semibold sm:text-base">{t}</h4></div>;
 }
 
 function SupportEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -198,9 +198,9 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
 
     return (
         <PanelLayout title="Tiket">
-            {phone && <div className="mb-3"><TiketRingkasan base={baseOf(eventId)} /></div>}
+            {phone && <div className="mb-3"><TiketRingkasan base={baseOf(eventId)} compact /></div>}
             {phone && <div className="mb-3">{tabBar}</div>}
-            {phone && tab === 'transaksi' && <TiketTransaksi base={baseOf(eventId)} isParent={isParent} />}
+            {phone && tab === 'transaksi' && <TiketTransaksi base={baseOf(eventId)} isParent={isParent} compact />}
             {phone && tab === 'jenis' && (
                 <TiketPanelMobile
                     salesOpen={salesOpen} manual={!!manual} isParent={isParent} audienceChoice={audienceChoice !== false} feePercent={feePercent}
@@ -216,7 +216,7 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                     <div className={`${card} p-6`}>
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <h2 className="text-xl font-extrabold">Penjualan tiket {subs.length > 0 && subs.every((x) => x.open) ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : subs.some((x) => x.open) ? <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-1 align-middle text-xs font-bold text-amber-800">Sebagian dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
+                                <h2 className="text-xl font-bold">Penjualan tiket {subs.length > 0 && subs.every((x) => x.open) ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : subs.some((x) => x.open) ? <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-1 align-middle text-xs font-bold text-amber-800">Sebagian dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
                                 <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Atur penjualan tiap sub-event, atau buka dan tutup semuanya sekaligus.</p>
                             </div>
                             <div className="flex gap-2">
@@ -237,17 +237,20 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                         </div>
                     </div>
                 ) : (
-                <div className={`${card} flex flex-wrap items-center justify-between gap-4 p-6`}>
+                <div className={`${card} p-6`}>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-xl font-extrabold">Penjualan tiket {salesOpen ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
+                        <h2 className="text-xl font-bold">Penjualan tiket {salesOpen ? <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 align-middle text-xs font-bold text-emerald-800">Dibuka</span> : <span className="ml-2 rounded-full bg-slate-200 px-2.5 py-1 align-middle text-xs font-bold text-slate-700">Ditutup</span>}</h2>
                         <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{salesOpen ? 'Pengunjung bisa membeli tiket sekarang. Tutup penjualan kalau kuota habis atau acara sudah dekat.' : 'Pengunjung tidak bisa membeli tiket. Buka kembali kapan saja.'}</p>
                     </div>
                     <button type="button" role="switch" aria-checked={salesOpen} onClick={toggle} className={`relative h-8 w-14 rounded-full transition ${salesOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/20'}`}>
                         <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${salesOpen ? 'left-7' : 'left-1'}`} />
                     </button>
+                    </div>
+                    <div className="mt-6"><TiketRingkasan base={baseOf(eventId)} /></div>
                 </div>)}
 
-                <TiketRingkasan base={baseOf(eventId)} />
+                {(manual || isParent) && <TiketRingkasan base={baseOf(eventId)} />}
                 {tab === 'transaksi' && (
                     <div className="rounded-3xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-6 dark:border-white/10 dark:bg-white/5">
                         <div className="mb-4">{tabBar}</div>
@@ -346,7 +349,7 @@ export default function Tiket({ eventId, salesOpen, manual, audienceChoice, feeP
                     <form onSubmit={submit} className="flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-3xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-5 dark:border-white/10">
                             <div>
-                                <h3 className="text-base font-extrabold sm:text-xl">{editing === 'new' ? 'Buat jenis tiket baru' : `Ubah ${editing.name}`}</h3>
+                                <h3 className="text-base font-bold sm:text-xl">{editing === 'new' ? 'Buat jenis tiket baru' : `Ubah ${editing.name}`}</h3>
                                 <p className="hidden text-sm text-slate-500 sm:block">Lengkapi pengaturan tiket untuk event ini.</p>
                             </div>
                             <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 sm:inline-block dark:bg-white/10 dark:text-slate-300">{editing === 'new' ? 'Tiket baru' : 'Ubah tiket'}</span>

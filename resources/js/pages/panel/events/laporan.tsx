@@ -102,7 +102,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
                         <Layers className="size-6" strokeWidth={2} />
                     </div>
                     <div>
-                        <h2 className="text-[17px] font-semibold md:text-xl md:font-extrabold">{isParent ? 'Laporan gabungan' : 'Laporan event'}</h2>
+                        <h2 className="text-[17px] font-semibold md:text-xl md:font-bold">{isParent ? 'Laporan gabungan' : 'Laporan event'}</h2>
                         <p className="mt-1 text-[13px] text-slate-600 md:text-sm md:text-slate-500">
                             {isParent
                                 ? 'Angka dijumlahkan dari semua sub-event. Halaman ini hanya untuk melihat; pengelolaan dilakukan di menu sub-event.'
@@ -124,7 +124,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
                 </div>
 
                 <div className={`${box} p-3 md:p-5`}>
-                    <h3 className="text-[15px] font-semibold md:text-lg md:font-extrabold">Tren pendaftaran lunas per hari</h3>
+                    <h3 className="text-[15px] font-semibold md:text-lg md:font-bold">Tren pendaftaran lunas per hari</h3>
                     {trend.length === 0 ? (
                         <p className="py-8 text-center text-sm font-semibold text-slate-500">Belum ada pendaftaran lunas.</p>
                     ) : (
@@ -134,7 +134,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
 
                 {isParent && (
                     <div className={`${box} overflow-hidden`}>
-                        <h3 className="p-3 text-[15px] font-semibold md:p-5 md:text-lg md:font-extrabold">Perbandingan per sub-event</h3>
+                        <h3 className="p-3 text-[15px] font-semibold md:p-5 md:text-lg md:font-bold">Perbandingan per sub-event</h3>
                         <div className="space-y-2 border-t border-slate-200 p-3 md:hidden dark:border-white/10">
                             {subs.map((c) => (
                                 <div key={`m-${c.id}`} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
@@ -190,7 +190,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
 
                 {types.length > 0 && (
                     <div className={`${box} overflow-hidden`}>
-                        <h3 className="p-3 text-[15px] font-semibold md:p-5 md:text-lg md:font-extrabold">Rincian per jenis tiket</h3>
+                        <h3 className="p-3 text-[15px] font-semibold md:p-5 md:text-lg md:font-bold">Rincian per jenis tiket</h3>
                         <div className="space-y-2 border-t border-slate-200 p-3 md:hidden dark:border-white/10">
                             {types.map((t, i) => (
                                 <div key={`m-${t.sub}-${t.name}-${i}`} className="rounded-2xl border border-slate-200 p-3 dark:border-white/10">
@@ -243,7 +243,7 @@ export default function Laporan({ isParent, summary: s, subs, types, cats, trend
 
                 {cats.length > 0 && (
                     <div className={`${box} p-3 md:p-5`}>
-                        <h3 className="text-[15px] font-semibold md:text-lg md:font-extrabold">Peserta per kategori</h3>
+                        <h3 className="text-[15px] font-semibold md:text-lg md:font-bold">Peserta per kategori</h3>
                         <div className="mt-3 flex flex-wrap gap-2">
                             {cats.map((c) => (
                                 <span key={c.name} className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{c.name} · {c.n}</span>

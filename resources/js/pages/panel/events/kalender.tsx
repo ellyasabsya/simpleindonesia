@@ -46,7 +46,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
             <div className="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-900 shadow-2xl sm:rounded-3xl sm:p-6 dark:bg-slate-900 dark:text-white">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-extrabold">{title}</h3>
+                    <h3 className="text-xl font-bold">{title}</h3>
                     <button type="button" aria-label="Tutup" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
                 {children}
@@ -199,6 +199,7 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas, 
     return (
         <PanelLayout title="Kalender Kegiatan">
             {info && <InfoBar eventId={eventId} eventTitle={event.title} info={info} phases={phases} section={section} setSection={setSection} compact={phone} view={view} setView={setView}
+                actions={<><span className="hidden text-xs text-slate-500 md:inline">{agendas.length + (subAgendas?.length ?? 0)} agenda · {groups.length} tanggal</span><button type="button" onClick={() => setAgendaModal({ item: null, date: todayStr })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/25"><Plus className="h-4 w-4" />Tambah agenda</button></>}
                 meta={{ startsAt: event.starts_at, startNote, agendaCount: agendas.length + (subAgendas?.length ?? 0), reg, prep, run, regText: rangeText(phases.registration), prepText: rangeText(phases.preparation), runText: rangeText({ start: event.starts_at, end: event.ends_at }), onPhase: () => setPhaseModal(true) }} />}
             {section !== 'jadwal' && info && !phone ? <InfoSections section={section} eventId={eventId} eventTitle={event.title} startsAt={event.starts_at} endsAt={event.ends_at} info={info} /> : phone ? (
                 <KalenderPanelMobile
@@ -217,14 +218,6 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas, 
                 </KalenderPanelMobile>
             ) : (
             <>
-            {/* LINIMASA2 */}
-            <div className={`flex flex-wrap items-center gap-3 rounded-2xl p-3.5 sm:px-4 ${glass}`}>
-                <div className="mr-auto flex flex-wrap items-baseline gap-x-3">
-                    <span className="text-sm font-extrabold">{view === 'linimasa' ? 'Linimasa' : 'Kalender'}</span>
-                    <span className="text-xs text-slate-500">{agendas.length + (subAgendas?.length ?? 0)} agenda · {groups.length} tanggal</span>
-                </div>
-                <button type="button" onClick={() => setAgendaModal({ item: null, date: todayStr })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-600/25"><Plus className="h-4 w-4" />Tambah agenda</button>
-            </div>
 
             {view === 'linimasa' ? (
                 <div className="space-y-3 pt-1">{/* LINIMASA3 */}
@@ -288,7 +281,7 @@ export default function Kalender({ eventId, event, phases, agendas, subAgendas, 
                 <div className={`rounded-3xl p-5 ${glass}`}>
                     <div className="mb-4 flex items-center justify-between">
                         <button type="button" onClick={() => shift(-1)} aria-label="Bulan sebelumnya" className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-white/10"><ChevronLeft className="h-5 w-5" /></button>
-                        <div className="flex items-center gap-2 text-lg font-extrabold"><CalendarDays className="h-5 w-5 text-indigo-600" />{new Date(cur.y, cur.m, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</div>
+                        <div className="flex items-center gap-2 text-lg font-bold"><CalendarDays className="h-5 w-5 text-indigo-600" />{new Date(cur.y, cur.m, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</div>
                         <button type="button" onClick={() => shift(1)} aria-label="Bulan berikutnya" className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-white/10"><ChevronRight className="h-5 w-5" /></button>
                     </div>
                     <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-extrabold tracking-widest text-slate-500">{DAYS.map((d) => <div key={d} className="py-1">{d}</div>)}</div>

@@ -63,12 +63,12 @@ export default function VotingBar({ q, setQ, cat, setCat, cats }: Props) {
                         value={q}
                         onChange={(ev) => setQ(ev.target.value)}
                         placeholder="Cari event atau lokasi"
-                        className="w-full bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-400"
+                        className="w-full bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-400"
                     />
                 </label>
                 <button
                     type="submit"
-                    className={'relative h-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-indigo-400 to-indigo-600 px-5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(99,102,241,0.8)] ' + PRESS}
+                    className={'relative h-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-indigo-400 to-indigo-600 px-5 text-base font-semibold text-white shadow-[0_8px_20px_-8px_rgba(99,102,241,0.8)] ' + PRESS}
                 >
                     <span aria-hidden className="lux-sheen" />
                     Cari

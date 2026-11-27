@@ -149,7 +149,7 @@ function Line({ icon: Ic, tone = 'indigo', leading, label, value, sub, href, ext
             {lead}
             <span className="min-w-0 flex-1">
                 {value !== undefined && <span className={'block text-xs ' + MUTED}>{label}</span>}
-                <span className="block text-[15px] leading-snug font-medium break-words text-slate-900 dark:text-white">{value !== undefined ? value : label}</span>
+                <span className="block text-base leading-snug font-medium break-words text-slate-900 dark:text-white">{value !== undefined ? value : label}</span>
                 {sub && <span className={'mt-0.5 block text-xs ' + MUTED}>{sub}</span>}
             </span>
             {href && <ChevronRight className={'size-5 shrink-0 ' + MUTED} />}
@@ -207,7 +207,7 @@ function KegiatanMobile({ event }: { event: Detail }) {
                         setLimit(PER_PAGE);
                     }}
                     placeholder="Cari kegiatan atau lokasi"
-                    className={'h-11 w-full rounded-full px-5 text-[15px] outline-none ' + FIELD}
+                    className={'h-11 w-full rounded-full px-5 text-base outline-none ' + FIELD}
                 />
             )}
             {cats.length > 1 && (
@@ -394,7 +394,7 @@ function CommentsMobile({ event }: { event: Detail }) {
                         maxLength={1000}
                         rows={3}
                         placeholder="Tulis komentar..."
-                        className={'w-full resize-none rounded-3xl p-4 text-[15px] outline-none ' + FIELD}
+                        className={'w-full resize-none rounded-3xl p-4 text-base outline-none ' + FIELD}
                     />
                     {errors.body && <p className="px-1 text-sm text-rose-600 dark:text-rose-400">{errors.body}</p>}
                     <div className="flex items-center justify-between px-1">
@@ -430,7 +430,7 @@ function CommentsMobile({ event }: { event: Detail }) {
                                         </button>
                                     )}
                                 </div>
-                                <p className="mt-1 text-[15px] leading-snug break-words whitespace-pre-line text-slate-800 dark:text-slate-100">{c.body}</p>
+                                <p className="mt-1 text-base leading-snug break-words whitespace-pre-line text-slate-800 dark:text-slate-100">{c.body}</p>
                             </div>
                         </div>
                     ))}
@@ -539,7 +539,7 @@ export default function EventDetailMobile({ event, parts, hasHadiah, cta, status
                 {tab === 'info' && (
                     <div className="space-y-5">
                         <Group title="Tentang event">
-                            <p className={'px-4 py-3.5 text-[15px] leading-relaxed break-words whitespace-pre-line ' + (event.description ? 'text-slate-800 dark:text-slate-100' : MUTED)}>{event.description ?? 'Deskripsi belum tersedia.'}</p>
+                            <p className={'px-4 py-3.5 text-base leading-relaxed break-words whitespace-pre-line ' + (event.description ? 'text-slate-800 dark:text-slate-100' : MUTED)}>{event.description ?? 'Deskripsi belum tersedia.'}</p>
                         </Group>
                         {event.juknis && (
                             <Group>

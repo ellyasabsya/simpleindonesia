@@ -81,7 +81,7 @@ export default function Certificates({ stats, categories, active, search, recipi
                 <section className={card}>
                     <div className="flex items-center gap-2">
                         <Award size={18} className="text-violet-600" />
-                        <h2 className="text-[17px] font-semibold md:text-lg md:font-extrabold">Penerima</h2>
+                        <h2 className="text-[17px] font-semibold md:text-lg md:font-bold">Penerima</h2>
                     </div>
 
                     <div className="-mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:mx-0 md:mt-4 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
@@ -199,7 +199,7 @@ export default function Certificates({ stats, categories, active, search, recipi
                 </section>
 
                 <section className={card}>
-                    <h2 className="text-[17px] font-semibold md:text-lg md:font-extrabold">Riwayat</h2>
+                    <h2 className="text-[17px] font-semibold md:text-lg md:font-bold">Riwayat</h2>
                     {history.length === 0 ? (
                         <p className="mt-3 text-sm text-slate-500">Belum ada aktivitas penerbitan.</p>
                     ) : (

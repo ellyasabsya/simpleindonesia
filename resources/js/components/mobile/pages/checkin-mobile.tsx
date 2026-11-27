@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { CARD, FIELD, GROUP, MUTED, PRESS } from '../kit/soft';
+import { CARD, FIELD, MUTED, PRESS } from '../kit/soft';
 
 type Row = { code: string; reg_id: string | null; name: string; type: string | null; buyer: string | null; at: string | null; sub?: string | null; kind?: string; also?: boolean };
 type Tab = 'semua' | 'hadir' | 'belum';
@@ -43,20 +43,23 @@ const chip = (active: boolean) =>
     (active ? 'bg-indigo-600 text-white dark:bg-indigo-500' : CARD + ' text-slate-800 dark:text-slate-100');
 
 const sel = 'h-10 min-w-0 rounded-xl px-3 text-base ' + FIELD;
+const pgBtn = 'inline-flex size-8 items-center justify-center rounded-lg text-slate-600 disabled:opacity-30 dark:text-slate-300';
+const pgNum = (on: boolean) => 'inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold ' + (on ? 'bg-indigo-600 text-white dark:bg-indigo-500' : 'text-slate-700 dark:text-slate-200');
 
 /** Check-in HP (ringkas): pemindai, satu kartu statistik + cari + filter, daftar rapat. */
 export default function CheckinMobile(p: Props) {
     const tabs: [Tab, string][] = [['semua', 'Semua'], ['hadir', 'Hadir'], ['belum', 'Belum']];
     const twoSel = p.types.length > 1 && p.subs.length > 0;
+    const nums = Array.from({ length: Math.min(3, p.pages) }, (_, k) => Math.max(1, Math.min(p.cur - 1, p.pages - 2)) + k);
 
     return (
-        <div className="space-y-3 pb-24">
+        <div className="space-y-3 pb-28">
             <section className={'rounded-2xl p-3 ' + CARD}>{p.scanner}</section>
 
             <section className={'space-y-2.5 rounded-2xl p-3 ' + CARD}>
                 <div>
                     <div className="flex items-baseline justify-between">
-                        <p className="text-[15px] font-semibold">
+                        <p className="text-base font-semibold">
                             {p.hadir}<span className={'text-xs font-normal ' + MUTED}> / {p.total} hadir ({p.pct}%)</span>
                         </p>
                         <p className={'text-[11px] ' + MUTED}>Belum {p.total - p.hadir}{p.hadirHariIni !== undefined ? ' · Hari ini ' + p.hadirHariIni : ''}</p>
@@ -108,35 +111,46 @@ export default function CheckinMobile(p: Props) {
                 {p.view.length === 0 ? (
                     <div className={'rounded-2xl px-4 py-8 text-center text-[13px] ' + FIELD + ' ' + MUTED}>{p.total === 0 ? 'Belum ada data check-in.' : 'Tidak ada data yang cocok.'}</div>
                 ) : (
-                    <div className={GROUP}>
-                        {p.view.map((r) => (
-                            <div key={r.code} className="flex items-center gap-2.5 px-3 py-2">
-                                <span className="min-w-0 flex-1" title={r.code}>
-                                    <span className="block truncate text-sm leading-tight font-semibold">{r.name}</span>
-                                    <span className={'block truncate text-[11px] leading-snug ' + MUTED}>
-                                        {[r.reg_id ?? r.code, r.kind === 'pengunjung' ? 'Pengunjung' : 'Peserta', r.also ? 'Juga peserta' : null, r.type ? (r.type.includes(' - ') ? r.type.slice(r.type.lastIndexOf(' - ') + 3) : r.type) : null, r.sub, r.buyer].filter(Boolean).join(' · ')}
-                                    </span>
-                                                                    </span>
-                                {r.at ? (
-                                    <span className="shrink-0 text-right">
-                                        <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Hadir</span>
-                                        <span className={'block text-[11px] ' + MUTED}>{r.at}</span>
-                                    </span>
-                                ) : (
-                                    <button type="button" disabled={p.busy === r.code} onClick={() => p.onCheckin(r)} className={'h-10 shrink-0 rounded-full bg-indigo-600 px-3.5 text-xs font-medium text-white disabled:opacity-60 dark:bg-indigo-500 ' + PRESS}>
-                                        {p.busy === r.code ? '...' : 'Check-in'}
-                                    </button>
-                                )}
+                    <>
+                        <div className="space-y-3">
+                            {p.view.map((r) => {
+                                const meta = [r.kind === 'pengunjung' ? 'Pengunjung' : 'Peserta', r.also ? 'Juga peserta' : null, r.type ? (r.type.includes(' - ') ? r.type.slice(r.type.lastIndexOf(' - ') + 3) : r.type) : null, r.sub, r.buyer].filter(Boolean).join(' · ');
+                                return (
+                                    <div key={r.code} title={r.code} className={'rounded-2xl p-3 ' + CARD}>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm leading-tight font-semibold">{r.name}</p>
+                                                <p className="mt-0.5 truncate font-mono text-[11px] text-indigo-600 dark:text-indigo-300">{r.reg_id ?? r.code}</p>
+                                            </div>
+                                            {r.at ? (
+                                                <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Hadir</span>
+                                            ) : (
+                                                <span className="shrink-0 rounded-full bg-slate-500/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">Belum</span>
+                                            )}
+                                        </div>
+                                        <p className={'mt-1.5 truncate text-xs ' + MUTED}>{meta}</p>
+                                        <div className="mt-2 flex items-center justify-between gap-3">
+                                            <span className={'text-[11px] ' + MUTED}>{r.at ? 'Check-in ' + r.at : 'Belum check-in'}</span>
+                                            {!r.at && (
+                                                <button type="button" disabled={p.busy === r.code} onClick={() => p.onCheckin(r)} className={'h-10 shrink-0 rounded-full bg-indigo-600 px-4 text-xs font-medium text-white disabled:opacity-60 dark:bg-indigo-500 ' + PRESS}>
+                                                    {p.busy === r.code ? '...' : 'Check-in'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between px-1">
+                            <span className={'text-[11px] ' + MUTED}>{p.count} total</span>
+                            <div className="flex items-center gap-0.5">
+                                <button type="button" aria-label="Sebelumnya" disabled={p.cur <= 1} onClick={() => p.setPage(p.cur - 1)} className={pgBtn}><ChevronLeft className="size-4" /></button>
+                                {nums.map((n) => <button key={n} type="button" onClick={() => p.setPage(n)} aria-current={n === p.cur ? 'page' : undefined} className={pgNum(n === p.cur)}>{n}</button>)}
+                                <button type="button" aria-label="Berikutnya" disabled={p.cur >= p.pages} onClick={() => p.setPage(p.cur + 1)} className={pgBtn}><ChevronRight className="size-4" /></button>
                             </div>
-                        ))}
-                    </div>
-                )}
-                {p.pages > 1 && (
-                    <nav className="mt-2 flex items-center justify-between gap-3">
-                        <button type="button" disabled={p.cur <= 1} onClick={() => p.setPage(p.cur - 1)} aria-label="Sebelumnya" className={'flex size-9 items-center justify-center rounded-full disabled:opacity-40 ' + CARD}><ChevronLeft className="size-4" /></button>
-                        <span className={'text-xs ' + MUTED}>{p.cur} / {p.pages}</span>
-                        <button type="button" disabled={p.cur >= p.pages} onClick={() => p.setPage(p.cur + 1)} aria-label="Berikutnya" className={'flex size-9 items-center justify-center rounded-full disabled:opacity-40 ' + CARD}><ChevronRight className="size-4" /></button>
-                    </nav>
+                        </div>
+                    </>
                 )}
             </section>
         </div>

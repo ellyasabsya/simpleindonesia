@@ -10,7 +10,7 @@ function BackLabel() {
     return (
         <>
             <ChevronLeft className="-ml-2 size-7" strokeWidth={2.4} />
-            <span className="text-[15px]">Kembali</span>
+            <span className="text-base">Kembali</span>
         </>
     );
 }

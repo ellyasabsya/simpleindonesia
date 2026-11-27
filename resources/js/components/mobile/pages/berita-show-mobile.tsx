@@ -12,7 +12,7 @@ type Props = { news: Article; comments: Comment[]; viewer: { id: number } | null
 
 const PROSE =
     '[&_h1]:mt-6 [&_h1]:text-[22px] [&_h1]:font-semibold [&_h2]:mt-5 [&_h2]:text-[17px] [&_h2]:font-semibold ' +
-    '[&_h3]:mt-4 [&_h3]:text-[16px] [&_h3]:font-semibold [&_p]:my-3 [&_p]:leading-relaxed [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 ' +
+    '[&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_p]:my-3 [&_p]:leading-relaxed [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 ' +
     '[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-indigo-700 [&_a]:underline dark:[&_a]:text-indigo-300 [&_strong]:font-semibold ' +
     '[&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-indigo-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_img]:my-3 [&_img]:rounded-2xl ' +
     '[&_hr]:my-5 [&_code]:rounded [&_code]:bg-slate-900/[0.06] [&_code]:px-1 dark:[&_code]:bg-white/10';
@@ -57,8 +57,8 @@ export default function BeritaShowMobile({ news, comments, viewer }: Props) {
                     {news.cover_url && <img src={news.cover_url} alt="" className="aspect-[16/9] w-full rounded-3xl object-cover" />}
                     {news.date && <p className={'px-1 text-[11px] font-medium ' + MUTED}>{news.date}</p>}
                     <h1 className="px-1 text-[22px] leading-tight font-semibold tracking-tight break-words">{news.title}</h1>
-                    {news.summary && <p className={'px-1 text-[15px] leading-relaxed ' + MUTED}>{news.summary}</p>}
-                    <div className={'px-1 text-[15px] break-words text-slate-800 dark:text-slate-100 ' + PROSE} dangerouslySetInnerHTML={{ __html: news.html }} />
+                    {news.summary && <p className={'px-1 text-base leading-relaxed ' + MUTED}>{news.summary}</p>}
+                    <div className={'px-1 text-base break-words text-slate-800 dark:text-slate-100 ' + PROSE} dangerouslySetInnerHTML={{ __html: news.html }} />
                 </article>
 
                 <section className="space-y-2">
@@ -133,7 +133,7 @@ export default function BeritaShowMobile({ news, comments, viewer }: Props) {
                                             </button>
                                         )}
                                     </div>
-                                    <p className="mt-1 text-[15px] leading-snug break-words whitespace-pre-line">{c.body}</p>
+                                    <p className="mt-1 text-base leading-snug break-words whitespace-pre-line">{c.body}</p>
                                 </div>
                             ))}
                         </div>

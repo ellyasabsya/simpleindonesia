@@ -209,7 +209,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                             {mode === 'ticket' ? <Ticket className="h-6 w-6" /> : <Layers className="h-6 w-6" />}
                         </span>
                         <div>
-                            <h2 className="text-xl font-extrabold">
+                            <h2 className="text-xl font-bold">
                                 {mode === 'all' && 'Registrasi semua sub-event'}
                                 {mode === 'ticket' && `Pendaftaran lewat pembelian tiket · ${cur?.title}`}
                                 {mode === 'form' && `Pendaftaran transfer manual · ${cur?.title}`}
@@ -245,7 +245,7 @@ export default function RegistrasiInduk({ subs, rows }: Props) {
                     <div className={`${card} overflow-hidden`}>
                         <div className="space-y-4 p-5">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                                <h3 className="mr-auto text-lg font-bold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
                                 <div className="relative min-w-[200px]">
                                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                     <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder={mode === 'ticket' ? 'Cari ID, nama, pembeli, kode' : 'Cari ID, nama, sekolah, sub-event'} className={`${field} w-full pl-9`} />

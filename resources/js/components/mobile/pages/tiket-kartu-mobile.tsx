@@ -44,7 +44,7 @@ function TicketCard({ r, h, index, total }: Item) {
 
             <div className="flex items-baseline gap-2 px-4 pt-3 pb-3">
                 <p className="text-[11px] font-semibold tracking-[0.2em] text-slate-500 uppercase dark:text-slate-400">Pemegang</p>
-                <p className="min-w-0 truncate text-[15px] font-semibold text-slate-900 dark:text-white">{h.holder_name}</p>
+                <p className="min-w-0 truncate text-base font-semibold text-slate-900 dark:text-white">{h.holder_name}</p>
             </div>
 
             <div className="mx-3 mb-3 rounded-2xl bg-gradient-to-br from-indigo-700 to-indigo-500 p-4 text-white">

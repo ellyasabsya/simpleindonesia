@@ -14,7 +14,7 @@ function Switch({ on }: { on: boolean }) {
 }
 
 const group = 'overflow-hidden rounded-3xl divide-y divide-slate-900/[0.07] dark:divide-white/10 ' + CARD;
-const row = 'flex min-h-12 w-full items-center gap-3.5 px-4 py-2.5 text-left text-[15px] font-medium active:bg-slate-900/[0.04] dark:active:bg-white/10';
+const row = 'flex min-h-12 w-full items-center gap-3.5 px-4 py-2.5 text-left text-base font-medium active:bg-slate-900/[0.04] dark:active:bg-white/10';
 const tile = 'flex size-9 shrink-0 items-center justify-center rounded-xl ';
 
 /** Menu satu gaya (iOS dan Android): sheet bawah dengan kartu bergaris tipis, sama dengan sheet notifikasi. */

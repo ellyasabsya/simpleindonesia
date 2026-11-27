@@ -20,7 +20,7 @@ export default function RegistrationInfoCard({ fee, isTeam = false, className = 
                 <Icon className="size-6" strokeWidth={2} />
             </div>
             <div>
-                <h2 className="text-xl font-extrabold">
+                <h2 className="text-xl font-bold">
                     {paid ? 'Pendaftaran lewat formulir dan bukti transfer' : 'Pendaftaran lewat formulir'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">

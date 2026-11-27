@@ -31,3 +31,17 @@ export const LUX_CSS = `
 .lux-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-130%);animation:lux-sheen 4s ease-in-out 1.2s 2}
 @media (prefers-reduced-motion:reduce){.lux-fade,.lux-list>*,.lux-sheen{animation:none!important}}
 `;
+
+/** Skala huruf HP (satu-satunya sumber). Terkecil 11px. Kolom isian wajib 16px agar iPhone tidak zoom otomatis. */
+export const T = {
+    title: 'text-sm leading-tight font-semibold',
+    stat: 'text-base leading-tight font-semibold',
+    body: 'text-[13px] leading-snug',
+    meta: 'text-xs leading-snug',
+    caption: 'text-[11px] leading-snug',
+    btn: 'text-sm font-medium',
+    input: 'text-base',
+    display: 'text-[22px] leading-tight font-semibold tracking-tight',
+    heading: 'text-[17px] leading-tight font-semibold',
+    row: 'text-base leading-snug font-medium',
+} as const;

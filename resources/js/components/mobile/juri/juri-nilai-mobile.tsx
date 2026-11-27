@@ -82,7 +82,7 @@ export default function JuriNilaiMobile({ token, event, judgeName, participants,
                             <button key={k} type="button" onClick={() => setTab(k)}
                                 className={'inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-medium ' + PRESS + ' ' + (tab === k ? 'bg-indigo-600 text-white dark:bg-indigo-500' : FIELD + ' text-slate-800 dark:text-slate-100')}>
                                 {label}
-                                <span className={'rounded-full px-1.5 text-[10px] ' + (tab === k ? 'bg-white/25' : 'bg-slate-900/[0.07] dark:bg-white/10')}>{n}</span>
+                                <span className={'rounded-full px-1.5 text-[11px] ' + (tab === k ? 'bg-white/25' : 'bg-slate-900/[0.07] dark:bg-white/10')}>{n}</span>
                             </button>
                         ))}
                     </div>
@@ -100,7 +100,7 @@ export default function JuriNilaiMobile({ token, event, judgeName, participants,
                                             {p.done ? <Check className="size-5" /> : idx}
                                         </span>
                                         <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-[15px] font-medium">{p.code}</span>
+                                            <span className="block truncate text-base font-medium">{p.code}</span>
                                             <span className={'block truncate text-xs ' + MUTED}>{sub || (p.done ? 'Sudah dinilai' : 'Belum dinilai')}</span>
                                         </span>
                                         {p.draft && !p.done && <span className="shrink-0 rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">Draf</span>}

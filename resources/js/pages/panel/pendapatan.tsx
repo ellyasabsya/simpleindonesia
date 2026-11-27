@@ -125,7 +125,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                 <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
                     <section className={`${panel} overflow-hidden`}>
                         <div className="px-6 pb-4 pt-6">
-                            <h3 className="text-xl font-extrabold">Saldo per Event</h3>
+                            <h3 className="text-xl font-bold">Saldo per Event</h3>
                             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hak lembaga = penjualan − bagi hasil platform. Penarikan diproses per event oleh admin.</p>
                             {hold_until && <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">Rekening baru diganti. Penarikan baru bisa diajukan setelah {hold_until}.</p>}
                         </div>
@@ -179,7 +179,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                     </section>
 
                     <section className={`${panel} h-fit p-6`}>
-                        <h3 className="text-xl font-extrabold">Rekening Pencairan</h3>
+                        <h3 className="text-xl font-bold">Rekening Pencairan</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Dana ditransfer ke rekening ini. Nomor rekening ikut terkunci saat penarikan diajukan.</p>
                         <form onSubmit={submitAcc} className="mt-4 space-y-4">
                             <label className="block"><span className={label}>Nama bank</span>
@@ -215,7 +215,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
 
                 <section className={`${panel} overflow-hidden`}>
                     <div className="px-6 pb-4 pt-6">
-                        <h3 className="text-xl font-extrabold">Riwayat Penarikan</h3>
+                        <h3 className="text-xl font-bold">Riwayat Penarikan</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Setiap pengajuan tercatat beserta rekening pada saat diajukan.</p>
                     </div>
                     {history.length === 0 ? (
@@ -279,7 +279,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                         <form onSubmit={submitPin} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <h3 className="text-lg font-extrabold">{target ? 'Ajukan Penarikan' : has_pin ? 'Ubah PIN Penarikan' : 'Buat PIN Penarikan'}</h3>
+                                    <h3 className="text-lg font-bold">{target ? 'Ajukan Penarikan' : has_pin ? 'Ubah PIN Penarikan' : 'Buat PIN Penarikan'}</h3>
                                     {target && <p className="text-sm text-slate-600 dark:text-slate-300">{target.title}</p>}
                                 </div>
                                 <button type="button" onClick={closeModal} className="text-sm font-bold text-slate-500">Tutup</button>
@@ -309,7 +309,7 @@ export default function PanelPendapatan({ summary, balances, history, account, h
                     ) : (
                         target && (
                             <form onSubmit={submitWd} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-extrabold">Tarik dana</h3>
+                                <h3 className="text-lg font-bold">Tarik dana</h3>
                                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{target.title}. Saldo tersedia <b>{rp(target.available)}</b>, minimal {rp(min)}.</p>
                                 <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm dark:bg-white/5">
                                     <div className="text-xs font-semibold text-slate-500">Rekening tujuan</div>

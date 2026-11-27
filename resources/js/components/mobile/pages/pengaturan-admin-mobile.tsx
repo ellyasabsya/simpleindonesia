@@ -99,7 +99,7 @@ export default function PengaturanAdminMobile({ settings, bank, fee_percent, adm
                         <div className={iconBox(pay.pay_midtrans)}><Zap className="h-5 w-5" /></div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                                <h4 className="text-[15px] font-semibold">Midtrans</h4>
+                                <h4 className="text-base font-semibold">Midtrans</h4>
                                 {badge(pay.pay_midtrans)}
                             </div>
                             <div className={'text-xs leading-snug ' + MUTED}>Online, konfirmasi otomatis</div>
@@ -116,7 +116,7 @@ export default function PengaturanAdminMobile({ settings, bank, fee_percent, adm
                         <div className={iconBox(pay.pay_manual)}><Landmark className="h-5 w-5" /></div>
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                                <h4 className="text-[15px] font-semibold">Transfer manual</h4>
+                                <h4 className="text-base font-semibold">Transfer manual</h4>
                                 {badge(pay.pay_manual)}
                             </div>
                             <div className={'text-xs leading-snug ' + MUTED}>Dikonfirmasi admin</div>
@@ -151,13 +151,13 @@ export default function PengaturanAdminMobile({ settings, bank, fee_percent, adm
             </div>
 
             <div className={'space-y-2 rounded-2xl p-3.5 ' + CARD}>
-                <h3 className="text-[15px] font-semibold">Biaya Layanan</h3>
+                <h3 className="text-base font-semibold">Biaya Layanan</h3>
                 <p className={'text-xs leading-snug ' + MUTED}>Persentase yang ditambahkan ke harga tiket dan voting. Order lama tidak berubah saat angka ini diganti.</p>
                 <Field label="Biaya layanan (%)" placeholder="10" inputMode="decimal" value={fee} onChange={setFee} error={errors?.service_fee_percent} />
             </div>
 
             <div className={'space-y-2 rounded-2xl p-3.5 ' + CARD}>
-                <h3 className="text-[15px] font-semibold">Kontak WhatsApp Admin</h3>
+                <h3 className="text-base font-semibold">Kontak WhatsApp Admin</h3>
                 <p className={'text-xs leading-snug ' + MUTED}>Nomor tujuan tombol chat &quot;Hubungi Admin&quot;. Boleh ditulis 0812... atau 62812...</p>
                 <Field label="Nomor WhatsApp" placeholder="081234567890" inputMode="numeric" value={wa} onChange={setWa} error={errors?.admin_whatsapp} />
             </div>

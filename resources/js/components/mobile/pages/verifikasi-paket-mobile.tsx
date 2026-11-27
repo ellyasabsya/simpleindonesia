@@ -93,7 +93,7 @@ export default function VerifikasiPaketMobile({ orders, status, q, counts, pg, m
                         <span className={'flex items-center justify-between text-xs font-medium ' + MUTED}>
                             {label} <Icon className={'h-4 w-4 ' + color} />
                         </span>
-                        <span className={'text-lg leading-none font-semibold tabular-nums ' + color}>{n}</span>
+                        <span className={'text-[17px] leading-none font-semibold tabular-nums ' + color}>{n}</span>
                     </button>
                 ))}
             </div>
@@ -108,7 +108,7 @@ export default function VerifikasiPaketMobile({ orders, status, q, counts, pg, m
                             type="button"
                             onClick={() => go({ status: t.key })}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >
@@ -167,7 +167,7 @@ export default function VerifikasiPaketMobile({ orders, status, q, counts, pg, m
                             <div key={o.id} className={'space-y-2 rounded-2xl p-3 ' + CARD}>
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
-                                        <div className="text-[15px] leading-snug font-semibold break-words">{o.title}</div>
+                                        <div className="text-base leading-snug font-semibold break-words">{o.title}</div>
                                         <div className={'text-xs ' + MUTED}>Diajukan {o.created_at}</div>
                                     </div>
                                     <span className={'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ' + st.style}>{st.label}</span>

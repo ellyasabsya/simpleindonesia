@@ -54,7 +54,7 @@ export default function ManajemenEventMobile({ events, filters, counts, categori
                 {tiles.map((t, i) => (
                     <div key={t.label} className={'flex flex-col justify-between gap-1 rounded-2xl px-3 py-2.5 ' + CARD + (i === 0 ? ' col-span-2' : '')}>
                         <p className={'text-xs leading-snug font-medium ' + MUTED}>{t.label}</p>
-                        <p className="text-lg leading-none font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{t.n}</p>
+                        <p className="text-[17px] leading-none font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{t.n}</p>
                     </div>
                 ))}
             </div>
@@ -98,7 +98,7 @@ export default function ManajemenEventMobile({ events, filters, counts, categori
                         <div key={e.id} className={'space-y-1.5 rounded-2xl p-3 ' + CARD}>
                             <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                    <div className="text-[15px] leading-snug font-semibold break-words">{e.title}</div>
+                                    <div className="text-base leading-snug font-semibold break-words">{e.title}</div>
                                     <div className={'text-xs ' + MUTED}>
                                         ID #{e.id}
                                         {e.institution ? ` · ${e.institution}` : ''}

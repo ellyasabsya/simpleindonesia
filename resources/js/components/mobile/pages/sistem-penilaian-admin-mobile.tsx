@@ -193,7 +193,7 @@ function EditSheet({ s, usedKeys, onClose }: { s: Sys; usedKeys: string[]; onClo
                         <label key={h.key} className={'flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-white/5 ' + (busy === h.key ? 'opacity-60' : '')}>
                             <input type="checkbox" checked={h.enabled} disabled={!!busy} onChange={() => toggleHook(h.key)} className="h-5 w-5 shrink-0 accent-indigo-600" />
                             <span className="min-w-0 flex-1">
-                                <span className={'block text-[14px] font-semibold ' + (h.enabled ? '' : 'text-slate-400 line-through')}>{h.label}</span>
+                                <span className={'block text-sm font-semibold ' + (h.enabled ? '' : 'text-slate-400 line-through')}>{h.label}</span>
                                 <span className={'block text-xs leading-snug break-words ' + MUTED}>
                                     {h.description || 'Tanpa keterangan.'} <span className="font-mono text-[11px]">({h.key})</span>
                                 </span>
@@ -358,14 +358,14 @@ function SystemCard({ s, onEdit }: { s: Sys; onEdit: () => void }) {
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="truncate text-[11px] font-bold tracking-wider text-indigo-600 uppercase dark:text-indigo-300">{s.tag || 'Sistem penilaian'}</div>
-                    <h3 className="text-[15px] leading-snug font-semibold break-words">{s.name}</h3>
+                    <h3 className="text-base leading-snug font-semibold break-words">{s.name}</h3>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                     <span className={'rounded-full px-2.5 py-0.5 text-[11px] font-bold ' + (s.active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-slate-300')}>
                         {s.active ? 'Aktif' : 'Nonaktif'}
                     </span>
                     {s.used > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
                             <Lock className="h-3 w-3" /> Terkunci
                         </span>
                     )}
@@ -376,15 +376,15 @@ function SystemCard({ s, onEdit }: { s: Sys; onEdit: () => void }) {
 
             <div className="grid grid-cols-3 divide-x divide-slate-900/[0.07] rounded-xl bg-slate-50 dark:divide-white/10 dark:bg-white/5">
                 <div className="px-3 py-2">
-                    <div className={'text-[10px] font-semibold ' + MUTED}>Versi</div>
+                    <div className={'text-[11px] font-semibold ' + MUTED}>Versi</div>
                     <div className="text-base font-semibold tabular-nums">{s.version}</div>
                 </div>
                 <div className="px-3 py-2">
-                    <div className={'text-[10px] font-semibold ' + MUTED}>Dipakai</div>
+                    <div className={'text-[11px] font-semibold ' + MUTED}>Dipakai</div>
                     <div className="text-base font-semibold tabular-nums">{s.used}</div>
                 </div>
                 <div className="px-3 py-2">
-                    <div className={'text-[10px] font-semibold ' + MUTED}>Cantolan</div>
+                    <div className={'text-[11px] font-semibold ' + MUTED}>Cantolan</div>
                     <div className={'text-base font-semibold tabular-nums ' + hookTone}>
                         {on}/{s.hooks.length}
                     </div>

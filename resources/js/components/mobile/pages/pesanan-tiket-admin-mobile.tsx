@@ -82,7 +82,7 @@ export default function PesananTiketAdminMobile({ orders, status, q, counts, pg 
                         <span className={'flex items-center justify-between text-xs font-medium ' + MUTED}>
                             {label} <Icon className={'h-4 w-4 ' + color} />
                         </span>
-                        <span className={'text-lg leading-none font-semibold tabular-nums ' + color}>{n}</span>
+                        <span className={'text-[17px] leading-none font-semibold tabular-nums ' + color}>{n}</span>
                     </button>
                 ))}
             </div>
@@ -97,7 +97,7 @@ export default function PesananTiketAdminMobile({ orders, status, q, counts, pg 
                             type="button"
                             onClick={() => go({ status: t.key })}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >

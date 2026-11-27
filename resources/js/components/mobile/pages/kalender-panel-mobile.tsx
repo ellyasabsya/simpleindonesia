@@ -91,7 +91,7 @@ export default function KalenderPanelMobile(p: Props) {
                 ))}
                 {([['rundown', 'Rundown', p.rundownCount], ['pengumuman', 'Pengumuman', p.announcementCount]] as const).map(([k, l, n]) => (
                     <button key={k} type="button" onClick={() => p.setSection(k)} className={tabCls(p.section === k) + ' shrink-0 gap-1.5'}>
-                        {l}{n ? <span className="rounded-full bg-slate-900/10 px-1.5 text-[10px] dark:bg-white/15">{n}</span> : null}
+                        {l}{n ? <span className="rounded-full bg-slate-900/10 px-1.5 text-[11px] dark:bg-white/15">{n}</span> : null}
                     </button>
                 ))}
             </section>

@@ -61,13 +61,13 @@ export default function KomentarAdminMobile({ comments, filters, counts }: Props
                     <p className={'flex items-center justify-between text-xs leading-snug font-medium ' + MUTED}>
                         Dilaporkan <Flag className="h-4 w-4 text-amber-600" />
                     </p>
-                    <p className="text-lg leading-none font-semibold text-amber-600 tabular-nums dark:text-amber-300">{counts.reported}</p>
+                    <p className="text-[17px] leading-none font-semibold text-amber-600 tabular-nums dark:text-amber-300">{counts.reported}</p>
                 </div>
                 <div className={'flex flex-col justify-between gap-1 rounded-2xl px-3 py-2.5 ' + CARD}>
                     <p className={'flex items-center justify-between text-xs leading-snug font-medium ' + MUTED}>
                         Total <MessageSquare className="h-4 w-4 text-indigo-600" />
                     </p>
-                    <p className="text-lg leading-none font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{counts.all}</p>
+                    <p className="text-[17px] leading-none font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{counts.all}</p>
                 </div>
             </div>
 
@@ -80,7 +80,7 @@ export default function KomentarAdminMobile({ comments, filters, counts }: Props
                             type="button"
                             onClick={() => goStatus(t.key)}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >
@@ -115,7 +115,7 @@ export default function KomentarAdminMobile({ comments, filters, counts }: Props
                                 )}
                             </div>
 
-                            <p className="text-[14px] leading-snug break-words whitespace-pre-line">{c.body}</p>
+                            <p className="text-sm leading-snug break-words whitespace-pre-line">{c.body}</p>
 
                             <div className="text-[13px] leading-snug">
                                 <div className="font-semibold">{c.author}</div>

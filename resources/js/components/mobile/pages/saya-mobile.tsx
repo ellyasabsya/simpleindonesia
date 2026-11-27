@@ -26,14 +26,14 @@ export function HasilMobile({ event_title, mode, rows }: { event_title: string; 
                 <div className={'divide-y divide-slate-900/[0.07] overflow-hidden rounded-3xl dark:divide-white/10 ' + CARD}>
                     {rows.map((r) => (
                         <div key={r.code} className={'flex items-center gap-3.5 px-4 py-3 ' + (r.mine ? 'bg-indigo-500/[0.08]' : '')}>
-                            <span className={'flex size-10 shrink-0 items-center justify-center rounded-2xl text-[15px] font-semibold ' + (r.rank === 1 ? 'bg-indigo-600 text-white dark:bg-indigo-500' : FIELD + ' text-indigo-700 dark:text-indigo-300')}>
+                            <span className={'flex size-10 shrink-0 items-center justify-center rounded-2xl text-base font-semibold ' + (r.rank === 1 ? 'bg-indigo-600 text-white dark:bg-indigo-500' : FIELD + ' text-indigo-700 dark:text-indigo-300')}>
                                 {r.rank ?? '-'}
                             </span>
                             <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[15px] font-medium">{r.code}</span>
+                                <span className="block truncate text-base font-medium">{r.code}</span>
                                 {r.mine && <span className="block text-xs font-medium text-indigo-700 dark:text-indigo-300">Anda</span>}
                             </span>
-                            <span className={'shrink-0 text-[15px] font-semibold ' + (r.final === null ? MUTED : '')}>{r.final ?? 'Belum lengkap'}</span>
+                            <span className={'shrink-0 text-base font-semibold ' + (r.final === null ? MUTED : '')}>{r.final ?? 'Belum lengkap'}</span>
                         </div>
                     ))}
                 </div>
@@ -72,7 +72,7 @@ export function JuriMobile({ rows, pending }: { rows: JuriRow[]; pending: string
                             <span className="grid size-[52px] place-items-center rounded-full bg-indigo-600 text-sm font-semibold">{pct}%</span>
                         </span>
                         <div className="min-w-0">
-                            <div className="text-[26px] leading-none font-semibold">{finished}<span className="text-base font-medium text-white/70"> / {rows.length}</span></div>
+                            <div className="text-[22px] leading-none font-semibold">{finished}<span className="text-base font-medium text-white/70"> / {rows.length}</span></div>
                             <div className="mt-1 text-xs text-white/80">{left === 0 ? 'Semua tugas penilaian selesai' : left + ' tugas masih menunggu penilaian Anda'}</div>
                         </div>
                     </div>
@@ -81,7 +81,7 @@ export function JuriMobile({ rows, pending }: { rows: JuriRow[]; pending: string
                         <div key={g.parent + '|' + g.event} className={'overflow-hidden rounded-3xl ' + CARD}>
                             <div className="px-4 pt-3.5 pb-2">
                                 {g.parent && <p className={'truncate text-[11px] font-medium ' + MUTED}>{g.parent}</p>}
-                                <h2 className="text-[16px] leading-snug font-semibold">{g.event}</h2>
+                                <h2 className="text-base leading-snug font-semibold">{g.event}</h2>
                             </div>
                             <div className="divide-y divide-slate-900/[0.07] border-t border-slate-900/[0.07] dark:divide-white/10 dark:border-white/10">
                                 {g.items.map((r) => {
@@ -94,7 +94,7 @@ export function JuriMobile({ rows, pending }: { rows: JuriRow[]; pending: string
                                                 {done ? <Check className="size-5" /> : p + '%'}
                                             </span>
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-[15px] font-medium">{r.category ? 'Kategori ' + r.category : 'Semua peserta'}</span>
+                                                <span className="block truncate text-base font-medium">{r.category ? 'Kategori ' + r.category : 'Semua peserta'}</span>
                                                 <span className={'block truncate text-xs ' + MUTED}>{info}</span>
                                             </span>
                                             {r.locked && <Lock className={'size-3.5 shrink-0 ' + MUTED} />}
@@ -145,7 +145,7 @@ export function LombaMobile({ rows }: { rows: LombaRow[] }) {
                             </span>
                             <div className="min-w-0 flex-1">
                                 <span className="mb-0.5 inline-block text-[11px] font-medium text-emerald-700 capitalize dark:text-emerald-300">{r.status}</span>
-                                <h2 className="line-clamp-2 text-[15px] leading-snug font-semibold">{r.title ?? '(event dihapus)'}</h2>
+                                <h2 className="line-clamp-2 text-base leading-snug font-semibold">{r.title ?? '(event dihapus)'}</h2>
                                 {r.category && <p className={'truncate text-xs ' + MUTED}>{r.category}</p>}
                                 <p className={'mt-1 flex items-center gap-1.5 text-xs ' + MUTED}>
                                     <CalendarDays className="size-3.5 shrink-0" />
@@ -158,17 +158,17 @@ export function LombaMobile({ rows }: { rows: LombaRow[] }) {
                                     </p>
                                 )}
                                 {r.rules_url && (
-                                    <Link href={r.rules_url} className={'mt-2 mr-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-[13px] font-medium text-white dark:bg-indigo-500 ' + PRESS}>
+                                    <Link href={r.rules_url} className={'mt-2 mr-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-sm font-medium text-white dark:bg-indigo-500 ' + PRESS}>
                                         Lihat aturan
                                     </Link>
                                 )}
                                 {r.ticket_url && (
-                                    <Link href={r.ticket_url} className="mt-2 mr-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-slate-900 px-4 text-[13px] font-medium text-white dark:bg-white dark:text-slate-900">
+                                    <Link href={r.ticket_url} className="mt-2 mr-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-slate-900 px-4 text-sm font-medium text-white dark:bg-white dark:text-slate-900">
                                         Lihat tiket
                                     </Link>
                                 )}
                                 {r.can_results && (
-                                    <Link href={'/event-saya/' + r.id + '/hasil'} className={'mt-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-[13px] font-medium text-white dark:bg-indigo-500 ' + PRESS}>
+                                    <Link href={'/event-saya/' + r.id + '/hasil'} className={'mt-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-sm font-medium text-white dark:bg-indigo-500 ' + PRESS}>
                                         <Trophy className="size-4" />
                                         Lihat hasil
                                     </Link>

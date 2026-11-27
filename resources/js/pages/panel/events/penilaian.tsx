@@ -122,7 +122,7 @@ function SistemPicker(p: SistemPickerProps) {
     if (!hasChoice && !p.system) {
         return (
             <div className={`${card} p-3 md:p-6 text-center`}>
-                <h3 className="text-base font-extrabold">Belum ada sistem penilaian yang tersedia</h3>
+                <h3 className="text-base font-semibold">Belum ada sistem penilaian yang tersedia</h3>
                 <p className="mt-1 text-sm text-slate-500">Sistem penilaian sedang dinonaktifkan oleh admin SIMPLE. Hubungi admin untuk mengaktifkannya.</p>
             </div>
         );
@@ -153,7 +153,7 @@ function SistemPickerInner({ base, title, system, lockReason, onChosen }: { base
     return (
         <div className={`${card} space-y-5 p-3 md:p-6`}>
             <div>
-                <h2 className="text-base font-extrabold md:text-xl">Sistem penilaian</h2>
+                <h2 className="text-base font-bold md:text-xl">Sistem penilaian</h2>
                 <p className="mt-1 text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Pilih sistem penilaian untuk seluruh event ini. Tab Juri, Pengaturan penilaian, Publikasi, dan Rekap nilai muncul setelah sistem dipilih. Pengaturan per kategori dilakukan di dalam sistem.</p>
                 <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700 md:px-4 md:py-1.5 md:text-sm"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Event: {title}</span>
             </div>
@@ -203,7 +203,7 @@ function ParentPenilaian({ subs = [] }: Props) {
             <div className="space-y-3 md:space-y-5">
                 <div className={`${card} space-y-4 p-3 md:p-6`}>
                     <div>
-                        <h2 className="text-base font-extrabold md:text-xl">Sistem penilaian</h2>
+                        <h2 className="text-base font-bold md:text-xl">Sistem penilaian</h2>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Sistem dipilih di tiap sub-event. Di sini tampil sistem yang dipakai sub-event.</p>
                     </div>
                     {used.length === 0 ? (
@@ -229,7 +229,7 @@ function ParentPenilaian({ subs = [] }: Props) {
                     {subs.map((s) => (
                         <div key={s.id} className={`${card} flex flex-col gap-3 p-3 md:p-6`}>
                             <div className="flex items-start justify-between gap-3">
-                                <h3 className="text-base font-extrabold md:text-lg">{s.title}</h3>
+                                <h3 className="text-base font-bold md:text-lg">{s.title}</h3>
                                 <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
                             </div>
                             <p className={`text-sm font-bold ${s.system ? 'text-indigo-700' : 'text-amber-700'}`}>{s.system ? sysName(s.system) : 'Belum memilih sistem penilaian'}</p>
@@ -462,7 +462,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
                     <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-xs font-extrabold text-white md:h-11 md:w-11 md:text-sm">SK</span>
                         <div>
-                            <h2 className="text-[15px] font-semibold md:text-xl md:font-extrabold">Surat keputusan: {title}</h2>
+                            <h2 className="text-[15px] font-semibold md:text-xl md:font-bold">Surat keputusan: {title}</h2>
                             <p className="text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Satu SK memuat hasil semua lomba dan juara umum.</p>
                         </div>
                     </div>
@@ -516,7 +516,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
             {groups.map((g) => (
                 <div key={g.sub_id} className={`${card} space-y-5 p-3 md:p-6`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-base font-extrabold md:text-lg">{g.sub}</h3>
+                        <h3 className="text-base font-bold md:text-lg">{g.sub}</h3>
                         <Link href={`/panel/event/${g.sub_id}/penilaian`} className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-slate-200">Buka sub-event</Link>
                     </div>
                     {g.categories.map((x) => (
@@ -608,7 +608,7 @@ function ParentSK({ ov: ovIn, base, title, dirty: dirtyProp = false }: { ov: Ove
 
             <div className={`${card} space-y-4 p-3 md:p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-base font-extrabold md:text-xl">Klasemen juara umum</h2>
+                    <h2 className="text-base font-bold md:text-xl">Klasemen juara umum</h2>
                     <div className="flex flex-wrap items-center gap-2">
                         {saved && !locked ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-900">Tersimpan · {(ov as any).saved_at}</span> : ov.provisional ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900">Sementara</span> : null}
                         {!locked && !saved && (
@@ -872,7 +872,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
                     <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-xs font-extrabold text-white md:h-11 md:w-11 md:text-sm">SK</span>
                         <div>
-                            <h2 className="text-[15px] font-semibold md:text-xl md:font-extrabold">Surat keputusan: {sk.title}</h2>
+                            <h2 className="text-[15px] font-semibold md:text-xl md:font-bold">Surat keputusan: {sk.title}</h2>
                             <p className="text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Satu SK memuat hasil semua kategori lomba ini{sk.categories.length > 1 ? ` (${sk.categories.map((c) => c.name).filter(Boolean).join(', ')})` : ''}.</p>
                         </div>
                     </div>
@@ -927,7 +927,7 @@ function PenetapanSK({ sk, base }: { sk: LsData | null; base: string }) {
             {sk.categories.map((c) => (
                 <div key={c.id} className={`${card} space-y-3 p-3 md:p-6`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="flex items-center gap-2 text-base font-extrabold md:text-lg"><span className={`h-3 w-3 rounded-full ${c.locked ? 'bg-emerald-500' : c.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {c.name ? `Kategori ${c.name}` : sk.title}</h3>
+                        <h3 className="flex items-center gap-2 text-base font-bold md:text-lg"><span className={`h-3 w-3 rounded-full ${c.locked ? 'bg-emerald-500' : c.saved ? 'bg-indigo-500' : 'bg-amber-400'}`} /> {c.name ? `Kategori ${c.name}` : sk.title}</h3>
                         <div className="flex items-center gap-2">
                             <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${c.locked ? 'bg-emerald-100 text-emerald-900' : c.saved ? 'bg-indigo-100 text-indigo-900' : 'bg-amber-100 text-amber-900'}`}>{c.locked ? 'Ditetapkan' : c.saved ? 'Tersimpan' : 'Belum disimpan'}</span>
                             
@@ -1307,14 +1307,14 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
             <PanelLayout title="Penilaian">
                 <div className="space-y-3 md:space-y-5">
                     <div className={`${card} p-3 md:p-6`}>
-                        <h2 className="text-base font-extrabold md:text-xl">Penilaian per lomba</h2>
+                        <h2 className="text-base font-bold md:text-xl">Penilaian per lomba</h2>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pengaturan nilai dan juri diatur di tiap sub-event, karena peserta ada di sana. Halaman ini hanya ringkasan.</p>
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
                         {subs.map((s) => (
                             <div key={s.id} className={`${card} flex flex-col gap-3 p-3 md:p-6`}>
                                 <div className="flex items-start justify-between gap-3">
-                                    <h3 className="text-base font-extrabold md:text-lg">{s.title}</h3>
+                                    <h3 className="text-base font-bold md:text-lg">{s.title}</h3>
                                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${s.categories > 0 && s.approved === s.categories ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>Disahkan {s.approved} dari {s.categories}</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -1361,7 +1361,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                 <div className={`${card} space-y-3 p-3 md:space-y-5 md:p-6 ${tab === 'nilai' ? '' : 'hidden'}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h2 className="text-[17px] font-semibold md:text-xl md:font-extrabold">Penilaian</h2>
+                            <h2 className="text-[17px] font-semibold md:text-xl md:font-bold">Penilaian</h2>
                             <p className="mt-1 text-[13px] leading-snug text-slate-600 md:text-sm dark:text-slate-300">Atur sistem nilai, kriteria, dan juri untuk lomba ini.</p>
                             <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700 md:px-4 md:py-1.5 md:text-sm"><span className="h-2 w-2 rounded-full bg-indigo-600" /> Mengatur: {event.title}{multiCat && category.name ? ` · ${category.name}` : ''}</span>
                         </div>
@@ -1383,13 +1383,13 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 
                     <div className={`grid gap-3 ${tab === 'nilai' ? 'md:grid-cols-2' : ''}`}>
                         <div className="rounded-2xl border border-slate-200/80 bg-white/50 p-3 md:p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">1</span><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Kategori</h3></div>
+                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">1</span><h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Kategori</h3></div>
                             <div className="mt-3 space-y-2">
                                 {categories.map((c) => <Option key={c.id} on={c.id === cid} label={c.name} approved={c.approved} href={`${base}?kategori=${c.id}`} />)}
                             </div>
                         </div>
                         <div className={`rounded-2xl border border-slate-200/80 bg-white/50 p-3 md:p-4 dark:border-white/10 dark:bg-white/5 ${tab === 'nilai' ? '' : 'hidden'}`}>
-                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">2</span><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Sistem perlombaan</h3></div>
+                            <div className="flex items-center gap-2.5"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">2</span><h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Sistem perlombaan</h3></div>
                             <p className={`mt-3 text-xs font-bold ${locked ? 'text-emerald-700' : 'text-slate-600 dark:text-slate-300'}`}>{locked ? 'Kategori ini sudah disahkan, sistemnya tidak bisa diganti.' : 'Sistem yang dipakai untuk menghitung nilai akhir.'}</p>
                             <div className={`mt-2 rounded-xl border border-indigo-300 bg-white p-3 dark:bg-white/5 ${locked ? 'opacity-60' : ''}`}>
                                 <div className="flex items-center gap-2.5"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-indigo-600"><span className="h-2 w-2 rounded-full bg-indigo-600" /></span><span className="text-sm font-extrabold">Penilaian Berbasis Bobot Nilai</span></div>
@@ -1427,7 +1427,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                         {/* 2. Skala, kriteria, bobot */}
                         <div className={`${card} space-y-4 p-3 md:p-4`}>
                             <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">3</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Skala, kriteria, dan bobot</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pilih skala nilai akhir, lalu susun kriteria dan bobotnya. Total bobot harus 100%.</p></div></div>
+                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">3</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Skala, kriteria, dan bobot</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pilih skala nilai akhir, lalu susun kriteria dan bobotnya. Total bobot harus 100%.</p></div></div>
                                 <div className="w-full sm:w-72">
                                     <div className="flex justify-between text-xs font-extrabold"><span>Total bobot</span><span className={total === 100 ? 'text-emerald-600' : 'text-amber-600'}>{total}% {total === 100 && '✓'}</span></div>
                                     <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className={`h-full rounded-full transition-all ${total === 100 ? 'bg-emerald-500' : total > 100 ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${Math.min(total, 100)}%` }} /></div>
@@ -1526,7 +1526,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
                         {/* 3. Pengurangan nilai */}
                         <div className={`${card} p-3 md:p-4`}>
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">4</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Pengurangan nilai</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pelanggaran ringan yang mengurangi nilai. Terpisah dari penalti.</p></div></div>
+                                <div className="flex items-center gap-3"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white md:h-7 md:w-7 md:text-sm">4</span><div><h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Pengurangan nilai</h3><p className="text-sm text-slate-600 dark:text-slate-300">Pelanggaran ringan yang mengurangi nilai. Terpisah dari penalti.</p></div></div>
                                 <label className="flex items-center gap-3 text-sm font-extrabold">Aktifkan untuk lomba ini <Toggle on={dedOn} onChange={setDedOn} disabled={locked} /></label>
                             </div>
                             {!dedOn ? (
@@ -1607,7 +1607,7 @@ function PenilaianInnerBase({ systemHooks = null, event, isParent, overall = nul
 <JuriBelumTugas btn={btn} />
 
                         <div className={`${card} p-3 md:p-4`}>
-                            <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Juri terdaftar <span className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">{judges.length}</span></h3>
+                            <h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Juri terdaftar <span className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700">{judges.length}</span></h3>
                             {judges.length === 0 ? (
                                 <JuriKosong />
                             ) : (

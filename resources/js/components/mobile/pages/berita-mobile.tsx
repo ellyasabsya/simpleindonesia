@@ -56,7 +56,7 @@ export default function BeritaMobile({ items, q, setQ, total, from, to, links }:
                                 </div>
                                 <div className="p-4">
                                     {n.date && <p className={'text-[11px] font-medium ' + MUTED}>{n.date}</p>}
-                                    <h3 className="mt-1 line-clamp-2 text-[16px] leading-snug font-semibold text-slate-900 dark:text-white">{n.title}</h3>
+                                    <h3 className="mt-1 line-clamp-2 text-base leading-snug font-semibold text-slate-900 dark:text-white">{n.title}</h3>
                                     {n.summary && <p className={'mt-1.5 line-clamp-2 text-xs leading-relaxed ' + MUTED}>{n.summary}</p>}
                                 </div>
                             </Link>

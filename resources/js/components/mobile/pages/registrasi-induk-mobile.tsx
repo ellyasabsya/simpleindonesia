@@ -74,7 +74,7 @@ export default function RegistrasiIndukMobile(p: Props) {
         <div className="space-y-3 pb-24">
             <section className={'space-y-2.5 rounded-2xl p-3 ' + CARD}>
                 <div className="flex items-center justify-between gap-2">
-                    <h2 className="min-w-0 truncate text-[15px] font-semibold">{title}</h2>
+                    <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
                     {mode === 'ticket' && cur && (
                         <Link href={'/panel/event/' + cur.id + '/tiket'} className={'flex h-10 shrink-0 items-center rounded-full bg-indigo-600 px-3 text-xs font-medium text-white dark:bg-indigo-500 ' + PRESS}>Atur tiket</Link>
                     )}

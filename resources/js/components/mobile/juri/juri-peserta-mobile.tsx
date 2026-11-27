@@ -107,7 +107,7 @@ export default function JuriPesertaMobile(p: Props) {
                                     {filled ? <Check className="size-4" /> : i + 1}
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <div className="text-[15px] leading-tight font-semibold">{c.name}</div>
+                                    <div className="text-base leading-tight font-semibold">{c.name}</div>
                                     <div className={'mt-0.5 text-[11px] ' + MUTED}>Bobot {c.weight}% · Skala 0 - {p.num(c.max_score)}</div>
                                 </div>
                                 <span className={'shrink-0 rounded-xl px-3 py-1 text-base font-semibold ' + (filled ? 'bg-indigo-600 text-white dark:bg-indigo-500' : FIELD + ' ' + MUTED)}>{filled ? p.num(v as number) : '-'}</span>
@@ -130,7 +130,7 @@ export default function JuriPesertaMobile(p: Props) {
                 <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-slate-900/10 bg-white/95 px-4 pt-3 backdrop-blur dark:border-white/10 dark:bg-slate-950/95" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
                     <div className="leading-tight">
                         <div className={'text-[11px] font-medium ' + MUTED}>Total · {p.filled}/{p.criteria.length} terisi</div>
-                        <div className="text-xl font-semibold">{p.num(p.total)} <span className={'text-xs font-medium ' + MUTED}>/ {p.num(p.scale)}</span></div>
+                        <div className="text-[22px] font-semibold">{p.num(p.total)} <span className={'text-xs font-medium ' + MUTED}>/ {p.num(p.scale)}</span></div>
                     </div>
                     <button type="button" disabled={!p.complete || p.saving} onClick={p.onOpen} className={'h-12 rounded-full bg-indigo-600 px-7 text-sm font-semibold text-white disabled:opacity-40 dark:bg-indigo-500 ' + PRESS}>
                         {p.saving ? 'Mengirim...' : p.alreadyDone ? 'Kirim ulang' : 'Kirim nilai'}
@@ -144,7 +144,7 @@ export default function JuriPesertaMobile(p: Props) {
                         <div className="mx-auto h-1 w-10 rounded-full bg-slate-300 dark:bg-white/20" />
                         <div className="text-center">
                             <div className={'text-[11px] font-semibold tracking-wider uppercase ' + MUTED}>Konfirmasi nilai</div>
-                            <div className="text-xl font-semibold">{p.code}</div>
+                            <div className="text-[22px] font-semibold">{p.code}</div>
                             {p.name !== p.code && <div className={'text-sm ' + MUTED}>{p.name}</div>}
                         </div>
                         <div className={'space-y-1 rounded-2xl p-3 text-sm ' + FIELD}>
@@ -153,7 +153,7 @@ export default function JuriPesertaMobile(p: Props) {
                         </div>
                         <label className="block text-xs font-medium">
                             Ketik angka terakhir kode registrasi untuk mengirim
-                            <input autoFocus inputMode="numeric" value={p.codeIn} onChange={(e) => p.setCodeIn(e.target.value)} placeholder="Angka terakhir kode" className={'mt-1.5 h-12 w-full rounded-xl px-3 text-center text-xl font-semibold tracking-widest outline-none ' + FIELD} />
+                            <input autoFocus inputMode="numeric" value={p.codeIn} onChange={(e) => p.setCodeIn(e.target.value)} placeholder="Angka terakhir kode" className={'mt-1.5 h-12 w-full rounded-xl px-3 text-center text-[22px] font-semibold tracking-widest outline-none ' + FIELD} />
                         </label>
                         {p.error && <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-700 dark:text-rose-300">{p.error}</p>}
                         <div className="grid grid-cols-2 gap-2">

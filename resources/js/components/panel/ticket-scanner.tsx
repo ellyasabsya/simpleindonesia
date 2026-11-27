@@ -156,7 +156,7 @@ export default function TicketScanner({ eventId, inline = false, onClose, onChec
                 <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white"><ScanLine className="h-5 w-5" /></span>
                     <div className="mr-auto">
-                        <h3 className="text-lg font-extrabold">Scan check-in</h3>
+                        <h3 className="text-lg font-bold">Scan check-in</h3>
                         <p className="text-xs text-slate-500">{count} check-in pada sesi ini</p>
                     </div>
                     {onClose && <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>}

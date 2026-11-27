@@ -68,7 +68,7 @@ export default function PosterCard({ event, href, wide, compact, note, className
 
             <div className={compact ? 'p-3' : 'p-4'}>
                 {event.category && !compact && <p className="mb-1 text-[11px] font-medium tracking-[0.2em] text-indigo-700 uppercase dark:text-indigo-300">{event.category}</p>}
-                <h3 className={'line-clamp-2 leading-tight font-semibold tracking-tight text-slate-900 dark:text-white ' + (compact ? 'text-[14px]' : 'text-[19px]')}>{event.title}</h3>
+                <h3 className={'line-clamp-2 leading-tight font-semibold tracking-tight text-slate-900 dark:text-white ' + (compact ? 'text-sm' : 'text-[17px]')}>{event.title}</h3>
                 <div className={'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium ' + MUTED}>
                     {range && (
                         <span className="inline-flex items-center gap-1">

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { FIELD, MUTED } from '@/components/mobile/kit/soft';
 
 type St = 'all' | 'lunas' | 'menunggu' | 'menunggu_verifikasi' | 'batal';
 type Row = {
@@ -42,7 +43,8 @@ function Badge({ r }: { r: Row }) {
     return <span title={r.reject_reason ?? undefined} className={`inline-block shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${s.c}`}>{s.t}</span>;
 }
 
-export default function TiketTransaksi({ base, isParent = false }: { base: string; isParent?: boolean }) {
+export default function TiketTransaksi({ compact = false, base, isParent = false }: { compact?: boolean; base: string; isParent?: boolean }) {
+    const field = compact ? `${inp.replace('text-base', 'text-sm')} h-10` : inp;
     const [data, setData] = useState<Resp | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -83,25 +85,49 @@ export default function TiketTransaksi({ base, isParent = false }: { base: strin
     const filtered = status !== 'all' || !!term || !!from || !!to;
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
-            {/* Toolbar */}
+        <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5 ${compact ? 'mb-28' : ''}`}>
+            {compact ? (
+                <div className="space-y-2 border-b border-slate-900/[0.07] p-3 dark:border-white/10">
+                    <label className={'flex h-10 items-center gap-2 rounded-xl px-3 ' + FIELD}>
+                        <Search className="size-4 shrink-0 text-indigo-600 dark:text-indigo-300" />
+                        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode, nama, email" className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-slate-400" />
+                    </label>
+                    <select value={status} onChange={(e) => { setStatus(e.target.value as St); setPage(1); }} className={'h-10 w-full rounded-xl px-3 text-base ' + FIELD} aria-label="Filter status">
+                        {FILTERS.map(([v, t]) => <option key={v} value={v}>{t} ({data?.counts[v] ?? 0})</option>)}
+                    </select>
+                    <div className="grid grid-cols-2 gap-2">
+                        <label className="min-w-0">
+                            <span className={'mb-1 block px-1 text-[11px] ' + MUTED}>Dari</span>
+                            <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className={'h-10 w-full min-w-0 rounded-xl px-3 text-base ' + FIELD} aria-label="Dari tanggal" />
+                        </label>
+                        <label className="min-w-0">
+                            <span className={'mb-1 block px-1 text-[11px] ' + MUTED}>Sampai</span>
+                            <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} className={'h-10 w-full min-w-0 rounded-xl px-3 text-base ' + FIELD} aria-label="Sampai tanggal" />
+                        </label>
+                    </div>
+                    {filtered && (
+                        <button type="button" onClick={() => { setStatus('all'); setQ(''); setTerm(''); setFrom(''); setTo(''); setPage(1); }} className="h-9 w-full rounded-xl text-[13px] font-medium text-indigo-700 active:bg-slate-900/[0.04] dark:text-indigo-300">Reset filter</button>
+                    )}
+                </div>
+            ) : (
             <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3 dark:border-white/10">
                 <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode, nama, email" className={`${inp} w-full pl-9`} />
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode, nama, email" className={`${field} w-full pl-9`} />
                 </div>
-                <select value={status} onChange={(e) => { setStatus(e.target.value as St); setPage(1); }} className={inp} aria-label="Filter status">
+                <select value={status} onChange={(e) => { setStatus(e.target.value as St); setPage(1); }} className={field} aria-label="Filter status">
                     {FILTERS.map(([v, t]) => <option key={v} value={v}>{t} ({data?.counts[v] ?? 0})</option>)}
                 </select>
                 <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                    <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className={inp} aria-label="Dari tanggal" />
+                    <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className={field} aria-label="Dari tanggal" />
                     <span className="text-xs text-slate-500">s/d</span>
-                    <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} className={inp} aria-label="Sampai tanggal" />
+                    <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} className={field} aria-label="Sampai tanggal" />
                     {filtered && (
                         <button type="button" onClick={() => { setStatus('all'); setQ(''); setTerm(''); setFrom(''); setTo(''); setPage(1); }} className="text-xs font-bold text-indigo-700 hover:underline dark:text-indigo-300">Reset</button>
                     )}
                 </div>
             </div>
+            )}
 
             {error && <p className="m-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
 
@@ -155,14 +181,14 @@ export default function TiketTransaksi({ base, isParent = false }: { base: strin
                             {rows.map((r) => (
                                 <div key={r.id} className="rounded-2xl border border-slate-200 p-3.5 dark:border-white/10">
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0"><div className="truncate text-sm font-extrabold">{r.code}</div><div className="text-[11px] text-slate-500">{when(r.created_at)}</div></div>
+                                        <div className="min-w-0"><div className={`truncate text-sm ${compact ? 'font-semibold' : 'font-extrabold'}`}>{r.code}</div><div className="text-[11px] text-slate-500">{when(r.created_at)}</div></div>
                                         <Badge r={r} />
                                     </div>
                                     <div className="mt-2 text-sm font-bold">{r.buyer_name}</div>
                                     <div className="truncate text-xs text-slate-500">{r.buyer_email}</div>
                                     <div className="mt-2 flex items-end justify-between gap-3">
                                         <div className="min-w-0 text-xs text-slate-600 dark:text-slate-300">{r.type_name} × {r.quantity}{isParent && <div className="truncate text-indigo-700 dark:text-indigo-300">{r.event_title}</div>}<div className="text-slate-500">{payLabel(r)}</div></div>
-                                        <div className="shrink-0 text-right"><div className="text-base font-extrabold text-indigo-700 dark:text-indigo-300">{rp(r.total)}</div>{r.fee > 0 && <div className="text-[11px] text-slate-500">layanan {rp(r.fee)}</div>}</div>
+                                        <div className="shrink-0 text-right"><div className={`${compact ? 'text-sm font-semibold' : 'text-base font-extrabold'} text-indigo-700 dark:text-indigo-300`}>{rp(r.total)}</div>{r.fee > 0 && <div className="text-[11px] text-slate-500">layanan {rp(r.fee)}</div>}</div>
                                     </div>
                                 </div>
                             ))}
@@ -175,16 +201,16 @@ export default function TiketTransaksi({ base, isParent = false }: { base: strin
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <span className="text-xs font-bold text-slate-500">{data?.orders.total ?? 0} total</span>
                 <div className="flex flex-wrap items-center gap-1">
-                    <button type="button" className={pgIcon} disabled={page <= 1 || loading} onClick={() => setPage(1)} aria-label="Halaman pertama"><ChevronsLeft className="h-4 w-4" /></button>
+                    {!compact && <button type="button" className={pgIcon} disabled={page <= 1 || loading} onClick={() => setPage(1)} aria-label="Halaman pertama"><ChevronsLeft className="h-4 w-4" /></button>}
                     <button type="button" className={pgIcon} disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)} aria-label="Sebelumnya"><ChevronLeft className="h-4 w-4" /></button>
                     {pageWindow(page, last).map((n) => (
                         <button key={n} type="button" disabled={loading} onClick={() => setPage(n)} className={pgNum(n === page)} aria-current={n === page ? 'page' : undefined}>{n}</button>
                     ))}
                     <button type="button" className={pgIcon} disabled={page >= last || loading} onClick={() => setPage((p) => p + 1)} aria-label="Berikutnya"><ChevronRight className="h-4 w-4" /></button>
-                    <button type="button" className={pgIcon} disabled={page >= last || loading} onClick={() => setPage(last)} aria-label="Halaman terakhir"><ChevronsRight className="h-4 w-4" /></button>
-                    <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className={`${inp} ml-2 py-1.5`} aria-label="Baris per halaman">
+                    {!compact && <button type="button" className={pgIcon} disabled={page >= last || loading} onClick={() => setPage(last)} aria-label="Halaman terakhir"><ChevronsRight className="h-4 w-4" /></button>}
+                    {!compact && <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className={`${field} ml-2 py-1.5`} aria-label="Baris per halaman">
                         {PER_PAGE.map((n) => <option key={n} value={n}>{n} per halaman</option>)}
-                    </select>
+                    </select>}
                 </div>
             </div>
         </div>

@@ -96,7 +96,7 @@ export default function OverallSettings({ points, winnerCount, tiebreak, tieShar
         <section className="rounded-3xl bg-white/80 p-6 shadow-sm dark:bg-white/5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h3 className="text-lg font-extrabold">Pengaturan juara umum</h3>
+                    <h3 className="text-lg font-bold">Pengaturan juara umum</h3>
                     <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-300">
                         Poin diberikan per peringkat di setiap kategori, lalu dijumlahkan per peserta dari semua sub-event.
                     </p>

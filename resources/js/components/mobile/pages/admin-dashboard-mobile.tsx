@@ -9,7 +9,7 @@ function Tile({ s, wide, tone }: { s: Stat; wide: boolean; tone?: 'alert' | 'idl
     return (
         <div className={'flex flex-col justify-between gap-1 rounded-2xl px-3 py-2.5 ' + CARD + (wide ? ' col-span-2' : '')}>
             <p className={'text-xs leading-snug font-medium ' + MUTED}>{s.label}</p>
-            <p className={'text-lg leading-none font-semibold tabular-nums ' + num}>{s.value}</p>
+            <p className={'text-[17px] leading-none font-semibold tabular-nums ' + num}>{s.value}</p>
         </div>
     );
 }

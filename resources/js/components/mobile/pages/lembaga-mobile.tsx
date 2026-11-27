@@ -46,7 +46,7 @@ export default function LembagaMobile({ institution, status, data, setData, erro
                         {status.label}
                     </span>
                     <p className={'text-[13px] leading-relaxed ' + MUTED}>{status.text}</p>
-                    <dl className={'divide-y divide-slate-900/[0.07] rounded-2xl text-[15px] dark:divide-white/10 ' + FIELD}>
+                    <dl className={'divide-y divide-slate-900/[0.07] rounded-2xl text-base dark:divide-white/10 ' + FIELD}>
                         {[
                             ['Nama lembaga', institution.name],
                             ['Email kontak', institution.email],

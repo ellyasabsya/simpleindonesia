@@ -64,7 +64,7 @@ export default function BeritaAdminMobile({ news, filters, counts }: Props) {
                         <p className={'flex items-center justify-between text-xs leading-snug font-medium ' + MUTED}>
                             {label} <Icon className={'h-4 w-4 ' + tone} />
                         </p>
-                        <p className={'text-lg leading-none font-semibold tabular-nums ' + tone}>{n}</p>
+                        <p className={'text-[17px] leading-none font-semibold tabular-nums ' + tone}>{n}</p>
                     </div>
                 ))}
             </div>
@@ -88,7 +88,7 @@ export default function BeritaAdminMobile({ news, filters, counts }: Props) {
                             type="button"
                             onClick={() => visit(t.key, q)}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >
@@ -116,7 +116,7 @@ export default function BeritaAdminMobile({ news, filters, counts }: Props) {
                                     )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <div className="line-clamp-2 text-[15px] leading-snug font-semibold">{row.title}</div>
+                                    <div className="line-clamp-2 text-base leading-snug font-semibold">{row.title}</div>
                                     <div className="mt-1 flex items-center gap-2 text-xs">
                                         <span
                                             className={

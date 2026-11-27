@@ -71,7 +71,7 @@ function FinalizeDialog({ rec, base, onClose }: { rec: Recap; base: string; onCl
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><AlertTriangle className="h-6 w-6" /></span>
                     <div>
-                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Simpan hasil kategori {rec.category.name}?</h3>
+                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-bold dark:text-white">Simpan hasil kategori {rec.category.name}?</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil disimpan sebagai <b>versi baru di riwayat</b>. Setelah disimpan, penalti, nilai juri, dan keputusan dewan juri terkunci sampai Anda menekan <b>Edit</b>. Penetapan akhir dilakukan di tab Penetapan & SK. Periksa dulu 4 hal ini.</p>
                     </div>
                 </div>
@@ -470,7 +470,7 @@ function ReopenDialog({ rec, base, onClose }: { rec: Recap; base: string; onClos
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700"><Pencil className="h-6 w-6" /></span>
                     <div>
-                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Buka kunci hasil kategori {rec.category.name}?</h3>
+                        <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-bold dark:text-white">Buka kunci hasil kategori {rec.category.name}?</h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Hasil versi {rec.saved_version} dibuka kembali: penalti, keputusan seri, dan nilai juri bisa diubah lagi. Pembukaan ini <b>tercatat di riwayat</b> beserta alasannya. Setelah selesai, simpan hasil lagi untuk membuat versi baru.</p>
                     </div>
                 </div>
@@ -516,7 +516,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/60 p-0 md:items-center md:p-4" role="dialog" aria-modal="true" onClick={onClose}>
             <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[28px] bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:max-h-[90vh] md:rounded-3xl md:p-6 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">{title}</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-bold dark:text-white">{title}</h3>
                     <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
                 <div className="[&>div]:!mt-2 [&>div]:!border-t-0 [&>div]:!pt-0 [&>details]:!mt-2">{children}</div>

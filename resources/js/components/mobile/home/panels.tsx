@@ -104,7 +104,7 @@ function Cover({ e, big, priority }: { e: EventCard; big?: boolean; priority?: b
                         className={
                             'relative flex items-center justify-center rounded-2xl bg-white/80 font-semibold tracking-tight ring-1 ring-slate-900/5 dark:bg-white/10 dark:ring-white/10 ' +
                             pal.ink +
-                            (big ? ' size-20 text-3xl' : ' size-12 text-lg')
+                            (big ? ' size-20 text-3xl' : ' size-12 text-[17px]')
                         }
                     >
                         {initialsOf(e.title)}
@@ -143,7 +143,7 @@ function FeaturedCard({ e, priority }: { e: EventCard; priority?: boolean }) {
                     </span>
                 )}
                 <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 text-[18px] leading-tight font-semibold tracking-tight text-slate-900 dark:text-white">{e.title}</h3>
+                    <h3 className="line-clamp-2 text-[17px] leading-tight font-semibold tracking-tight text-slate-900 dark:text-white">{e.title}</h3>
                     <div className={'mt-1.5 space-y-0.5 text-xs font-medium ' + MUTED}>
                         {multi && (
                             <p className="flex items-center gap-1.5">
@@ -182,7 +182,7 @@ function ShelfCard({ e }: { e: EventCard }) {
 }
 
 function Heading({ children }: { children: ReactNode }) {
-    return <h2 className="mt-7 mb-3 px-1 text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">{children}</h2>;
+    return <h2 className="mt-7 mb-3 px-1 text-base font-semibold tracking-tight text-slate-900 dark:text-white">{children}</h2>;
 }
 
 const FEATURED_WEEKS = 12;
@@ -376,7 +376,7 @@ export function PackagePanel({ packages, all }: { packages: PackageCard[]; all?:
                                 </span>
                                 <span className="min-w-0 flex-1">
                                     <span className="flex items-center gap-2">
-                                        <span className="truncate text-[16px] font-semibold text-slate-900 dark:text-white">Paket {p.name}</span>
+                                        <span className="truncate text-base font-semibold text-slate-900 dark:text-white">Paket {p.name}</span>
                                         {p.featured && <span className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-semibold tracking-[0.12em] text-white uppercase dark:bg-indigo-500">Populer</span>}
                                     </span>
                                     <span className={'block truncate text-[13px] ' + MUTED}>
@@ -450,7 +450,7 @@ export function NewsPanel({ items }: { items: NewsCard[] }) {
                         </div>
                         <div className="p-4">
                             {n.date && <p className={'text-[11px] font-medium ' + MUTED}>{n.date}</p>}
-                            <h3 className="mt-1 line-clamp-2 text-[16px] leading-snug font-semibold text-slate-900 dark:text-white">{n.title}</h3>
+                            <h3 className="mt-1 line-clamp-2 text-base leading-snug font-semibold text-slate-900 dark:text-white">{n.title}</h3>
                             {n.summary && <p className={'mt-1.5 line-clamp-2 text-xs leading-relaxed ' + MUTED}>{n.summary}</p>}
                         </div>
                     </Link>

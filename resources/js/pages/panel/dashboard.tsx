@@ -139,7 +139,7 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
                 <div className="sticky top-0 z-10 -mx-6 -mt-6 flex items-start justify-between gap-4 bg-white px-6 pb-3 pt-6 dark:bg-slate-900">
                     <div>
                         <p className={eyebrow}>Anggota lembaga</p>
-                        <h3 className="mt-1 text-xl font-extrabold">{editing ? `Ubah akses ${member!.name ?? ''}` : 'Tambah anggota'}</h3>
+                        <h3 className="mt-1 text-xl font-bold">{editing ? `Ubah akses ${member!.name ?? ''}` : 'Tambah anggota'}</h3>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10"><X className="h-4 w-4" /></button>
                 </div>
@@ -445,7 +445,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                 <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
                     <div id="event" className={`${card} scroll-mt-24 p-6`}>
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-extrabold">Event lembaga</h3>
+                            <h3 className="text-xl font-bold">Event lembaga</h3>
                             <Link href="/panel/ajukan" className={`inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                         </div>
                         {counts.total > 0 && (
@@ -463,7 +463,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                         ) : events.length === 0 ? (
                             <div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
                                 <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-50 dark:bg-white/10"><CalendarDays className="h-7 w-7 text-sky-500" /></span>
-                                <p className="text-lg font-extrabold">Belum ada event</p>
+                                <p className="text-lg font-bold">Belum ada event</p>
                                 <p className="max-w-xs text-sm text-slate-500 dark:text-slate-400">Ajukan event pertama Anda. Event tayang setelah diperiksa admin.</p>
                                 <Link href="/panel/ajukan" className={`${primary} ${can('events') ? '' : '!hidden'}`}><Plus className="h-4 w-4" /> Buat event</Link>
                             </div>
@@ -516,7 +516,7 @@ export default function PanelDashboard({ institution, isOwner, owner, members, c
                     <div id="anggota" className="scroll-mt-24 space-y-4 lg:sticky lg:top-24 lg:self-start">
                         <div className={`${card} p-6`}>
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-extrabold">Anggota tim</h3>
+                                <h3 className="text-xl font-bold">Anggota tim</h3>
                                 {isOwner && <button onClick={() => setModal({ open: true, member: null })} className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"><UserPlus className="h-4 w-4" /> Tambah</button>}
                             </div>
                             <ul className="mt-4 space-y-1">

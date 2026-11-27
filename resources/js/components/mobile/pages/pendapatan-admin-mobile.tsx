@@ -145,7 +145,7 @@ export default function PendapatanAdminMobile({ tab, status, q, withdrawals, cou
                     return (
                         <div key={c.label} className={'flex flex-col justify-between gap-1 rounded-2xl px-3 py-2.5 ' + CARD + (v.length > 12 ? ' col-span-2' : '')}>
                             <p className={'text-xs leading-snug font-medium ' + MUTED}>{c.label}</p>
-                            <p className={'text-lg leading-none font-semibold tabular-nums ' + c.color}>{v}</p>
+                            <p className={'text-[17px] leading-none font-semibold tabular-nums ' + c.color}>{v}</p>
                             <p className={'text-[11px] leading-snug ' + MUTED}>{c.note}</p>
                         </div>
                     );
@@ -196,7 +196,7 @@ export default function PendapatanAdminMobile({ tab, status, q, withdrawals, cou
                             type="button"
                             onClick={() => go({ status: c.key })}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (status === c.key ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >
@@ -215,7 +215,7 @@ export default function PendapatanAdminMobile({ tab, status, q, withdrawals, cou
                         {balances.map((b) => (
                             <div key={b.id} className={'space-y-1.5 rounded-2xl p-3 ' + CARD}>
                                 <div>
-                                    <div className="text-[15px] leading-snug font-semibold break-words">{b.title}</div>
+                                    <div className="text-base leading-snug font-semibold break-words">{b.title}</div>
                                     <div className={'text-xs ' + MUTED}>
                                         {b.institution} · Paket {b.package}
                                     </div>
@@ -246,7 +246,7 @@ export default function PendapatanAdminMobile({ tab, status, q, withdrawals, cou
                             <div key={w.id} className={'space-y-2 rounded-2xl p-3 ' + CARD}>
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
-                                        <div className="text-[15px] leading-snug font-semibold break-words">{w.institution}</div>
+                                        <div className="text-base leading-snug font-semibold break-words">{w.institution}</div>
                                         <div className={'text-xs break-words ' + MUTED}>{w.event}</div>
                                     </div>
                                     <span className={'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ' + st.style}>{st.label}</span>

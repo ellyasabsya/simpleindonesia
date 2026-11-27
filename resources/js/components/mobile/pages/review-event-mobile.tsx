@@ -119,7 +119,7 @@ export default function ReviewEventMobile({ events, filters, counts, base, pageT
                             type="button"
                             onClick={() => go({ status: t.key })}
                             className={
-                                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
+                                'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' +
                                 (active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')
                             }
                         >
@@ -160,7 +160,7 @@ export default function ReviewEventMobile({ events, filters, counts, base, pageT
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="text-[15px] leading-snug font-semibold break-words">{e.title}</div>
+                                        <div className="text-base leading-snug font-semibold break-words">{e.title}</div>
                                         <span className={'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ' + badge[e.status].style}>{badge[e.status].label}</span>
                                     </div>
                                     <div className={'text-xs ' + MUTED}>

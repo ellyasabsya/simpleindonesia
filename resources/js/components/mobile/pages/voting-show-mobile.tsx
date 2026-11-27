@@ -19,19 +19,19 @@ function Thumb({ p, size }: { p: any; size: number }) {
     return p.photo ? (
         <img src={p.photo} alt={p.name} style={{ width: size, height: size }} className="shrink-0 rounded-2xl object-cover" />
     ) : (
-        <span style={{ width: size, height: size }} className={'flex shrink-0 items-center justify-center rounded-2xl text-lg font-semibold text-indigo-700 dark:text-indigo-300 ' + FIELD}>
+        <span style={{ width: size, height: size }} className={'flex shrink-0 items-center justify-center rounded-2xl text-[17px] font-semibold text-indigo-700 dark:text-indigo-300 ' + FIELD}>
             {p.name.charAt(0).toUpperCase()}
         </span>
     );
 }
 
 function Cd({ c }: { c: any }) {
-    if (c.over) return <p className="text-[15px] font-semibold text-rose-600 dark:text-rose-400">Voting sudah ditutup</p>;
+    if (c.over) return <p className="text-base font-semibold text-rose-600 dark:text-rose-400">Voting sudah ditutup</p>;
     return (
         <div className="grid grid-cols-4 gap-2">
             {[['Hari', c.d], ['Jam', c.h], ['Menit', c.m], ['Detik', c.s]].map(([l, v]) => (
                 <div key={l as string} className={'rounded-2xl py-2.5 text-center ' + FIELD}>
-                    <div className="text-xl font-semibold tabular-nums">{String(v).padStart(2, '0')}</div>
+                    <div className="text-[22px] font-semibold tabular-nums">{String(v).padStart(2, '0')}</div>
                     <div className={'text-[11px] ' + MUTED}>{l}</div>
                 </div>
             ))}
@@ -96,7 +96,7 @@ export default function VotingShowMobile(a: any) {
                     <div className="space-y-4">
                         <div className={'space-y-3 rounded-3xl p-4 ' + CARD}>
                             <p className={eyebrow}>Kategori voting</p>
-                            <h2 className="text-[20px] leading-tight font-semibold">{title}</h2>
+                            <h2 className="text-[17px] leading-tight font-semibold">{title}</h2>
                             <p className={'text-xs ' + MUTED}>{scope.length} kontestan{scopeVotes !== null ? ' · ' + nf(scopeVotes) + ' vote' : ''}</p>
                             <Cd c={cd} />
                         </div>
@@ -138,10 +138,10 @@ export default function VotingShowMobile(a: any) {
                                         )}
                                         <Thumb p={p} size={48} />
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-[15px] font-semibold">{p.name}</p>
+                                            <p className="truncate text-base font-semibold">{p.name}</p>
                                             {p.votes !== null && <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300">{nf(p.votes)} vote</p>}
                                         </div>
-                                        <button type="button" disabled={!canBuy} onClick={() => onBuy(p)} className={'h-10 shrink-0 rounded-full bg-indigo-600 px-4 text-[13px] font-medium text-white disabled:opacity-40 dark:bg-indigo-500 ' + PRESS}>Beli vote</button>
+                                        <button type="button" disabled={!canBuy} onClick={() => onBuy(p)} className={'h-10 shrink-0 rounded-full bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-40 dark:bg-indigo-500 ' + PRESS}>Beli vote</button>
                                     </div>
                                 ))}
                             </div>
@@ -195,7 +195,7 @@ export function BuySheetMobile(b: any) {
                             <Thumb p={p} size={56} />
                             <div className="min-w-0 flex-1">
                                 <p className={eyebrow}>Dukung</p>
-                                <p className="truncate text-[16px] font-semibold">{p.name}</p>
+                                <p className="truncate text-base font-semibold">{p.name}</p>
                                 <p className={'truncate text-xs ' + MUTED}>{event.title}</p>
                             </div>
                             {rank > 0 && <span className="rounded-xl bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white dark:bg-indigo-500">#{rank}</span>}
@@ -249,7 +249,7 @@ export function BuySheetMobile(b: any) {
                                     value={gift ? String(gift.votes) : d.votes}
                                     onChange={(e) => form.setData({ ...d, gift_id: null, votes: e.target.value.replace(/\D/g, '') })}
                                     onBlur={() => !gift && setVotes(Number(d.votes) || s.min_votes)}
-                                    className={input + ' text-center text-lg font-semibold'}
+                                    className={input + ' text-center text-[17px] font-semibold'}
                                 />
                                 <button type="button" onClick={() => setVotes(votes + 1)} disabled={votes >= max} className={'flex size-12 shrink-0 items-center justify-center rounded-2xl disabled:opacity-40 ' + FIELD}><Plus className="size-5" /></button>
                             </div>

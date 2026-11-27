@@ -53,7 +53,7 @@ function VoteCard({ v }: { v: VotingItem }) {
                 </span>
             </div>
             <div className="px-1 pt-2.5">
-                <h3 className="line-clamp-2 text-[15px] leading-snug font-semibold text-slate-900 dark:text-white">{v.title}</h3>
+                <h3 className="line-clamp-2 text-base leading-snug font-semibold text-slate-900 dark:text-white">{v.title}</h3>
                 {range && (
                     <p className={'mt-1 flex items-center gap-1.5 text-xs ' + MUTED}>
                         <CalendarDays className="size-3.5 shrink-0" />

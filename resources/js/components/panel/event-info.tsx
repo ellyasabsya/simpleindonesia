@@ -84,7 +84,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
             <div className="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-900 shadow-2xl sm:rounded-3xl sm:p-6 dark:bg-slate-900 dark:text-white">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-extrabold">{title}</h3>
+                    <h3 className="text-xl font-bold">{title}</h3>
                     <button type="button" aria-label="Tutup" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
                 {children}
@@ -113,9 +113,9 @@ const fmtDate = (s: string) => new Date(`${s}T00:00:00`).toLocaleDateString('id-
 const badgeTone = (l: string) => l === 'Akan datang' ? 'bg-amber-300 text-amber-950' : l === 'Berlangsung' ? 'bg-emerald-300 text-emerald-950' : l === 'Selesai' ? 'bg-white/25 text-white' : 'bg-white/15 text-white/80';
 const heroBtn = 'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition';
 
-export function InfoBar({ eventId, eventTitle, info, phases, section, setSection, meta, compact, view, setView }: {
+export function InfoBar({ eventId, eventTitle, info, phases, section, setSection, meta, compact, view, setView, actions }: {
     eventId: number; eventTitle: string; info: InfoProps; phases: { registration: Range; preparation: Range }; section: Section; setSection: (s: Section) => void;
-    meta?: HeroMeta; compact?: boolean; view?: 'linimasa' | 'kalender'; setView?: (v: 'linimasa' | 'kalender') => void;
+    meta?: HeroMeta; compact?: boolean; view?: 'linimasa' | 'kalender'; setView?: (v: 'linimasa' | 'kalender') => void; actions?: React.ReactNode;
 }) {
     const { done: copied, copy } = useCopy();
     const base = `/panel/event/${eventId}/kalender/publikasi`;
@@ -154,7 +154,7 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
                         <span className="grid h-[38px] w-[38px] place-items-center rounded-full bg-indigo-600 text-xs font-extrabold sm:h-[60px] sm:w-[60px] sm:text-base">{pct}%</span>
                     </span>
                     <div className="min-w-0 flex-1 basis-40">
-                        <div className="text-base font-extrabold sm:text-xl">Kesiapan event</div>
+                        <div className="text-base font-bold sm:text-xl">Kesiapan event</div>
                         <div className="text-xs text-white/80 sm:text-sm">
                             {ok === checks.length ? 'Semua siap. Peserta punya informasi lengkap.' : `${ok} dari ${checks.length} langkah selesai`}
                         </div>
@@ -207,12 +207,15 @@ export function InfoBar({ eventId, eventTitle, info, phases, section, setSection
                 )}
             </div>
 
-            <div className={`${compact ? 'hidden' : ''} grid grid-cols-2 gap-1 rounded-2xl p-1.5 sm:grid sm:auto-cols-fr sm:grid-flow-col ${glass}`}>
+            <div className={`${compact ? 'hidden' : ''} flex flex-wrap items-center gap-2 rounded-2xl p-1.5 ${glass}`}>
+                <div className="flex min-w-0 flex-wrap gap-1">
                 {tabs.map(([k, label, n]) => (
                     <button key={k} type="button" onClick={() => pick(k)} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-bold transition sm:px-6 ${active === k ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : 'text-slate-600 dark:text-slate-300'}`}>
                         {label}{n ? <span className={`rounded-full px-1.5 text-[11px] ${active === k ? 'bg-white/25' : 'bg-slate-200 dark:bg-white/10'}`}>{n}</span> : null}
                     </button>
                 ))}
+                </div>
+                {actions && (active === 'linimasa' || active === 'kalender') ? <div className="ml-auto flex shrink-0 items-center gap-3 px-2">{actions}</div> : null}
             </div>
         </div>
     );
@@ -293,30 +296,32 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
     const sorted = [...items].filter(inDay).sort(byTime);
     const lastEnd = sorted.reduce((m, i) => Math.max(m, toMin(i.end_time ?? i.start_time)), 0);
 
-    return (
-        <div className="space-y-4">
-            {multi && (
+    const dayPicker = multi ? (
                 <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
                     {days.map((d, n) => {
                         const c = items.filter((x) => x.date === d).length;
                         return (
-                            <button key={d} type="button" onClick={() => setDay(d)} className={`shrink-0 rounded-xl px-4 py-2 text-left text-sm font-bold transition ${day === d ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : `${glass} text-slate-600 dark:text-slate-300`}`}>
+                            <button key={d} type="button" onClick={() => setDay(d)} className={`shrink-0 rounded-xl px-4 py-2 text-left text-sm font-semibold transition ${day === d ? 'bg-indigo-900 text-white shadow dark:bg-indigo-500' : 'border border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}>
                                 <span className="block">Hari {n + 1}</span>
                                 <span className={`block text-[11px] font-semibold ${day === d ? 'text-white/70' : 'text-slate-500'}`}>{shortDate(d)} · {c} sesi</span>
                             </button>
                         );
                     })}
                 </div>
-            )}
+    ) : null;
+
+    return (
+        <div className="space-y-4">
 
             {sorted.length === 0 ? (
                 <div className={`rounded-3xl p-6 ${glass}`}>
-                    <div className="flex items-center gap-2 text-lg font-extrabold"><ClipboardList className="h-5 w-5 text-indigo-600" />{multi ? `Susun rundown Hari ${dayNo(day)} · ${shortDate(day)}` : 'Mulai susun rundown'}</div>
-                    <p className="mt-1 text-sm text-slate-500">Pilih template lalu sesuaikan jam dan sesinya, atau mulai dari kosong.</p>
+                    {dayPicker ? <div className="mb-5">{dayPicker}</div> : null}
+                    <div className="flex items-center gap-2 text-[15px] font-semibold md:text-lg md:font-bold"><ClipboardList className="h-4 w-4 text-indigo-600 md:h-5 md:w-5" />{multi ? `Susun rundown Hari ${dayNo(day)} · ${shortDate(day)}` : 'Mulai susun rundown'}</div>
+                    <p className="mt-1 text-xs text-slate-500 md:text-sm">Pilih template lalu sesuaikan jam dan sesinya, atau mulai dari kosong.</p>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                         {TEMPLATES.map((t) => (
                             <button key={t.name} type="button" onClick={() => useTemplate(t.rows)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-400 dark:border-white/10 dark:bg-white/5">
-                                <div className="font-extrabold">{t.name}</div>
+                                <div className="text-sm font-semibold md:text-base">{t.name}</div>
                                 <div className="text-xs text-slate-500">{t.desc}</div>
                             </button>
                         ))}
@@ -333,6 +338,8 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
                 </div>
             ) : (
                 <>
+                    <div className={`rounded-3xl p-4 sm:p-6 ${glass}`}>
+                    {dayPicker ? <div className="mb-4">{dayPicker}</div> : null}
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="w-full text-sm font-bold text-slate-600 sm:mr-auto sm:w-auto dark:text-slate-300">{sorted.length} sesi · {sorted[0].start_time} – {fromMin(lastEnd)}</span>
                         <div title={dirty ? 'Simpan perubahan dulu sebelum mengubah publikasi.' : 'Atur apakah peserta bisa melihat rundown di tautan info.'} className={`inline-flex items-center gap-2.5 rounded-xl border px-3 py-1.5 ${info.rundownPublished ? 'border-indigo-200 bg-indigo-50 dark:border-indigo-400/30 dark:bg-indigo-500/15' : 'border-slate-200 bg-white dark:border-white/10 dark:bg-white/5'}`}>
@@ -352,6 +359,7 @@ function RundownTab({ eventId, eventTitle, startsAt, endsAt, info }: { eventId: 
                         <button type="button" onClick={() => setItems((a) => [...a].sort(byTime))} className={soft}>Urutkan jam</button>
                         <button type="button" onClick={() => copy('wa', rundownText(eventTitle, items))} className={soft}>{copied === 'wa' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied === 'wa' ? 'Tersalin' : 'Salin untuk WhatsApp'}</button>
                         <button type="button" onClick={add} className={primary}><Plus className="h-4 w-4" />Tambah sesi</button>
+                    </div>
                     </div>
 
                     <div className="space-y-3">
@@ -446,22 +454,25 @@ function AnnouncementsTab({ eventId, eventTitle, info }: { eventId: number; even
     const base = `/panel/event/${eventId}/kalender/pengumuman`;
     const put = (a: Announcement, patch: Partial<Announcement>) => router.put(`${base}/${a.id}`, { title: a.title, body: a.body, category: a.category, pinned: a.pinned, published: a.published, ...patch }, { preserveScroll: true });
 
+    const empty = info.announcements.length === 0;
+
     return (
         <div className="space-y-4">
             {/* ANN_BAR */}
-            <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl p-3.5 sm:px-4 ${glass}`}>
-                <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">{info.announcements.length} pengumuman</span>
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-4 dark:sm:border-white/10">
-                    <span className={lbl}>Cepat:</span>
-                    {PRESETS.map((p) => <button key={p.label} type="button" onClick={() => setModal({ item: null, preset: p })} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">{p.label}</button>)}
+            <div className={empty ? `overflow-hidden rounded-3xl ${glass}` : 'space-y-4'}>
+            <div className={`flex flex-wrap items-center gap-x-4 gap-y-3 p-3.5 sm:px-4 ${empty ? 'border-b border-slate-200/70 dark:border-white/10' : `rounded-2xl ${glass}`}`}>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{info.announcements.length} pengumuman</span>
+                <div className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:flex-1 sm:flex-wrap sm:overflow-visible sm:border-l sm:border-slate-200 sm:pb-0 sm:pl-4 dark:sm:border-white/10">
+                    <span className={`${lbl} shrink-0`}>Cepat:</span>
+                    {PRESETS.map((p) => <button key={p.label} type="button" onClick={() => setModal({ item: null, preset: p })} className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">{p.label}</button>)}
                 </div>
                 <button type="button" onClick={() => setModal({ item: null, preset: null })} className={`${primary} w-full sm:w-auto`}><Plus className="h-4 w-4" />Buat pengumuman</button>
             </div>
 
             {info.announcements.length === 0 ? (
-                <div className={`rounded-3xl p-8 text-center ${glass}`}>
+                <div className="p-8 text-center">
                     <Megaphone className="mx-auto h-8 w-8 text-indigo-500" />
-                    <div className="mt-2 text-lg font-extrabold">Belum ada pengumuman</div>
+                    <div className="mt-2 text-[15px] font-semibold md:text-lg md:font-bold">Belum ada pengumuman</div>
                     <p className="mt-1 text-sm text-slate-500">Pengumuman yang diterbitkan tampil di tautan info peserta, lengkap dengan waktu pembaruan.</p>
                 </div>
             ) : (
@@ -474,7 +485,7 @@ function AnnouncementsTab({ eventId, eventTitle, info }: { eventId: number; even
                                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${a.published ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200' : 'bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{a.published ? 'Tayang' : 'Draf'}</span>
                                 <span className="ml-auto text-xs text-slate-500">{a.updated_label}</span>
                             </div>
-                            <h3 className="mt-2 text-base font-extrabold">{a.title}</h3>
+                            <h3 className="mt-2 text-base font-semibold">{a.title}</h3>
                             <p className="mt-1 flex-1 text-sm leading-relaxed whitespace-pre-line text-slate-600 dark:text-slate-300">{a.body}</p>
                             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-3 dark:border-white/10">
                                 <button type="button" onClick={() => put(a, { published: !a.published })} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">{a.published ? 'Tarik dari peserta' : 'Terbitkan'}</button>
@@ -489,6 +500,7 @@ function AnnouncementsTab({ eventId, eventTitle, info }: { eventId: number; even
                     ))}
                 </div>
             )}
+            </div>
             {modal && <AnnouncementModal eventId={eventId} initial={modal.item} preset={modal.preset} onClose={() => setModal(null)} />}
         </div>
     );

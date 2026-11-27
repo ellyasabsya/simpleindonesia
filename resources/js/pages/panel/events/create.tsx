@@ -1445,7 +1445,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                             )}
                             {data.registration_method && data.subs.map((s, i) => (
                                 <div key={i} className={`${box} space-y-4 p-3 md:p-5`}>
-                                    <h3 className="text-lg font-extrabold">Event {i + 1}: {s.title || '-'}</h3>
+                                    <h3 className="text-lg font-bold">Event {i + 1}: {s.title || '-'}</h3>
                                     <RegistrasiBlocks d={s} set={(p) => setSub(i, p)} pre={`subs.${i}.`} err={err} />
                                 </div>
                             ))}
@@ -1477,7 +1477,7 @@ export default function CreateEvent({ packages, categories, selected_package_id,
                             <>
                                 <ReviewCard d={data} categories={categories} badge="Event utama" main onEdit={() => setStep(keys.indexOf('utama'))} />
                                 <div>
-                                    <p className="mb-3 text-lg font-extrabold">Daftar event ({data.subs.length})</p>
+                                    <p className="mb-3 text-lg font-bold">Daftar event ({data.subs.length})</p>
                                     <div className="space-y-4 border-l-2 border-indigo-200 pl-5 dark:border-indigo-400/30">
                                         {data.subs.map((s, i) => (
                                             <ReviewCard key={i} d={s} categories={categories} badge={`Event ${i + 1}`} onEdit={() => setStep(keys.indexOf(`sub:${i}`))} />

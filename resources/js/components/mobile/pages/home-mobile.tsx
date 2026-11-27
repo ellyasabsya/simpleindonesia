@@ -45,7 +45,7 @@ export default function HomeMobile() {
                                 <Avatar name={user.name ?? 'Pengguna'} src={user.avatar ?? null} className="size-10 shrink-0 rounded-full text-sm" />
                                 <span className="min-w-0">
                                     <span className={'block text-[11px] ' + MUTED}>Selamat datang</span>
-                                    <span className="block truncate text-[16px] leading-tight font-semibold">{first}</span>
+                                    <span className="block truncate text-base leading-tight font-semibold">{first}</span>
                                 </span>
                             </Link>
                         ) : (
@@ -80,7 +80,7 @@ export default function HomeMobile() {
                             <Avatar name={account.name ?? 'Pengguna'} src={account.avatar ?? null} className="size-10 shrink-0 rounded-full text-sm" />
                             <div className="min-w-0 flex-1">
                                 <p className={'text-[11px] ' + MUTED}>Selamat datang kembali</p>
-                                <p className="truncate text-[15px] leading-tight font-semibold">{account.name?.split(' ')[0]}</p>
+                                <p className="truncate text-base leading-tight font-semibold">{account.name?.split(' ')[0]}</p>
                             </div>
                             <Link
                                 href="/dashboard"

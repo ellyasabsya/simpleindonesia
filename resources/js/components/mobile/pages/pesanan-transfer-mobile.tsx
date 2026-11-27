@@ -43,7 +43,7 @@ function Card({ o }: { o: PendingOrder }) {
         <div className={'space-y-3 rounded-3xl p-4 ' + CARD}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="truncate text-[15px] font-semibold">{o.title ?? '(event dihapus)'}</p>
+                    <p className="truncate text-base font-semibold">{o.title ?? '(event dihapus)'}</p>
                     <p className={'text-xs ' + MUTED}>{o.code} · {o.quantity} tiket · {rp(o.total)}</p>
                     <p className={'text-xs ' + MUTED}>{o.created_at}</p>
                 </div>

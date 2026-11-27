@@ -11,7 +11,7 @@ export default function EmptyState({ icon: Icon, title, text, action }: Props) {
             <span className={'flex size-16 items-center justify-center rounded-3xl text-indigo-700 dark:text-indigo-300 ' + FIELD}>
                 <Icon className="size-7" />
             </span>
-            <p className="mt-2 text-[15px] font-semibold text-slate-900 dark:text-white">{title}</p>
+            <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">{title}</p>
             <p className={'max-w-xs text-[13px] leading-relaxed ' + MUTED}>{text}</p>
             {action && <div className="mt-3">{action}</div>}
         </div>

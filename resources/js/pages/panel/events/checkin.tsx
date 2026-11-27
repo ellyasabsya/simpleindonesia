@@ -2,13 +2,13 @@ import PanelLayout from '@/components/panel/panel-layout';
 import TicketScanner, { type Result } from '@/components/panel/ticket-scanner';
 import CheckinMobile from '@/components/mobile/pages/checkin-mobile';
 import { usePhone } from '@/components/mobile/use-phone';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { CalendarDays as StatToday, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock as StatClock, Search, UserCheck as StatCheck, Users as StatUsers } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 type Row = { code: string; reg_id: string | null; name: string; type: string | null; buyer: string | null; at: string | null; sub?: string | null; kind?: string; also?: boolean };
 type Props = { eventId: number; rows: Row[]; subs?: string[] };
 
-const PER_PAGE = 25;
+const PER_PAGE_OPTIONS = [10, 15, 25, 50];
 const card = 'rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5';
 const field = 'rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/5';
 
@@ -26,6 +26,11 @@ function KindBadge({ r }: { r: Row }) {
     );
 }
 
+const th = 'border-b border-r border-slate-200 px-3 py-2.5 text-xs font-extrabold text-slate-700 last:border-r-0 dark:border-white/10 dark:text-slate-200';
+const td = 'border-b border-r border-slate-100 px-3 py-2.5 align-middle last:border-r-0 dark:border-white/10';
+const pgIcon = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-white/10';
+const pgNum = (on: boolean) => `inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-extrabold ${on ? 'bg-indigo-700 text-white' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10'}`;
+
 export default function Checkin({ eventId, rows: initial, subs: subList }: Props) {
     const [rows, setRows] = useState<Row[]>(initial);
     const [q, setQ] = useState('');
@@ -34,6 +39,7 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
     const [kind, setKind] = useState<'' | 'pengunjung' | 'peserta'>('');
     const [tab, setTab] = useState<'semua' | 'hadir' | 'belum'>('semua');
     const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
     const [busy, setBusy] = useState('');
     const [err, setErr] = useState('');
     const phone = usePhone();
@@ -112,16 +118,25 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
         );
     }, [scoped, q, type, tab]);
 
-    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    const pages = Math.max(1, Math.ceil(list.length / perPage));
     const cur = Math.min(page, pages);
-    const view = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
-    const from = list.length === 0 ? 0 : (cur - 1) * PER_PAGE + 1;
-    const to = Math.min(cur * PER_PAGE, list.length);
+    const view = list.slice((cur - 1) * perPage, cur * perPage);
+    const from = list.length === 0 ? 0 : (cur - 1) * perPage + 1;
+    const to = Math.min(cur * perPage, list.length);
 
-    const stat = (t: string, v: number, extra?: string) => (
-        <div className={`${card} px-5 py-4`}>
-            <div className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{t}</div>
-            <div className="mt-1 text-2xl font-extrabold">{v}{extra && <span className="ml-1 text-sm font-semibold text-slate-500">{extra}</span>}</div>
+    const tones = {
+        hadir: { Icon: StatCheck, soft: 'bg-emerald-50 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300' },
+        hariIni: { Icon: StatToday, soft: 'bg-indigo-50 dark:bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300' },
+        belum: { Icon: StatClock, soft: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-600 dark:text-rose-300' },
+        total: { Icon: StatUsers, soft: 'bg-amber-50 dark:bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300' },
+    };
+    const stat = (tone: (typeof tones)[keyof typeof tones], t: string, v: number, extra?: string) => (
+        <div className={`group relative min-w-0 overflow-hidden rounded-2xl px-5 py-4 transition hover:-translate-y-0.5 hover:shadow-md ${tone.soft}`}>
+            <tone.Icon className={`absolute -bottom-4 -right-3 h-24 w-24 opacity-10 transition group-hover:scale-110 ${tone.text}`} />
+            <div className="relative">
+                <div className={`break-words text-2xl font-extrabold sm:text-3xl ${tone.text}`}>{v}{extra && <span className="ml-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{extra}</span>}</div>
+                <div className={`mt-1.5 text-sm font-bold ${tone.text}`}>{t}</div>
+            </div>
         </div>
     );
     const tabBtn = (k: typeof tab, label: string) => (
@@ -149,24 +164,29 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
             )}
             <div className={phone ? 'hidden' : 'space-y-5'}>
 
-                <div className="grid gap-4 sm:grid-cols-3">
-                    {stat('Sudah hadir', hadir, `(${pct}%)`)}
-                    {stat('Hadir hari ini', hadirHariIni)}
-                    {stat('Belum hadir', total - hadir)}
-                    {stat('Total terdaftar', total)}
-                </div>
-                <div className="-mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 transition-all" style={{ width: `${pct}%` }} />
+                <div className={`${card} p-6 sm:p-8`}>
+                <h2 className="flex flex-wrap items-center gap-3 text-xl font-bold">
+                    Check-in
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">{hadir} dari {total} hadir</span>
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Pindai tiket atau masukkan kode peserta untuk mencatat kehadiran.</p>
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                    {stat(tones.hadir, 'Sudah hadir', hadir, `(${pct}%)`)}
+                    {stat(tones.hariIni, 'Hadir hari ini', hadirHariIni)}
+                    {stat(tones.belum, 'Belum hadir', total - hadir)}
+                    {stat(tones.total, 'Total terdaftar', total)}
                 </div>
 
-                <div className={`${card} p-5`}>
+                <div className="mt-6">
                     {!phone && <TicketScanner eventId={eventId} inline onCheckedIn={onIn} />}
                 </div>
+                </div>
 
-                <div className={`${card} overflow-hidden`}>
-                    <div className="space-y-4 p-5">
+                <div className={`${card} p-4 sm:p-6`}>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
+                    <div className="space-y-4 p-4">
                         <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="mr-auto text-lg font-extrabold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                            <h3 className="mr-auto text-lg font-bold">Daftar peserta <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
                             <div className="flex gap-1 rounded-xl border border-slate-200 p-1 dark:border-white/10">
                                 {tabBtn('semua', 'Semua')}{tabBtn('hadir', 'Sudah hadir')}{tabBtn('belum', 'Belum hadir')}
                             </div>
@@ -209,32 +229,32 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                         <p className="border-t border-slate-200 px-5 py-12 text-center text-sm font-semibold text-slate-500 dark:border-white/10">{total === 0 ? 'Belum ada data check-in.' : 'Tidak ada data yang cocok.'}</p>
                     ) : (
                         <div className="overflow-x-auto border-t border-slate-200 dark:border-white/10">
-                            <table className="w-full min-w-[820px] text-sm">
+                            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                                 <thead className="bg-slate-50 dark:bg-white/5">
-                                    <tr className="text-left text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                                        <th className="w-[210px] px-5 py-3">ID registrasi</th>
-                                        <th className="px-3 py-3">Peserta</th>
-                                        {hasSub && <th className="px-3 py-3">Sub-event</th>}
-                                        <th className="px-3 py-3">Jenis</th>
-                                        <th className="px-3 py-3">Pembeli / sekolah</th>
-                                        <th className="w-[170px] px-3 py-3">Kehadiran</th>
-                                        <th className="w-[120px] px-5 py-3 text-right">Aksi</th>
+                                    <tr>
+                                        <th className={`${th} w-[210px]`}>ID registrasi</th>
+                                        <th className={th}>Peserta</th>
+                                        {hasSub && <th className={th}>Sub-event</th>}
+                                        <th className={th}>Jenis</th>
+                                        <th className={th}>Pembeli / sekolah</th>
+                                        <th className={`${th} w-[170px]`}>Kehadiran</th>
+                                        <th className={`${th} w-[120px] text-right`}>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                                     {view.map((r) => (
-                                        <tr key={r.code} className="align-middle">
-                                            <td className="px-5 py-3 font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300">{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
-                                            <td className="px-3 py-3"><div className="font-extrabold">{r.name}</div><div className="font-mono text-[11px] text-slate-500">{r.code}</div></td>
-                                            {hasSub && <td className="px-3 py-3 font-semibold">{r.sub}</td>}
-                                            <td className="px-3 py-3"><div className="flex flex-wrap items-center gap-1"><KindBadge r={r} />{r.type && <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span>}</div></td>
-                                            <td className="px-3 py-3 font-semibold">{r.buyer}</td>
-                                            <td className="px-3 py-3">
+                                        <tr key={r.code} className="align-middle transition-colors hover:bg-indigo-50/60 dark:hover:bg-white/5">
+                                            <td className={`${td} font-mono text-[13px] font-bold text-indigo-700 dark:text-indigo-300`}>{r.reg_id ?? <span className="font-sans font-semibold text-slate-400">-</span>}</td>
+                                            <td className={`${td}`}><div className="font-extrabold">{r.name}</div><div className="font-mono text-[11px] text-slate-500">{r.code}</div></td>
+                                            {hasSub && <td className={`${td} font-semibold`}>{r.sub}</td>}
+                                            <td className={`${td}`}><div className="flex flex-wrap items-center gap-1"><KindBadge r={r} />{r.type && <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-white/10 dark:text-indigo-200">{r.type}</span>}</div></td>
+                                            <td className={`${td} font-semibold`}>{r.buyer}</td>
+                                            <td className={`${td}`}>
                                                 {r.at
                                                     ? <div><span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">Sudah hadir</span><div className="mt-1 text-xs text-slate-500">{r.at}</div></div>
                                                     : <span className="whitespace-nowrap rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">Belum hadir</span>}
                                             </td>
-                                            <td className="px-5 py-3 text-right">
+                                            <td className={`${td} text-right`}>
                                                 {!r.at && <button type="button" disabled={busy === r.code} onClick={() => rowCheckin(r)} className="rounded-lg bg-indigo-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-800 disabled:opacity-60">{busy === r.code ? '...' : 'Check-in'}</button>}
                                             </td>
                                         </tr>
@@ -244,16 +264,24 @@ export default function Checkin({ eventId, rows: initial, subs: subList }: Props
                         </div>
                     )}
 
-                    {list.length > PER_PAGE && (
-                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-xs font-semibold text-slate-500 dark:border-white/10">
-                            <span>{from}-{to} dari {list.length}</span>
-                            <div className="flex items-center gap-2">
-                                <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronLeft className="h-4 w-4" /></button>
-                                <span>Halaman {cur} / {pages}</span>
-                                <button type="button" disabled={cur >= pages} onClick={() => setPage(cur + 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/5"><ChevronRight className="h-4 w-4" /></button>
+                    {view.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 dark:border-white/10">
+                            <span className="text-xs font-bold text-slate-500">{list.length} total</span>
+                            <div className="flex items-center gap-1">
+                                <button type="button" className={pgIcon} disabled={cur <= 1} onClick={() => setPage(1)} aria-label="Halaman pertama"><ChevronsLeft className="h-4 w-4" /></button>
+                                <button type="button" className={pgIcon} disabled={cur <= 1} onClick={() => setPage(cur - 1)} aria-label="Sebelumnya"><ChevronLeft className="h-4 w-4" /></button>
+                                {Array.from({ length: Math.min(5, pages) }, (_, k) => Math.max(1, Math.min(cur - 2, pages - 4)) + k).map((n) => (
+                                    <button key={n} type="button" onClick={() => setPage(n)} className={pgNum(n === cur)} aria-current={n === cur ? 'page' : undefined}>{n}</button>
+                                ))}
+                                <button type="button" className={pgIcon} disabled={cur >= pages} onClick={() => setPage(cur + 1)} aria-label="Berikutnya"><ChevronRight className="h-4 w-4" /></button>
+                                <button type="button" className={pgIcon} disabled={cur >= pages} onClick={() => setPage(pages)} aria-label="Halaman terakhir"><ChevronsRight className="h-4 w-4" /></button>
+                                <select value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }} className={`${field} ml-2 py-1.5`} aria-label="Baris per halaman">
+                                    {PER_PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n} per halaman</option>)}
+                                </select>
                             </div>
                         </div>
                     )}
+                </div>
                 </div>
             </div>
         </PanelLayout>

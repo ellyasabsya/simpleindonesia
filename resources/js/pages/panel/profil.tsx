@@ -173,7 +173,7 @@ function ProfilDesktop({ institution, stats }: { institution: Institution; stats
                     <div className="space-y-6">
                         <section className={card}>
                             <p className={eyebrow}>Identitas</p>
-                            <h2 className="mt-1 text-xl font-extrabold">Data lembaga</h2>
+                            <h2 className="mt-1 text-xl font-bold">Data lembaga</h2>
                             <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">Nama resmi dan kontak yang bisa dihubungi peserta.</p>
                             <div className="space-y-5">
                                 <Field label="Nama lembaga" icon={Building2} value={data.name} onChange={(e) => setData('name', e.target.value)} error={errors.name} required />
@@ -186,7 +186,7 @@ function ProfilDesktop({ institution, stats }: { institution: Institution; stats
 
                         <section className={card}>
                             <p className={eyebrow}>Lokasi dan tautan</p>
-                            <h2 className="mt-1 text-xl font-extrabold">Alamat dan website</h2>
+                            <h2 className="mt-1 text-xl font-bold">Alamat dan website</h2>
                             <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">Membantu peserta mengenal dan menemukan lembaga Anda.</p>
                             <div className="grid gap-5 sm:grid-cols-2">
                                 <Field label="Alamat" optional icon={MapPin} placeholder="Kota atau alamat lengkap" value={data.address} onChange={(e) => setData('address', e.target.value)} error={errors.address} />
@@ -196,7 +196,7 @@ function ProfilDesktop({ institution, stats }: { institution: Institution; stats
 
                         <section className={card}>
                             <p className={eyebrow}>Tentang</p>
-                            <h2 className="mt-1 text-xl font-extrabold">Deskripsi lembaga</h2>
+                            <h2 className="mt-1 text-xl font-bold">Deskripsi lembaga</h2>
                             <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">Ceritakan siapa Anda dan acara apa yang biasa diselenggarakan.</p>
                             <textarea
                                 rows={5}

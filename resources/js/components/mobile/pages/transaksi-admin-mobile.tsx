@@ -93,7 +93,7 @@ export default function TransaksiAdminMobile({ rows, summary, filters, pg }: Pro
                 {tiles.map((c) => (
                     <div key={c.label} className={'flex flex-col justify-between gap-1 rounded-2xl px-3 py-2.5 ' + CARD + (c.value.length > 12 ? ' col-span-2' : '')}>
                         <p className={'text-xs leading-snug font-medium ' + MUTED}>{c.label}</p>
-                        <p className={'text-lg leading-none font-semibold tabular-nums ' + c.color}>{c.value}</p>
+                        <p className={'text-[17px] leading-none font-semibold tabular-nums ' + c.color}>{c.value}</p>
                         <p className={'text-[11px] leading-snug ' + MUTED}>{c.note}</p>
                     </div>
                 ))}
@@ -105,7 +105,7 @@ export default function TransaksiAdminMobile({ rows, summary, filters, pg }: Pro
                         key={t.label}
                         type="button"
                         onClick={t.on}
-                        className={'inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' + (t.active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')}
+                        className={'inline-flex h-10 shrink-0 items-center rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap ' + (t.active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300')}
                     >
                         {t.label}
                     </button>

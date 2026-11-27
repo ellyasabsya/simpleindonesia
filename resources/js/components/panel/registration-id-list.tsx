@@ -13,7 +13,7 @@ export default function RegistrationIdList() {
     return (
         <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/60">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="flex items-center gap-2 text-lg font-extrabold">
+                <h3 className="flex items-center gap-2 text-lg font-bold">
                     <Hash className="size-5 text-indigo-600" /> Daftar ID registrasi <span className="text-sm font-semibold text-slate-500">({rows.length})</span>
                 </h3>
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari ID, nama, kategori" className="w-64 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5" />

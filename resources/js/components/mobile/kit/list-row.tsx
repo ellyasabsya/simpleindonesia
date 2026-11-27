@@ -27,7 +27,7 @@ export default function ListRow({ href, image, fallback, tall, eyebrow, title, l
             </span>
             <span className="min-w-0 flex-1">
                 {eyebrow && <span className="mb-0.5 block text-[11px] font-medium">{eyebrow}</span>}
-                <span className="line-clamp-2 block text-[15px] leading-snug font-semibold text-slate-900 dark:text-white">{title}</span>
+                <span className="line-clamp-2 block text-base leading-snug font-semibold text-slate-900 dark:text-white">{title}</span>
                 {lines.filter(Boolean).map((l, i) => (
                     <span key={i} className={'mt-0.5 block truncate text-xs ' + MUTED}>
                         {l}

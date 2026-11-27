@@ -161,6 +161,7 @@ class VotingSettingsController extends Controller
             'q' => ['nullable', 'string', 'max:60'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'per_page' => ['nullable', 'in:10,15,25,50'],
         ]);
         $pending = ['menunggu', 'menunggu_verifikasi'];
         // Pendapatan event = total dibayar penonton dikurangi biaya layanan. Ubah rumus di sini kalau perlu.
@@ -200,6 +201,7 @@ class VotingSettingsController extends Controller
             ->leftJoin('voting_categories as c', 'c.id', '=', 'p.category_id')
             ->leftJoin('voting_gifts as g', 'g.id', '=', 'o.gift_id')
             ->where('o.event_id', $event->id);
+        $hasEmail = \Illuminate\Support\Facades\Schema::hasColumn('voting_orders', 'buyer_email');
         $st = $f['status'] ?? 'all';
         if ($st === 'lunas') {
             $q->where('o.status', 'lunas');
@@ -210,7 +212,7 @@ class VotingSettingsController extends Controller
         }
         $term = trim((string) preg_replace('/[%_\\\\]/', '', $f['q'] ?? ''));
         if ($term !== '') {
-            $q->where(fn ($w) => $w->where('o.code', 'like', "%{$term}%")->orWhere('o.buyer_name', 'like', "%{$term}%")->orWhere('p.name', 'like', "%{$term}%"));
+            $q->where(fn ($w) => $w->where('o.code', 'like', "%{$term}%")->orWhere('o.buyer_name', 'like', "%{$term}%")->orWhere('p.name', 'like', "%{$term}%")->when($hasEmail, fn ($x) => $x->orWhere('o.buyer_email', 'like', "%{$term}%")));
         }
         if (! empty($f['from'])) {
             $q->whereDate('o.created_at', '>=', $f['from']);
@@ -220,16 +222,16 @@ class VotingSettingsController extends Controller
         }
 
         $page = $q->orderByDesc('o.id')->select([
-            'o.id', 'o.code', 'o.buyer_name', 'o.votes', 'o.amount', 'o.service_fee', 'o.status', 'o.midtrans_payment_type', 'o.created_at', 'o.paid_at',
+            'o.id', 'o.code', 'o.buyer_name', $hasEmail ? 'o.buyer_email' : DB::raw('NULL as buyer_email'), 'o.votes', 'o.amount', 'o.service_fee', 'o.status', 'o.midtrans_payment_type', 'o.created_at', 'o.paid_at',
             'p.name as participant', 'c.name as category', 'g.emoji', 'g.name as gift', DB::raw("({$net}) as net"),
-        ])->paginate(25);
+        ])->paginate((int) ($f['per_page'] ?? 10));
 
         return response()->json([
-            'stats' => $stats, 'daily' => $daily, 'participants' => $participants, 'categories' => $categories,
+            'stats' => $stats, 'counts' => ['all' => (int) $byStatus->sum(), 'lunas' => (int) ($byStatus['lunas'] ?? 0), 'menunggu' => $pend, 'batal' => $failed], 'daily' => $daily, 'participants' => $participants, 'categories' => $categories,
             'orders' => [
                 'data' => $page->getCollection()->map(fn ($r) => [
                     'id' => (int) $r->id, 'code' => $r->code, 'created_at' => $r->created_at, 'paid_at' => $r->paid_at,
-                    'buyer_name' => $r->buyer_name, 'participant' => $r->participant, 'category' => $r->category,
+                    'buyer_name' => $r->buyer_name, 'buyer_email' => $r->buyer_email, 'participant' => $r->participant, 'category' => $r->category,
                     'gift' => $r->gift ? trim($r->emoji.' '.$r->gift) : null,
                     'votes' => (int) $r->votes, 'amount' => (int) $r->amount, 'service_fee' => (int) $r->service_fee, 'net' => (int) $r->net,
                     'status' => $r->status === 'lunas' ? 'lunas' : (in_array($r->status, $pending, true) ? 'menunggu' : 'batal'),

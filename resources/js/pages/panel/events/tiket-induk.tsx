@@ -53,7 +53,7 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
                         <Layers className="size-6" strokeWidth={2} />
                     </div>
                     <div>
-                        <h2 className="text-[17px] font-semibold md:text-xl md:font-extrabold">Tiket gabungan</h2>
+                        <h2 className="text-[17px] font-semibold md:text-xl md:font-bold">Tiket gabungan</h2>
                         <p className="mt-1 text-[13px] text-slate-600 md:text-sm md:text-slate-500">Ringkasan tiket dari semua sub-event. Halaman ini hanya untuk melihat; harga, kuota, dan masa jual diatur lewat tombol Kelola di tiap sub-event.</p>
                     </div>
                 </div>
@@ -61,7 +61,7 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
                 {sale && sale.count > 0 && (
                     <div className={`${box} flex flex-wrap items-center justify-between gap-3 p-3 md:gap-4 md:p-5`}>
                         <div>
-                            <h3 className="text-[15px] font-semibold md:text-base md:font-extrabold">Penjualan seluruh rangkaian</h3>
+                            <h3 className="text-[15px] font-semibold md:text-base md:font-semibold">Penjualan seluruh rangkaian</h3>
                             <p className="mt-0.5 text-sm text-slate-500">
                                 {sale.open ? 'Semua kegiatan sedang dijual.' : sale.some_open ? 'Sebagian kegiatan sedang dijual.' : 'Penjualan ditutup.'} Berlaku untuk {sale.count} kegiatan yang memakai tiket.
                             </p>
@@ -87,7 +87,7 @@ export default function TiketInduk({ subs, rows }: { subs: Sub[]; rows: Row[] })
 
                 <div className={`${box} overflow-hidden`}>
                     <div className="space-y-3 p-3 md:space-y-4 md:p-5">
-                        <h3 className="text-[15px] font-semibold md:text-lg md:font-extrabold">Daftar tiket <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
+                        <h3 className="text-[15px] font-semibold md:text-lg md:font-bold">Daftar tiket <span className="text-sm font-semibold text-slate-500">({list.length})</span></h3>
                         <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
                             <button type="button" onClick={() => setSub('')} className={chip(sub === '')}>Semua sub-event · {rows.length}</button>
                             {subs.map((c) => (

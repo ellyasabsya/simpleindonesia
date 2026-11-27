@@ -17,7 +17,7 @@ export default function AuthMobile({ back, badge, title, subtitle, footer, child
                     </Link>
                 )}
                 <img src="/logo-s-sm.png" alt="SIMPLE" className="size-9 shrink-0 object-contain" />
-                <span className="text-[15px] font-semibold tracking-[0.2em]">SIMPLE</span>
+                <span className="text-base font-semibold tracking-[0.2em]">SIMPLE</span>
             </div>
 
             <header className="mt-8 space-y-1.5 px-1">
@@ -28,7 +28,7 @@ export default function AuthMobile({ back, badge, title, subtitle, footer, child
 
             <section className={'mt-6 space-y-4 rounded-3xl p-4 ' + CARD}>{children}</section>
 
-            {footer && <p className={'mt-6 text-center text-[14px] ' + MUTED}>{footer}</p>}
+            {footer && <p className={'mt-6 text-center text-sm ' + MUTED}>{footer}</p>}
         </div>
     );
 }

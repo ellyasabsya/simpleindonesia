@@ -58,7 +58,7 @@ export function Row({ icon: Icon, tint = '#4F46E5', leading, label, sub, value, 
         <>
             {lead}
             <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] leading-snug font-medium">{label}</span>
+                <span className="block truncate text-base leading-snug font-medium">{label}</span>
                 {sub && <span className={'block truncate text-xs ' + MUTED}>{sub}</span>}
             </span>
             {value && <span className={'max-w-[45%] shrink-0 truncate text-[13px] ' + MUTED}>{value}</span>}

@@ -1,3 +1,4 @@
+import { Receipt as StatReceipt, Users as StatUsers, Vote as StatVote, Wallet as StatWallet } from 'lucide-react';
 import PanelLayout from '@/components/panel/panel-layout';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Camera, Check, Eye, Gift, Layers, Link2, MessageSquare, Pencil, Plus, Receipt, Trash2, Trophy, Users, Wallet, X } from 'lucide-react';
@@ -44,7 +45,7 @@ function Modal({ title, sub, onClose, onSubmit, footer, children }: { title: str
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-900/70 p-0 sm:items-center sm:p-4" onClick={onClose}>
             <form onSubmit={onSubmit} className="flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-3xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-5 dark:border-white/10">
-                    <div><h3 className="text-xl font-extrabold">{title}</h3><p className="text-sm text-slate-500">{sub}</p></div>
+                    <div><h3 className="text-xl font-bold">{title}</h3><p className="text-sm text-slate-500">{sub}</p></div>
                     <button type="button" aria-label="Tutup" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
                 </div>
                 <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">{children}</div>
@@ -297,28 +298,30 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
             <div className={phone ? 'hidden' : 'space-y-7'}>
 
                 <div className={`${card} p-6 sm:p-8`}>
-                    <h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold">
+                    <h2 className="flex flex-wrap items-center gap-3 text-xl font-bold">
                         Voting
                         {settings.enabled
-                            ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Aktif</span>
-                            : <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">Belum aktif</span>}
+                            ? <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Aktif</span>
+                            : <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">Belum aktif</span>}
                     </h2>
-                    <p className="mt-1.5 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
+                    <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{settings.enabled ? 'Voting berjalan otomatis sesuai jadwal tiap kategori.' : 'Voting aktif otomatis begitu peserta dan jadwal tiap kategori lengkap.'}</p>
 
-                    <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-slate-200/70 sm:grid-cols-4 dark:bg-white/10">
+                    <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                         {[
-                            { l: 'Pendapatan event', v: stats ? rp(stats.net) : '…', sub: stats ? `Harga ${rp(settings.price_per_vote)} per vote` : '', accent: true },
-                            { l: 'Transaksi lunas', v: stats ? new Intl.NumberFormat('id-ID').format(stats.orders) : '…', sub: stats && stats.pending > 0 ? `${stats.pending} menunggu bayar` : '', accent: false },
-                            { l: 'Vote terjual', v: stats ? new Intl.NumberFormat('id-ID').format(stats.votes) : '…', sub: '', accent: false },
-                            { l: 'Peserta aktif', v: String(activeParts), sub: `${categories.length} kategori`, accent: false },
+                            { l: 'Pendapatan event', v: stats ? rp(stats.net) : '…', sub: stats ? `Harga ${rp(settings.price_per_vote)} per vote` : '', Icon: StatWallet, soft: 'bg-indigo-50 dark:bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300' },
+                            { l: 'Transaksi lunas', v: stats ? new Intl.NumberFormat('id-ID').format(stats.orders) : '…', sub: stats && stats.pending > 0 ? `${stats.pending} menunggu bayar` : '', Icon: StatReceipt, soft: 'bg-emerald-50 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300' },
+                            { l: 'Vote terjual', v: stats ? new Intl.NumberFormat('id-ID').format(stats.votes) : '…', sub: '', Icon: StatVote, soft: 'bg-amber-50 dark:bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300' },
+                            { l: 'Peserta aktif', v: String(activeParts), sub: `${categories.length} kategori`, Icon: StatUsers, soft: 'bg-rose-50 dark:bg-rose-500/15', text: 'text-rose-600 dark:text-rose-300' },
                         ].map((x) => (
-                            <div key={x.l} className="bg-white/90 px-4 py-3.5 dark:bg-slate-900/60">
-                                <dt className={lbl}>{x.l}</dt>
-                                <dd className={`mt-1 text-xl font-extrabold ${x.accent ? 'text-indigo-700 dark:text-indigo-300' : ''}`}>{x.v}</dd>
-                                {x.sub && <div className="mt-0.5 text-xs text-slate-500">{x.sub}</div>}
+                            <div key={x.l} title={x.sub || undefined} className={`group relative min-w-0 overflow-hidden rounded-2xl px-5 py-4 transition hover:-translate-y-0.5 hover:shadow-md ${x.soft}`}>
+                                <x.Icon className={`absolute -bottom-4 -right-3 h-24 w-24 opacity-10 transition group-hover:scale-110 ${x.text}`} />
+                                <div className="relative">
+                                    <div className={`break-words text-2xl font-extrabold sm:text-3xl ${x.text}`}>{x.v}</div>
+                                    <div className={`mt-1.5 text-sm font-bold ${x.text}`}>{x.l}</div>
+                                </div>
                             </div>
                         ))}
-                    </dl>
+                    </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
                         <span className={`inline-flex items-center gap-1.5 text-sm font-bold ${reqTodo.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'}`}>
@@ -329,17 +332,17 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                     </div>
                 </div>
 
-                <div className="relative z-10 -mb-px flex gap-1 overflow-x-auto pl-3 pt-1">
-                    {tabs.map(({ k, t, i: Icon }) => (
-                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex shrink-0 items-center gap-2 rounded-t-2xl border border-b-0 px-4 py-3 text-sm font-extrabold transition ${tab === k ? 'border-white/70 bg-white text-indigo-800 shadow-sm dark:border-white/10 dark:bg-slate-900 dark:text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}><Icon className="h-4 w-4" /> {t}</button>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                    {tabs.map(({ k, t }) => (
+                        <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex shrink-0 items-center rounded-2xl px-4 py-2.5 text-sm font-extrabold transition ${tab === k ? 'bg-indigo-900 text-white shadow' : 'border border-slate-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-200'}`}>{t}</button>
                     ))}
                 </div>
 
-                <div className="!mt-0 space-y-7 [&>:first-child]:rounded-tl-none [&>:first-child>:first-child]:rounded-tl-none">
+                <div className="space-y-7">
                 {tab === 'peserta' && (
                     <>
                         <div className={`${card} p-6`}>
-                            <h3 className="flex items-center gap-2 text-xl font-extrabold"><Layers className="h-5 w-5 text-indigo-600" /> Kategori voting</h3>
+                            <h3 className="flex items-center gap-2 text-xl font-bold"><Layers className="h-5 w-5 text-indigo-600" /> Kategori voting</h3>
                             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kelompokkan peserta, misalnya Solo, Duet, atau Regu. Atur jam buka dan tutup voting untuk tiap kategori. Voting aktif otomatis saat peserta dan jadwal lengkap. Majukan jam tutup untuk menghentikan voting. Jam tutup tidak bisa melewati akhir event.</p>
                             {categories.length === 0
                                 ? <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10">Belum ada kategori. Tambahkan kategori di bawah, lalu atur jadwalnya.</div>
@@ -353,7 +356,7 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
 
                         <div className={`${card} p-6`}>
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h3 className="flex items-center gap-2 text-xl font-extrabold"><Trophy className="h-5 w-5 text-indigo-600" /> Peserta voting</h3>
+                                <h3 className="flex items-center gap-2 text-xl font-bold"><Trophy className="h-5 w-5 text-indigo-600" /> Peserta voting</h3>
                                 <div className="flex flex-wrap gap-2">
                                     <button type="button" onClick={copyAll} disabled={participants.length === 0} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/10 dark:bg-white/5">{copied === 'all' ? <Check className="h-4 w-4 text-emerald-600" /> : <Link2 className="h-4 w-4" />} {copied === 'all' ? 'Tersalin' : 'Salin semua link foto'}</button>
                                     <button type="button" onClick={openNewP} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah peserta</button>
@@ -396,7 +399,7 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                 {tab === 'harga' && (
                     <>
                         <div className={`${card} p-6`}>
-                            <h3 className="text-xl font-extrabold">Harga vote</h3>
+                            <h3 className="text-xl font-bold">Harga vote</h3>
                             <div className="mt-4 grid gap-4 sm:grid-cols-2">
                                 <label className="block"><span className={lbl}>Harga per 1 vote (Rp)</span>
                                     <input type="number" inputMode="numeric" min={1} value={d.price_per_vote} onChange={(e) => sf.setData('price_per_vote', e.target.value)} className={inp} />
@@ -412,7 +415,7 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                         <div className={`${card} p-6`}>
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
-                                    <h3 className="flex items-center gap-2 text-xl font-extrabold"><Gift className="h-5 w-5 text-indigo-600" /> Gift power-up</h3>
+                                    <h3 className="flex items-center gap-2 text-xl font-bold"><Gift className="h-5 w-5 text-indigo-600" /> Gift power-up</h3>
                                     <p className="mt-1 max-w-xl text-sm text-slate-600 dark:text-slate-300">Paket vote siap pilih. Pembeli cukup tap gift untuk mengisi jumlah otomatis. Gift tersimpan langsung, tanpa tombol Simpan pengaturan.</p>
                                 </div>
                                 <button type="button" onClick={openNewG} className={`${btn} inline-flex items-center gap-2 !py-2.5`}><Plus className="h-4 w-4" /> Tambah gift</button>
@@ -443,7 +446,7 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
 
                 {tab === 'pesan' && (
                     <div className={`${card} p-6`}>
-                        <h3 className="text-xl font-extrabold">Pesan dukungan dan efek suara</h3>
+                        <h3 className="text-xl font-bold">Pesan dukungan dan efek suara</h3>
                         <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
                             <SettingRow title="Aktifkan pesan dukungan" desc="Pembeli boleh menulis pesan singkat yang tampil di daftar dukungan langsung."><Switch on={d.message_enabled} onChange={(v) => sf.setData('message_enabled', v)} /></SettingRow>
                             <SettingRow title="Batas karakter pesan" desc="Antara 1 sampai 200 karakter."><input type="number" inputMode="numeric" min={1} max={200} disabled={!d.message_enabled} value={d.message_max} onChange={(e) => sf.setData('message_max', e.target.value)} className={`${inp} !mt-0 w-28 text-center`} /></SettingRow>
@@ -456,7 +459,7 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                 {tab === 'tampilan' && (
                     <div className="grid gap-5 lg:grid-cols-2">
                         <div className={`${card} p-6`}>
-                            <h3 className="text-xl font-extrabold">Tampilan publik</h3>
+                            <h3 className="text-xl font-bold">Tampilan publik</h3>
                             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Apa yang boleh dilihat penonton di halaman voting.</p>
                             <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
                                 <SettingRow title="Tampilkan nama pengirim" desc="Jika dimatikan: pengirim tampil sebagai Anonim."><Switch on={d.show_sender} onChange={(v) => sf.setData('show_sender', v)} /></SettingRow>
@@ -468,7 +471,11 @@ export default function Voting({ eventId, eventEnd, settings, categories, partic
                     </div>
                 )}
 
-                {tab === 'transaksi' && <VotingTransaksi base={base} onStats={setStats} />}
+                {tab === 'transaksi' && (
+                    <div className={`${card} p-4 sm:p-6`}>
+                        <VotingTransaksi base={base} onStats={setStats} />
+                    </div>
+                )}
 
                 {tab !== 'peserta' && tab !== 'transaksi' && (
                     <div className={`${card} flex flex-wrap items-center justify-between gap-3 p-4`}>

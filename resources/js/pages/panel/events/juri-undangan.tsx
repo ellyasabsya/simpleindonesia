@@ -124,7 +124,7 @@ export default function JuriTambah({ btn, children }: { card?: string; inp?: str
             <div className="flex items-start gap-3 md:gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white md:h-12 md:w-12 md:bg-gradient-to-br md:from-blue-600 md:to-violet-600 md:shadow-lg md:shadow-indigo-500/30"><UserPlus className="h-6 w-6" /></span>
                 <div className="min-w-0">
-                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-black dark:text-white">Undang juri</h3>
+                    <h3 className="text-[17px] font-semibold text-slate-900 md:text-lg md:font-bold dark:text-white">Undang juri</h3>
                     <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">Masukkan email akun SIMPLE calon juri. Undangan tampil di dashboard mereka.</p>
                 </div>
             </div>
@@ -189,7 +189,7 @@ export function JuriBelumTugas({ btn }: { btn: string }) {
 
     return (
         <div className={`${solid} border-l-4 border-l-amber-400 p-3 md:p-6`}>
-            <h3 className="flex items-center gap-2 text-[15px] font-semibold md:text-base md:font-black text-slate-900 dark:text-white">Belum ditugaskan <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">{list.length}</span></h3>
+            <h3 className="flex items-center gap-2 text-[15px] font-semibold md:text-base md:font-semibold text-slate-900 dark:text-white">Belum ditugaskan <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">{list.length}</span></h3>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Klik kategori untuk menugaskan juri.</p>
             <ul className="mt-4 space-y-3">
                 {list.map((j) => {

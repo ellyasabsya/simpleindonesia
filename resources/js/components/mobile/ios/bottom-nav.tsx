@@ -13,7 +13,7 @@ const tint = (active: boolean) =>
     active ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400';
 
 const LABEL = (active: boolean) =>
-    `text-[10px] leading-none tracking-tight ${active ? 'font-semibold' : 'font-medium'}`;
+    `text-[11px] leading-none tracking-tight ${active ? 'font-semibold' : 'font-medium'}`;
 
 function Tab({ item, path }: { item: NavItem; path: string }) {
     const active = isActive(path, item);
